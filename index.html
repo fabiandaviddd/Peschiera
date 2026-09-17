@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2C6E49">
+<meta name="description" content="Peschiera kompakt - kuratierte Tipps für Peschiera del Garda und Umgebung.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Peschiera">
+<title>Peschiera kompakt</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232C6E49'/><text x='16' y='23' font-size='19' text-anchor='middle' fill='%23F4A261' font-family='system-ui'>P</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Zum Inhalt springen</a>
+
+<div id="app" class="app" hidden>
+
+  <header class="app-header">
+    <div class="app-header__top">
+      <div class="brand">
+        <h1 class="brand__title">Peschiera <span>kompakt</span></h1>
+        <p class="brand__sub" id="brand-sub">Lago di Garda</p>
+      </div>
+      <button type="button" id="jum-toggle" class="jum-toggle" aria-pressed="false"
+              title="Nur Einträge, die mit Jum funktionieren">
+        <span class="jum-toggle__icon" aria-hidden="true">&#128021;</span>
+        <span class="jum-toggle__label">Jum</span>
+      </button>
+    </div>
+
+    <div class="search">
+      <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+      </svg>
+      <input type="search" id="search" class="search__input" placeholder="Suchen: Name, Stichwort, Ort"
+             autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search"
+             aria-label="Einträge durchsuchen">
+      <button type="button" id="search-clear" class="search__clear" aria-label="Suche loeschen" hidden>&times;</button>
+    </div>
+
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Kategorien"></nav>
+  </header>
+
+  <main class="main" id="main">
+    <div class="meta-row">
+      <p class="result-count" id="result-count" role="status" aria-live="polite"></p>
+      <p class="filter-hint" id="filter-hint" hidden></p>
+    </div>
+
+    <div class="views" id="views">
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="empty" hidden>
+        <p class="empty__title">Nichts gefunden.</p>
+        <p class="empty__text" id="empty-text"></p>
+        <button type="button" class="btn btn--ghost" id="empty-reset">Filter zuruecksetzen</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <p id="footer-note"></p>
+  </footer>
+</div>
+
+<!-- Ladezustand -->
+<div id="loading" class="screen screen--loading">
+  <div class="spinner" aria-hidden="true"></div>
+  <p>Tipps werden geladen&hellip;</p>
+</div>
+
+<!-- Fehlerzustand: fetch von data/places.json fehlgeschlagen -->
+<div id="error" class="screen screen--error" hidden role="alert">
+  <div class="screen__box">
+    <p class="screen__icon" aria-hidden="true">&#9888;</p>
+    <h2 class="screen__title">Daten konnten nicht geladen werden</h2>
+    <p class="screen__text" id="error-text">Unbekannter Fehler.</p>
+    <button type="button" class="btn btn--primary" id="error-retry">Erneut versuchen</button>
+    <p class="screen__hint">Offline? Verbindung prüfen und erneut versuchen.</p>
+  </div>
+</div>
+
+<!-- Detail-Sheet -->
+<div id="backdrop" class="backdrop" hidden></div>
+<section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+  <div class="sheet__grip" id="sheet-grip" aria-hidden="true"><span></span></div>
+  <button type="button" class="sheet__close" id="sheet-close" aria-label="Schließen">&times;</button>
+  <div class="sheet__scroll" id="sheet-scroll">
+    <h2 id="sheet-title" class="sheet__title"></h2>
+    <div id="sheet-body"></div>
+  </div>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
