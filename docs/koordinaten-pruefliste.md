@@ -1,50 +1,50 @@
-# Koordinaten — Prüfliste
+# Koordinaten — Stand und Prüfregeln
 
-Stand: 2026-09-18 · 101 Orte · 81 mit Koordinaten
+101 Orte · 78 mit Koordinaten · 23 offen
 
-Gegengeprüft gegen die vorhandenen `distance_km`. Medianabweichung 1,2 km,
-Verhältnis Luftlinie zu Straße 0,60 — beides plausibel. Auffällig ist nur das Folgende.
+## Wie geprüft wird
 
-## Falsch verortet (3)
+Beim ersten Durchlauf sind drei Orte falsch verortet worden. Aus den Daten
+ließen sich zwei Regeln ableiten, die alle drei abfangen. Sie stecken jetzt in
+`koordinaten.html` und `scripts/add-coords.mjs`:
 
-| Ort | laut Daten | laut Koordinate |
-|---|---|---|
-| S'Aligusta (`saligusta`) | 1.5 km | 2.3 km |
-| La Taverna da Oreste (`oreste`) | 10 km | 3.2 km |
-| Forte Ardietti & Monte della Guardia (`ponti-sul-mincio`) | 11 km | 3.1 km |
+1. **Ortsname.** Steht in der Adresse ein Ort, muss er auch im Ergebnis des
+   Dienstes vorkommen. *Via F. Fontana 32, Lazise* darf nicht in Peschiera landen.
+   Greift auch bei Adressen ohne Komma, sofern sie wie ein Ortsname aussehen
+   (höchstens vier Wörter, keine Ziffern, kein Straßenwort am Anfang).
+2. **Entfernung.** Die Luftlinie kann nie länger sein als die gemessene
+   Straßenentfernung aus `distance_km`. Grenze: `distance_km × 1,15 + 0,5 km`.
 
-## Gleicher Punkt für mehrere Orte (11)
+Dazu wird die Suche auf die Reisegegend eingegrenzt
+(`viewbox` 10,35–11,15 Ost / 45,05–45,95 Nord, `bounded=1`).
 
-Meist ein Ortsmittelpunkt statt der Adresse. Auf der Karte überlappen die Marker.
+### Was bewusst nicht geprüft wird
 
-- Trattoria al Combattente  +  Lago del Frassino
-- Osteria sugli Scavi  +  Dom San Martino
-- Pavillon  +  Parco Catullo
-- Ammazza Caffè  +  Verona
-- Festung Peschiera  +  Bahnhof Peschiera del Garda  +  Imbarcadero Peschiera
-- Porta Brescia  +  Velolake Bike Rental
-- Bastione San Marco  +  Museo della Pesca
-- Punta San Vigilio  +  Taverna San Vigilio
-- Braccobaldo Beach  +  Lapescheria
-- Supermercato Orvea  +  Penny Market
-- Lido 3.9 Lounge Bar  +  Wochenmarkt Desenzano (Dienstag)
+Eine **Untergrenze** für die Entfernung wäre untauglich. An den vorhandenen
+Daten gemessen: jeder Schwellenwert, der die falschen Treffer fängt, verwirft
+auch 17 bis 25 korrekte Orte. Kurze Strecken sind zu grob gerundet.
 
-## Ohne Koordinate (20)
+Wird ein Treffer verworfen, probiert die Suche die nächste Schreibweise.
+Erst wenn alle scheitern, bleibt der Ort leer — mit Begründung im Protokoll.
 
-Bei Wegen, Radrunden, Bootstouren und Terminen ist ein einzelner Punkt fragwürdig —
-die können so bleiben. Die übrigen sind echte Orte und sollten nachgetragen werden.
+## Offene Punkte
 
-**Nachtragen:**
+### Sollten eine Koordinate bekommen (10)
 
-- Famila (`famila`) — Via Campanello 1/a, Peschiera del Garda
-- Jamaica Beach & Schwefelquelle (`jamaica-beach`) — Spitze der Halbinsel, Sirmione
-- Azienda Agricola Ottella (`ottella`) — Località Boschetti 1, San Benedetto di Lugana, Peschiera del Garda
-- Podere Selva Capuzza (`selva-capuzza`) — Via Selva Capuzza, San Martino della Battaglia
-- Parco Termale Villa dei Cedri (`villa-dei-cedri`) — Piazza di Sopra 4, Colà di Lazise
-- Riserva Rocca e Sasso di Manerba (`rocca-manerba`) — Via della Rocca 16, Manerba del Garda
-- Pescheria Cavallaro (`pescheria-cavallaro`) — Località Stretta Castello 19, Desenzano del Garda
+- **Famila** (`famila`) — Via Campanello 1/a, Peschiera del Garda
+- **S'Aligusta** (`saligusta`) — Via Bell'Italia 12, Peschiera del Garda
+- **La Taverna da Oreste** (`oreste`) — Via F. Fontana 32, Lazise
+- **Jamaica Beach & Schwefelquelle** (`jamaica-beach`) — Spitze der Halbinsel, Sirmione
+- **Forte Ardietti & Monte della Guardia** (`ponti-sul-mincio`) — Ponti sul Mincio
+- **Azienda Agricola Ottella** (`ottella`) — Località Boschetti 1, San Benedetto di Lugana, Peschiera del Garda
+- **Podere Selva Capuzza** (`selva-capuzza`) — Via Selva Capuzza, San Martino della Battaglia
+- **Parco Termale Villa dei Cedri** (`villa-dei-cedri`) — Piazza di Sopra 4, Colà di Lazise
+- **Riserva Rocca e Sasso di Manerba** (`rocca-manerba`) — Via della Rocca 16, Manerba del Garda
+- **Pescheria Cavallaro** (`pescheria-cavallaro`) — Località Stretta Castello 19, Desenzano del Garda
 
-**Kann leer bleiben:**
+### Ohne sinnvollen Einzelpunkt (13)
+
+Wege, Radrunden, Bootstouren und Termine. Bleiben leer; die Karte muss das aushalten.
 
 - Uferweg am Mincio (`lungomincio`)
 - Wochenmarkt (`mercato`)
@@ -59,3 +59,21 @@ die können so bleiben. Die übrigen sind echte Orte und sollten nachgetragen we
 - Radrunde durch die Lugana-Weinberge (`ciclabile-lugana`)
 - Radweg Peschiera – Lazise – Bardolino – Garda (`ciclabile-ostufer`)
 - Rievocazione Storica Peschiera (`rievocazione`)
+
+## Mehrere Orte auf demselben Punkt (11)
+
+Der Dienst hat einen Ortsmittelpunkt statt der Adresse geliefert. Teils harmlos,
+weil die Orte tatsächlich nebeneinander liegen, teils grob. Auf der Karte
+überlappen die Marker.
+
+- Trattoria al Combattente  +  Lago del Frassino
+- Osteria sugli Scavi  +  Dom San Martino
+- Pavillon  +  Parco Catullo
+- Ammazza Caffè  +  Verona
+- Festung Peschiera  +  Bahnhof Peschiera del Garda  +  Imbarcadero Peschiera
+- Porta Brescia  +  Velolake Bike Rental
+- Bastione San Marco  +  Museo della Pesca
+- Punta San Vigilio  +  Taverna San Vigilio
+- Braccobaldo Beach  +  Lapescheria
+- Supermercato Orvea  +  Penny Market
+- Lido 3.9 Lounge Bar  +  Wochenmarkt Desenzano (Dienstag)
