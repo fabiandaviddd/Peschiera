@@ -615,6 +615,74 @@ body.is-typing .tabs { transform: translateY(110%); }
   border: 3px solid var(--line); border-top-color: var(--lake); animation: spin 850ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* --- Heute -------------------------------------------------------------- */
+
+.today { padding-top: .9rem; }
+
+.today__date { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+.today__now {
+  display: flex; align-items: baseline; gap: .6rem;
+  font-size: 1.9rem; letter-spacing: -.02em; margin: .2rem 0 0;
+  padding-bottom: .7rem; border-bottom: 2px solid var(--ink);
+}
+.today__clock { font-family: var(--font-body); font-size: .9rem; font-weight: 400; color: var(--soft); }
+
+.today__weather {
+  display: flex; align-items: center; gap: .45rem;
+  padding: .7rem 0 .9rem;
+  font-size: .86rem; color: var(--soft);
+  border-bottom: 1px solid var(--line);
+}
+.today__weather .chip { height: 34px; }
+
+.today__kicker {
+  font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--brick-ink); margin-top: 1.1rem;
+}
+.today__cat {
+  display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap;
+  font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent-ink, var(--soft)); margin-top: .8rem;
+}
+.today__hours { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--soft); }
+.today__name { font-size: 1.62rem; letter-spacing: -.02em; margin-top: .3rem; }
+.today__note { font-size: .95rem; color: var(--soft); margin-top: .45rem;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.today__why { font-size: .88rem; margin-top: .5rem; }
+.today__late { color: var(--brick-ink); }
+
+.today__acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.today__acts .btn { flex: 1 1 auto; }
+
+.today__lead {
+  font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--soft); margin: 1.6rem 0 .1rem;
+  padding-top: 1rem; border-top: 1px solid var(--line);
+}
+.today__smalls { display: grid; }
+.today__small {
+  display: grid; gap: .1rem; text-align: left; cursor: pointer;
+  padding: .7rem 0; border-bottom: 1px solid var(--line);
+}
+.today__small-n { font-family: var(--font-head); font-weight: 600; font-size: 1.02rem; }
+.today__small-m { font-size: .8rem; color: var(--soft); }
+
+.today__none {
+  margin-top: 1.4rem; padding: 1.1rem 1.1rem 1.2rem;
+  background: var(--wash); border-radius: var(--r-card);
+}
+.today__none h3 { font-size: 1.1rem; }
+.today__none p { font-size: .9rem; color: var(--soft); margin-top: .35rem; }
+
+.today__all {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  width: 100%; min-height: 48px; margin: 1.3rem 0 .5rem;
+  font-size: .95rem; color: var(--ink); cursor: pointer;
+  border-top: 1px solid var(--line); padding-top: 1rem;
+}
+.today__all svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: var(--soft);
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
 /* --- Ab 33rem: etwas mehr Luft, Spalte bleibt bei 32rem ---------------- */
 @media (min-width: 33rem) {
   .bar__title { font-size: 1.5rem; }

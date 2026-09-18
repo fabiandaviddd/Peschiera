@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v6 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v7 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -22,7 +22,7 @@
   var catById = {};
 
   var S = {
-    view: 'orte',
+    view: 'heute',
     q: '',
     cats: [],
     jum: false,          // Dauereinstellung, kein Filter: ueberlebt den Neustart
@@ -32,6 +32,8 @@
     short: false,
     sort: 'distance',
     filterOpen: false,
+    wet: false,             // vom Benutzer gesagt, nicht abgerufen
+    pick: 0,                // welcher Vorschlag gerade dran ist
     saved: [],
     seen: [],
     theme: 'auto',
@@ -148,6 +150,7 @@
     sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>',
     moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.4A8.4 8.4 0 1 1 9.6 4a6.8 6.8 0 0 0 10.4 10.4z"/></svg>',
     auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8" /><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"/></svg>',
+    shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 8.4h11.2l-2.6-2.7M20.4 15.6H9.2l2.6 2.7"/></svg>',
     tags: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 11.2V4.8a1.2 1.2 0 0 1 1.2-1.2h6.4l8.4 8.4a1.4 1.4 0 0 1 0 2l-5.6 5.6a1.4 1.4 0 0 1-2 0z"/><path d="M7.6 7.6h.01"/></svg>'
   };
 
@@ -299,6 +302,7 @@
 
   function toggleJum() {
     S.jum = !S.jum;
+    S.pick = 0;
     lsSet(LS_JUM, S.jum);
     applyJum();
     render();
@@ -307,6 +311,7 @@
   /* ------------------------------------------------------------------ Tabs */
 
   var TABS = [
+    { id: 'heute', label: 'Heute', icon: ICON.sun },
     { id: 'orte', label: 'Orte', icon: ICON.list },
     { id: 'gemerkt', label: 'Gemerkt', icon: ICON.star },
     { id: 'info', label: 'Info', icon: ICON.info }
@@ -335,6 +340,7 @@
 
   function setView(v) {
     if (v === S.view) return;
+    if (v === 'heute') S.pick = 0;
     S.view = v;
     syncTabs();
     render();
@@ -507,23 +513,31 @@
 
   function render() {
     syncChips();
-    $('filters').hidden = S.view === 'info';
-    $('search-wrap').hidden = S.view === 'info';
-    $('meta-row').hidden = S.view === 'info';
+    var bare = S.view === 'info' || S.view === 'heute';
+    $('filters').hidden = bare;
+    $('search-wrap').hidden = bare;
+    $('meta-row').hidden = bare;
     renderShareBar();
     measureBar();
 
-    if (S.view === 'info') {
+    if (bare) {
       $('list').innerHTML = '';
       $('list').hidden = true;
       $('empty').hidden = true;
-      $('info').hidden = false;
-      $('info').innerHTML = infoHtml();
+      if (S.view === 'info') {
+        $('today').hidden = true; $('today').innerHTML = '';
+        $('info').hidden = false; $('info').innerHTML = infoHtml();
+      } else {
+        $('info').hidden = true; $('info').innerHTML = '';
+        $('today').hidden = false; $('today').innerHTML = todayHtml();
+      }
       return;
     }
 
     $('info').hidden = true;
     $('info').innerHTML = '';
+    $('today').hidden = true;
+    $('today').innerHTML = '';
 
     var items = selected();
     var total = S.view === 'gemerkt' ? S.saved.length : D.places.length;
@@ -571,6 +585,8 @@
       + (S.jum ? ' · mit Jum' : '')
       + (unclear ? ' · ' + unclear + ' ohne Jum ausgeblendet' : '')
       + (seenHere ? ' · ' + seenHere + ' gesehen' : '');
+
+    if (!$('count')) return;
 
     var live = $('filter-count');
     if (live) {
@@ -627,6 +643,311 @@
       + ICON.checkRound + '</button>'
       + '</span>'
       + '</article>';
+  }
+
+
+  /* ------------------------------------------------------------- Heute */
+
+  /* Tagesabschnitte. "until" ist das Ende in Minuten seit Mitternacht und
+     dient zugleich als Frage "geht sich das heute noch aus?". */
+  var MOMENTS = [
+    { id: 'frueh',      label: 'Morgen',     until: 11 * 60,      kicker: 'Für den Morgen' },
+    { id: 'mittag',     label: 'Mittag',     until: 14 * 60 + 30, kicker: 'Für den Mittag' },
+    { id: 'nachmittag', label: 'Nachmittag', until: 18 * 60,      kicker: 'Für den Nachmittag' },
+    { id: 'abend',      label: 'Abend',      until: 23 * 60,      kicker: 'Für heute Abend' }
+  ];
+
+  var BADGE_MOMENT = {
+    'Früh morgens': ['frueh'],
+    'Mittags': ['mittag'],
+    'Nur mittags': ['mittag'],
+    'Nur Sa/So mittags': ['mittag'],
+    'Nachmittags': ['nachmittag'],
+    'Der Abend': ['abend'],
+    'Der zweite grosse Abend': ['abend'],
+    'Sonnenuntergang': ['abend'],
+    'Abendlicht': ['abend'],
+    'Livemusik': ['abend'],
+    'Cocktails': ['abend'],
+    'Ganzer Tag': ['frueh']
+  };
+
+  var INDOOR_YES = ['museum', 'kirche', 'supermarkt', 'notfall', 'regen'];
+  var INDOOR_NO  = ['strand', 'natur', 'wandern', 'rad', 'park', 'festung', 'seeblick',
+                    'schiff', 'wasser', 'markt'];
+
+  /* Öffnungszeiten stehen als Freitext da ("geöffnet bis 22:30", "täglich
+     18–23, Ruhetag Mittwoch"). Was sich sicher lesen lässt, wird gelesen;
+     alles andere bleibt null. Daraus wird nie "hat offen" abgeleitet —
+     nur "schließt gleich", und das auch nur, wenn eine Zeit dasteht. */
+  function hoursWindow(h) {
+    if (!has(h)) return { open: null, close: null };
+    var t = String(h), open = null, close = null, m;
+    m = t.match(/(?:^|[\s·,])(?:ab|öffnet)\s*(\d{1,2})[:.](\d{2})/i);
+    if (m) open = (+m[1]) * 60 + (+m[2]);
+    m = t.match(/bis\s*(?:ca\.\s*)?(\d{1,2})[:.](\d{2})/i);
+    if (m) close = (+m[1]) * 60 + (+m[2]);
+    if (open === null && close === null) {
+      m = t.match(/(\d{1,2})(?:[:.](\d{2}))?\s*[–-]\s*(\d{1,2})(?:[:.](\d{2}))?/);
+      if (m) {
+        open = (+m[1]) * 60 + (+(m[2] || 0));
+        close = (+m[3]) * 60 + (+(m[4] || 0));
+        if (close <= open) close = null;
+      }
+    }
+    return { open: open, close: close };
+  }
+
+  /* Reihenfolge: was im JSON steht, gilt. Erst wenn dort nichts steht, wird
+     hergeleitet — aus badge, Öffnungszeit, Kategorie und Aufenthaltsdauer. */
+  function momentsOf(p) {
+    if (Array.isArray(p.moment) && p.moment.length) return p.moment;
+    if (p._m) return p._m;
+
+    var m = {};
+    var b = has(p.badge) && BADGE_MOMENT[p.badge];
+    if (b) b.forEach(function (x) { m[x] = true; });
+
+    var w = hoursWindow(p.hours);
+    if (w.close !== null && w.close >= 21 * 60) m.abend = true;
+    if (w.open !== null && w.open <= 8 * 60 + 30) m.frueh = true;
+    if (w.open !== null && w.open >= 17 * 60) m.abend = true;
+    if (w.open !== null && w.close !== null && w.open <= 12 * 60 + 30 && w.close >= 14 * 60) m.mittag = true;
+
+    if (p.category === 'cafe') { m.frueh = true; m.nachmittag = true; }
+    if (has(p.time_min) && p.time_min >= 240) m.frueh = true;   // Tagesausflug beginnt morgens
+
+    var out = Object.keys(m);
+    if (!out.length) {
+      /* Nichts abzuleiten: Sehenswertes und Ausflüge passen grundsätzlich
+         in jeden hellen Abschnitt, Essen mittags und abends. Praktisches
+         (Apotheke, Supermarkt, Werkstatt) ist kein Tagesvorschlag. */
+      if (p.category === 'praktisch') out = [];
+      else if (p.category === 'essen') out = ['mittag', 'abend'];
+      else out = ['frueh', 'mittag', 'nachmittag'];
+    }
+    p._m = out;
+    return out;
+  }
+
+  function indoorOf(p) {
+    if (p.indoor === true || p.indoor === false) return p.indoor;
+    if (p.badge === 'Regentag') return true;
+    for (var i = 0; i < INDOOR_YES.length; i++) if (p.tags.indexOf(INDOOR_YES[i]) >= 0) return true;
+    for (var j = 0; j < INDOOR_NO.length; j++) if (p.tags.indexOf(INDOOR_NO[j]) >= 0) return false;
+    return null;                 // ungeklärt — und wird auch nicht behauptet
+  }
+
+  /* Badges wie "18.–20.09.", "26./27.09." oder "Di 22.09." sind Termine.
+     Fällt heute hinein, gehört der Ort nach oben. */
+  function runsToday(p, now) {
+    if (!has(p.badge)) return false;
+    var m = String(p.badge).match(/(\d{1,2})\.(?:\s*[–\/-]\s*(\d{1,2})\.)?\s*(\d{1,2})\./);
+    if (!m) return false;
+    var mon = +m[3], from = +m[1], to = m[2] ? +m[2] : from;
+    return (now.getMonth() + 1) === mon && now.getDate() >= from && now.getDate() <= to;
+  }
+
+  var LOOK_AHEAD = 45;        // Minuten Restzeit, ab denen der nächste Abschnitt dran ist
+
+  function momentNow(mins) {
+    if (mins >= 23 * 60 || mins < 5 * 60) return { m: MOMENTS[0], tomorrow: true, soon: false };
+    for (var i = 0; i < MOMENTS.length; i++) {
+      if (mins < MOMENTS[i].until) {
+        /* Kurz vor Schluss bringt der laufende Abschnitt nichts mehr: um
+           17:40 sucht man den Abend, nicht die letzten zwanzig Minuten
+           Nachmittag. */
+        if (MOMENTS[i].until - mins < LOOK_AHEAD && i < MOMENTS.length - 1) {
+          return { m: MOMENTS[i + 1], tomorrow: false, soon: true };
+        }
+        return { m: MOMENTS[i], tomorrow: false, soon: false };
+      }
+    }
+    return { m: MOMENTS[3], tomorrow: false, soon: false };
+  }
+
+  /* Reicht die Zeit noch? Nur dort gefragt, wo eine Dauer gemeint ist —
+     beim Essen entscheidet nicht die Restzeit des Abschnitts. */
+  function fitsLeft(p, mins, until) {
+    if (p.category === 'essen' || p.category === 'cafe') return true;
+    if (!has(p.time_min)) return true;
+    return mins + (has(p.walk_min) ? p.walk_min : 0) + p.time_min <= until;
+  }
+
+  function unverified(p) {
+    if (has(p.hours) && /ungeprüft|unbestätigt|prüfen/i.test(p.hours)) return true;
+    return p.badge === 'Zeiten prüfen' || p.badge === 'Erst anrufen';
+  }
+
+  function closingSoon(p, mins) {
+    var w = hoursWindow(p.hours);
+    return w.close !== null && w.close - mins < 30 && w.close > mins - 60;
+  }
+
+  function todayList(mid, mins, until, now) {
+    var out = D.places.filter(function (p) {
+      if (momentsOf(p).indexOf(mid) < 0) return false;
+      if (S.jum && p.dog !== true) return false;
+      if (S.wet && indoorOf(p) !== true) return false;
+      if (closingSoon(p, mins)) return false;
+      return true;
+    });
+
+    return out.sort(function (a, b) {
+      var fa = fitsLeft(a, mins, until) ? 0 : 1, fb = fitsLeft(b, mins, until) ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+      var ua = unverified(a) ? 1 : 0, ub = unverified(b) ? 1 : 0;
+      if (ua !== ub) return ua - ub;
+      var ea = runsToday(a, now) ? 1 : 0, eb = runsToday(b, now) ? 1 : 0;
+      if (ea !== eb) return eb - ea;
+      var sa = S.seen.indexOf(a.id) >= 0 ? 1 : 0, sb = S.seen.indexOf(b.id) >= 0 ? 1 : 0;
+      if (sa !== sb) return sa - sb;
+      /* Ohne diese Stufe gewinnt die beste Bewertung, auch wenn sie 51
+         Minuten entfernt liegt. Erst das Erreichbare, dann das Beste darin —
+         dieselbe Schwelle wie der Chip "Zu Fuß". */
+      var na = has(a.walk_min) && a.walk_min <= WALK_MAX ? 0 : 1;
+      var nb = has(b.walk_min) && b.walk_min <= WALK_MAX ? 0 : 1;
+      if (na !== nb) return na - nb;
+      if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
+      return byDistance(a, b);
+    });
+  }
+
+  /* "Tag 5 von 15" steht nirgends in den Daten, lässt sich aber aus dem
+     Untertitel lesen. Passt das Muster nicht, entfällt die Zeile. */
+  var MONTHS = ['januar', 'februar', 'märz', 'april', 'mai', 'juni', 'juli',
+                'august', 'september', 'oktober', 'november', 'dezember'];
+
+  function tripDay(now) {
+    var t = has(D.meta.subtitle) ? String(D.meta.subtitle) : '';
+    var m = t.match(/(\d{1,2})\.\s*[–-]\s*(\d{1,2})\.\s*([A-Za-zÄÖÜäöüß]+)\s*(\d{4})/);
+    if (!m) return null;
+    var mon = MONTHS.indexOf(m[3].toLowerCase());
+    if (mon < 0) return null;
+    var from = new Date(+m[4], mon, +m[1]), to = new Date(+m[4], mon, +m[2]);
+    var day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (day0 < from || day0 > to) return null;
+    var oneDay = 86400000;
+    return { n: Math.round((day0 - from) / oneDay) + 1, of: Math.round((to - from) / oneDay) + 1 };
+  }
+
+
+  /* --------------------------------------------------------- Heute-Ansicht */
+
+  var WEEKDAYS = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  var MONTHS_LONG = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli',
+                     'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+  function hhmm(mins) {
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return h + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  /* Der Satz unter dem Namen wird aus Daten gebaut, nicht erfunden: Weg,
+     Dauer, Hund, Termin. Was nicht dasteht, steht auch nicht da. */
+  function whyLine(p, mins, until, ref, tomorrow) {
+    var bits = [];
+    if (runsToday(p, ref)) bits.push((tomorrow ? 'läuft morgen' : 'läuft heute') + ' (' + esc(p.badge) + ')');
+    if (has(p.rating)) bits.push('★ ' + nf1.format(p.rating));
+    if (has(p.walk_min)) bits.push(p.walk_min + ' Min zu Fuß');
+    else if (has(p.bike_min)) bits.push(p.bike_min + ' Min mit dem Rad');
+    else if (has(p.distance_km)) bits.push(km(p.distance_km));
+    if (has(p.time_label)) bits.push(esc(p.time_label));
+    else if (has(p.time_min)) bits.push(esc(dur(p.time_min)));
+    if (p.dog === true) bits.push('Jum darf mit');
+    if (unverified(p)) bits.push('Zeiten ungeprüft, vorher anrufen');
+    var out = bits.join(' · ');
+    if (!fitsLeft(p, mins, until)) {
+      out += '<span class="today__late"> — dafür ist es heute zu spät</span>';
+    }
+    return out;
+  }
+
+  function pickHtml(p, mins, until, ref, tomorrow) {
+    var on = S.saved.indexOf(p.id) >= 0;
+    return '<p class="today__cat ' + accentClass(p.category) + '">' + esc(catLabel(p.category))
+      + (has(p.hours) ? '<span class="today__hours">' + esc(String(p.hours).replace(/^geöffnet\s+/i, '')) + '</span>' : '')
+      + '</p>'
+      + '<h3 class="today__name">' + esc(p.name) + '</h3>'
+      + (has(p.note) ? '<p class="today__note">' + esc(p.note) + '</p>' : '')
+      + '<p class="today__why">' + whyLine(p, mins, until, ref, tomorrow) + '</p>'
+      + '<div class="today__acts">'
+      + '<button type="button" class="btn btn--primary" data-open="' + esc(p.id) + '">Ansehen</button>'
+      + '<button type="button" class="btn" data-save="' + esc(p.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
+      + ICON.star + (on ? 'Gemerkt' : 'Merken') + '</button>'
+      + '<button type="button" class="btn" id="today-next">' + ICON.shuffle + 'Anderer</button>'
+      + '</div>';
+  }
+
+  function smallHtml(p) {
+    return '<button type="button" class="today__small" data-open="' + esc(p.id) + '">'
+      + '<span class="today__small-n">' + esc(p.name) + '</span>'
+      + '<span class="today__small-m">' + esc(catLabel(p.category))
+      + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min' : '')
+      + (p.dog === true ? ' · Jum ok' : '') + '</span>'
+      + '</button>';
+  }
+
+  function todayHtml() {
+    var now = new Date();
+    var mins = now.getHours() * 60 + now.getMinutes();
+    var mn = momentNow(mins);
+    var until = mn.m.until;
+    var trip = tripDay(now);
+    var ref = mn.tomorrow
+      ? new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      : now;
+
+    /* Beim Vorausschauen rechnet die Restzeit ab dem Beginn des nächsten
+       Abschnitts — sonst fällt alles durch, was "jetzt" nicht mehr passt. */
+    var from = mn.tomorrow ? 0 : (mn.soon ? until - 180 : mins);
+    var list = todayList(mn.m.id, from, until, ref);
+    var pick = list.length ? list[S.pick % list.length] : null;
+    var others = list.filter(function (p) { return !pick || p.id !== pick.id; }).slice(0, 2);
+
+    var head = '<p class="today__date">' + WEEKDAYS[now.getDay()] + ', ' + now.getDate() + '. '
+      + MONTHS_LONG[now.getMonth()]
+      + (trip ? ' · Tag ' + trip.n + ' von ' + trip.of : '') + '</p>'
+      + '<h2 class="today__now">' + (mn.tomorrow ? 'Morgen früh' : (mn.soon ? 'Gleich: ' : '') + mn.m.label)
+      + '<span class="today__clock">' + hhmm(mins) + '</span></h2>';
+
+    /* Das Wetter weiß die App nicht und holt es auch nicht — sie fragt. */
+    var weather = '<div class="today__weather">'
+      + '<span>Draußen ist es</span>'
+      + '<button type="button" class="chip" id="wx-dry" aria-pressed="' + (S.wet ? 'false' : 'true') + '">schön</button>'
+      + '<button type="button" class="chip" id="wx-wet" aria-pressed="' + (S.wet ? 'true' : 'false') + '">nass</button>'
+      + '</div>';
+
+    var body;
+    if (pick) {
+      body = '<div class="today__pick">'
+        + '<p class="today__kicker">' + (mn.tomorrow ? 'Für morgen früh' : mn.m.kicker)
+        + (S.jum ? ' · mit Jum' : '') + '</p>'
+        + pickHtml(pick, from, until, ref, mn.tomorrow)
+        + '</div>'
+        + (others.length
+            ? '<p class="today__lead">Sonst noch</p><div class="today__smalls">'
+              + others.map(smallHtml).join('') + '</div>'
+            : '');
+    } else {
+      /* Lieber zugeben, dass nichts Passendes dasteht, als etwas Schwaches
+         vorschlagen. Der Weg in die Liste steht direkt darunter. */
+      var why;
+      if (S.wet) {
+        var unknown = D.places.filter(function (p) { return indoorOf(p) === null; }).length;
+        why = 'Bei ' + unknown + ' von ' + D.places.length + ' Orten ist nicht hinterlegt, '
+            + 'ob man dort im Trockenen sitzt. Ungeprüft wird hier nichts vorgeschlagen.';
+      } else {
+        why = 'Für diesen Tagesabschnitt ist nichts hinterlegt.';
+      }
+      body = '<div class="today__none"><h3>Heute steht hier nichts</h3><p>' + why
+        + (S.jum ? ' Der Schalter „Mit Jum“ schränkt zusätzlich ein.' : '') + '</p></div>';
+    }
+
+    return head + weather + body
+      + '<button type="button" class="today__all" id="today-all">'
+      + 'Alle ' + D.places.length + ' Orte durchsuchen'
+      + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>';
   }
 
   /* ----------------------------------------------------------- Info-Ansicht */
@@ -786,6 +1107,7 @@
     S.openId = null;
     S.filterOpen = true;
     showSheet(filterSheetHtml(), 'sheet--filter');
+    renderCount();          // die Trefferzahl steht sonst erst nach dem ersten Tipp da
   }
 
   function closeSheet() {
@@ -1252,6 +1574,17 @@
     });
 
     $('empty-reset').addEventListener('click', resetFilters);
+
+    $('today').addEventListener('click', function (e) {
+      if (e.target.closest('#today-all')) { setView('orte'); return; }
+      if (e.target.closest('#today-next')) { S.pick += 1; render(); return; }
+      if (e.target.closest('#wx-dry')) { if (S.wet) { S.wet = false; S.pick = 0; render(); } return; }
+      if (e.target.closest('#wx-wet')) { if (!S.wet) { S.wet = true; S.pick = 0; render(); } return; }
+      var save = e.target.closest('[data-save]');
+      if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); render(); return; }
+      var open = e.target.closest('[data-open]');
+      if (open) openSheet(open.getAttribute('data-open'));
+    });
 
     onTap($('scrim'), closeSheet);
     onTap($('sheet-close'), closeSheet);
