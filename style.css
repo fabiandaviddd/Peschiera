@@ -470,6 +470,10 @@ body.is-compact .bar__top {
 .fact__n { margin-left: .18rem; font-size: var(--t-micro); font-weight: 400; color: var(--soft); }
 .fact--dog { color: var(--verde-ink); font-weight: 500; }
 .fact--nodog { color: var(--soft); }
+/* Heute Ruhetag. Ziegel ist die Achtungsfarbe des Hauses — dieselbe Rolle wie
+   bei .today__late und .dogrow--unknown. Der Slot ist der der Oeffnung, nicht
+   ein zusaetzlicher: die Zeile bleibt 97 px hoch. */
+.fact--closed { color: var(--brick-ink); font-weight: 500; }
 .fact svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9;
   stroke-linecap: round; stroke-linejoin: round; }
 .fact--rating svg { fill: currentColor; stroke: none; }
@@ -659,6 +663,8 @@ body.is-compact .bar__top {
 .tile__v { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
   color: var(--ink); font-variant-numeric: tabular-nums; }
 .tile__l { font-size: var(--t-micro); font-weight: 700; color: var(--soft); }
+/* Die Kachel sagt an einem Ruhetag nicht "bis 22:30", sondern was ist. */
+.tile--closed .tile__v { color: var(--brick-ink); }
 
 /* Die Hundregel bekommt eine eigene Flaeche statt einer Zeile im Kleingedruckten:
    bei 58 von 101 Orten ist sie ungeklaert, das ist die haeufigste Antwort. */
@@ -874,6 +880,7 @@ body.is-typing .tabs { transform: translateY(110%); }
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .today__why { font-size: var(--t-body); margin-top: .5rem; }
 .today__late { color: var(--brick-ink); }
+.today__shut { color: var(--brick-ink); font-weight: 500; }
 
 .today__acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
 .today__acts .btn { flex: 1 1 auto; }
