@@ -67,6 +67,9 @@
         "lon": 10.703273
       },
       "time_min": 150,
+      "moment": [
+        "abend"
+      ],
       "time_label": "2–2,5 h"
     },
     {
@@ -93,6 +96,9 @@
         "lon": 10.666308
       },
       "time_min": 150,
+      "moment": [
+        "abend"
+      ],
       "time_label": "2–2,5 h"
     },
     {
@@ -118,6 +124,9 @@
         "lon": 10.690716
       },
       "time_min": 120,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1,5–2 h"
     },
     {
@@ -144,6 +153,9 @@
         "lon": 10.669794
       },
       "time_min": 120,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1,5–2 h"
     },
     {
@@ -170,6 +182,9 @@
         "lon": 10.694211
       },
       "time_min": 120,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1,5–2 h"
     },
     {
@@ -196,6 +211,9 @@
         "lon": 10.693191
       },
       "time_min": 105,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1,5–2 h"
     },
     {
@@ -222,6 +240,9 @@
         "lon": 10.695579
       },
       "time_min": 105,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1,5–2 h"
     },
     {
@@ -249,6 +270,9 @@
         "lon": 10.698773
       },
       "time_min": 120,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1,5–2 h"
     },
     {
@@ -275,6 +299,9 @@
         "lon": 10.695114
       },
       "time_min": 90,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1–1,5 h"
     },
     {
@@ -301,6 +328,9 @@
         "lon": 10.653437
       },
       "time_min": 120,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1,5–2 h"
     },
     {
@@ -326,6 +356,9 @@
         "lon": 10.684576
       },
       "time_min": 120,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1,5–2 h"
     },
     {
@@ -353,6 +386,9 @@
         "lon": 10.69339
       },
       "time_min": 30,
+      "moment": [
+        "mittag"
+      ],
       "time_label": "20–40 Min"
     },
     {
@@ -381,6 +417,9 @@
         "lon": 10.549986
       },
       "time_min": 180,
+      "moment": [
+        "abend"
+      ],
       "time_label": "2,5–3 h"
     },
     {
@@ -406,6 +445,10 @@
         "lon": 10.694233
       },
       "time_min": 20,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "15–30 Min"
     },
     {
@@ -431,6 +474,10 @@
         "lon": 10.687867
       },
       "time_min": 40,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "30–45 Min"
     },
     {
@@ -455,6 +502,10 @@
         "lon": 10.668521
       },
       "time_min": 20,
+      "moment": [
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "15–30 Min"
     },
     {
@@ -481,6 +532,10 @@
         "lon": 10.695365
       },
       "time_min": 60,
+      "moment": [
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "45–75 Min"
     },
     {
@@ -506,6 +561,10 @@
         "lon": 10.987676
       },
       "time_min": 45,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "30–60 Min"
     },
     {
@@ -531,6 +590,10 @@
         "lon": 10.985738
       },
       "time_min": 45,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "30–60 Min"
     },
     {
@@ -557,6 +620,11 @@
         "lon": 10.680395
       },
       "time_min": 90,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "1–2 h Mauerrundgang"
     },
     {
@@ -583,6 +651,9 @@
         "lon": 10.696378
       },
       "time_min": 30,
+      "moment": [
+        "frueh"
+      ],
       "time_label": "20–40 Min"
     },
     {
@@ -608,6 +679,11 @@
         "lon": 10.691274
       },
       "time_min": 15,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "10–20 Min"
     },
     {
@@ -632,6 +708,11 @@
         "lon": 10.696438
       },
       "time_min": 10,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "5–15 Min"
     },
     {
@@ -658,6 +739,11 @@
         "lon": 10.69638
       },
       "time_min": 30,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "20–45 Min"
     },
     {
@@ -685,6 +771,10 @@
         "lon": 10.694142
       },
       "time_min": 45,
+      "moment": [
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "30–60 Min"
     },
     {
@@ -709,6 +799,11 @@
         "lon": 10.695114
       },
       "time_min": 15,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "10–20 Min"
     },
     {
@@ -733,6 +828,11 @@
       ],
       "geo": null,
       "time_min": 60,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "45–90 Min"
     },
     {
@@ -760,6 +860,11 @@
         "lon": 10.676008
       },
       "time_min": 45,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "30–60 Min"
     },
     {
@@ -787,6 +892,10 @@
         "lon": 10.669794
       },
       "time_min": 75,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "1–1,5 h Runde"
     },
     {
@@ -810,6 +919,10 @@
       ],
       "geo": null,
       "time_min": 60,
+      "moment": [
+        "frueh",
+        "mittag"
+      ],
       "time_label": "45–90 Min"
     },
     {
@@ -837,6 +950,10 @@
         "lon": 10.538947
       },
       "time_min": 270,
+      "moment": [
+        "frueh",
+        "mittag"
+      ],
       "time_label": "halber Tag, 3,5–5 h vor Ort"
     },
     {
@@ -866,6 +983,10 @@
         "lon": 10.607726
       },
       "time_min": 240,
+      "moment": [
+        "frueh",
+        "mittag"
+      ],
       "time_label": "3–4 h vor Ort"
     },
     {
@@ -893,6 +1014,9 @@
         "lon": 10.831466
       },
       "time_min": 270,
+      "moment": [
+        "frueh"
+      ],
       "time_label": "4–5 h vor Ort, mit Anfahrt ein ganzer Tag"
     },
     {
@@ -919,6 +1043,10 @@
       "connection": "Erst per Schiff oder Bus zum Abfahrtshafen — Lazise, Bardolino, Sirmione oder Desenzano.",
       "geo": null,
       "time_min": 180,
+      "moment": [
+        "frueh",
+        "mittag"
+      ],
       "time_label": "ca. 3 h inkl. Überfahrt"
     },
     {
@@ -946,6 +1074,11 @@
         "lon": 10.665657
       },
       "time_min": 90,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "90 Min Verkostung, mit Essen 2–3 h"
     },
     {
@@ -973,6 +1106,11 @@
         "lon": 10.671911
       },
       "time_min": 150,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "2–3 h vor Ort"
     },
     {
@@ -1002,6 +1140,10 @@
         "lon": 10.733395
       },
       "time_min": 180,
+      "moment": [
+        "frueh",
+        "mittag"
+      ],
       "time_label": "2–3 h je Ort"
     },
     {
@@ -1030,6 +1172,9 @@
         "lon": 10.724593
       },
       "time_min": 330,
+      "moment": [
+        "frueh"
+      ],
       "time_label": "Radtag, 4,5–6 h"
     },
     {
@@ -1057,6 +1202,9 @@
         "lon": 10.985738
       },
       "time_min": 300,
+      "moment": [
+        "frueh"
+      ],
       "time_label": "5 h aufwärts"
     },
     {
@@ -1084,6 +1232,9 @@
         "lon": 10.670837
       },
       "time_min": 360,
+      "moment": [
+        "frueh"
+      ],
       "time_label": "ganzer Tag"
     },
     {
@@ -1110,6 +1261,10 @@
         "lon": 10.74239
       },
       "time_min": 240,
+      "moment": [
+        "frueh",
+        "mittag"
+      ],
       "time_label": "3–4 h im Park"
     },
     {
@@ -1137,6 +1292,11 @@
         "lon": 10.695487
       },
       "time_min": 180,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "halber Nachmittag, 2–4 h"
     },
     {
@@ -1162,6 +1322,11 @@
         "lon": 10.663365
       },
       "time_min": 180,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "2–4 h"
     },
     {
@@ -1187,6 +1352,7 @@
         "lon": 10.688835
       },
       "time_min": 45,
+      "moment": [],
       "time_label": "30–60 Min"
     },
     {
@@ -1212,6 +1378,7 @@
         "lon": 10.668822
       },
       "time_min": 45,
+      "moment": [],
       "time_label": "30–60 Min"
     },
     {
@@ -1236,6 +1403,7 @@
         "lon": 10.686123
       },
       "time_min": 15,
+      "moment": [],
       "time_label": "10–15 Min"
     },
     {
@@ -1257,6 +1425,7 @@
       ],
       "geo": null,
       "time_min": 45,
+      "moment": [],
       "time_label": "30–60 Min"
     },
     {
@@ -1281,6 +1450,7 @@
         "lon": 10.712373
       },
       "time_min": 30,
+      "moment": [],
       "time_label": "20–40 Min"
     },
     {
@@ -1305,6 +1475,7 @@
         "lon": 10.712373
       },
       "time_min": 30,
+      "moment": [],
       "time_label": "20–40 Min"
     },
     {
@@ -1330,6 +1501,7 @@
         "lon": 10.691274
       },
       "time_min": 15,
+      "moment": [],
       "time_label": "15 Min Abholung"
     },
     {
@@ -1355,6 +1527,7 @@
         "lon": 10.683922
       },
       "time_min": 15,
+      "moment": [],
       "time_label": "15 Min Abholung"
     },
     {
@@ -1380,6 +1553,7 @@
         "lon": 10.681262
       },
       "time_min": 15,
+      "moment": [],
       "time_label": "15 Min Abholung"
     },
     {
@@ -1405,6 +1579,7 @@
         "lon": 10.680395
       },
       "time_min": 10,
+      "moment": [],
       "time_label": "10 Min Vorlauf"
     },
     {
@@ -1430,6 +1605,7 @@
         "lon": 10.680395
       },
       "time_min": 10,
+      "moment": [],
       "time_label": "10 Min Vorlauf"
     },
     {
@@ -1458,6 +1634,9 @@
         "lon": 10.696394
       },
       "time_min": 150,
+      "moment": [
+        "abend"
+      ],
       "time_label": "2–2,5 h"
     },
     {
@@ -1486,6 +1665,9 @@
         "lon": 10.690286
       },
       "time_min": 150,
+      "moment": [
+        "abend"
+      ],
       "time_label": "2–2,5 h"
     },
     {
@@ -1510,6 +1692,10 @@
       ],
       "geo": null,
       "time_min": 120,
+      "moment": [
+        "mittag",
+        "abend"
+      ],
       "time_label": "2 h"
     },
     {
@@ -1539,6 +1725,10 @@
         "lon": 10.540284
       },
       "time_min": 150,
+      "moment": [
+        "mittag",
+        "abend"
+      ],
       "time_label": "2,5 h",
       "connection": "Zug 8–19 Min, dann 15 Gehminuten. Letzter Zug zurück ca. 21:53 — bei 19:30 Beginn knapp."
     },
@@ -1567,6 +1757,11 @@
         "lon": 10.538699
       },
       "time_min": 105,
+      "moment": [
+        "mittag",
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "1,5–2 h",
       "connection": "Zug 8 Min, dann 10 Gehminuten."
     },
@@ -1595,6 +1790,9 @@
         "lon": 10.538016
       },
       "time_min": 150,
+      "moment": [
+        "abend"
+      ],
       "time_label": "2–2,5 h",
       "connection": "Zug 8 Min, dann 15 Gehminuten."
     },
@@ -1624,6 +1822,10 @@
         "lon": 10.610858
       },
       "time_min": 150,
+      "moment": [
+        "mittag",
+        "abend"
+      ],
       "time_label": "2–2,5 h",
       "connection": "Bus LN026 ca. 25 Min (2,20 €) oder Schiff 25 Min (6 €)."
     },
@@ -1652,6 +1854,10 @@
         "lon": 10.60728
       },
       "time_min": 105,
+      "moment": [
+        "mittag",
+        "abend"
+      ],
       "time_label": "1,5–2 h",
       "connection": "Bus oder Schiff nach Sirmione; abends kein verlässlicher Rückweg."
     },
@@ -1677,6 +1883,10 @@
       ],
       "geo": null,
       "time_min": 105,
+      "moment": [
+        "mittag",
+        "abend"
+      ],
       "time_label": "1,5–2 h",
       "connection": "Bus 164 ab Bahnhof, 6–7 Min. Letzter Bus zurück 18:40 (So 19:35)."
     },
@@ -1705,6 +1915,9 @@
         "lon": 10.720054
       },
       "time_min": 120,
+      "moment": [
+        "abend"
+      ],
       "time_label": "2 h",
       "connection": "Bus 164, 14–18 Min. Weil der letzte Bus um 18:30 fährt, nur am Wochenende mittags machbar."
     },
@@ -1733,6 +1946,9 @@
         "lon": 10.708733
       },
       "time_min": 165,
+      "moment": [
+        "abend"
+      ],
       "time_label": "2,5–3 h",
       "connection": "Bus 164 nach Garda 20 Min — aber keine Rückfahrt nach dem Essen."
     },
@@ -1761,6 +1977,10 @@
         "lon": 10.671911
       },
       "time_min": 105,
+      "moment": [
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "1,5–2 h",
       "connection": "Bus 164 bis Garda, dann 25–30 Min zu Fuss am Ufer."
     },
@@ -1789,6 +2009,9 @@
         "lon": 10.697084
       },
       "time_min": 75,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1–1,5 h"
     },
     {
@@ -1817,6 +2040,9 @@
         "lon": 10.697972
       },
       "time_min": 90,
+      "moment": [
+        "abend"
+      ],
       "time_label": "1–1,5 h"
     },
     {
@@ -1844,6 +2070,10 @@
         "lon": 10.538349
       },
       "time_min": 90,
+      "moment": [
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "1–1,5 h",
       "connection": "Zug 8 Min, dann 10 Gehminuten."
     },
@@ -1871,6 +2101,10 @@
         "lon": 10.607266
       },
       "time_min": 75,
+      "moment": [
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "1–1,5 h",
       "connection": "Bus oder Schiff nach Sirmione."
     },
@@ -1897,6 +2131,10 @@
       ],
       "geo": null,
       "time_min": 90,
+      "moment": [
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "40 Min kurz, 1,5–2 h ganz"
     },
     {
@@ -1924,6 +2162,10 @@
         "lon": 10.69638
       },
       "time_min": 45,
+      "moment": [
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "20–30 Min kurz, 1 h mit Audioguide"
     },
     {
@@ -1951,6 +2193,10 @@
         "lon": 10.695365
       },
       "time_min": 45,
+      "moment": [
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "30–60 Min"
     },
     {
@@ -1976,6 +2222,10 @@
       ],
       "geo": null,
       "time_min": 90,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "1,5 h hin und zurück, mit Pause 2–3 h",
       "connection": "Mit dem Rad über den Uferweg 25–35 Min."
     },
@@ -2002,6 +2252,11 @@
       ],
       "geo": null,
       "time_min": 120,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "1 h Runde, mit Pausen 2–3 h",
       "connection": "Bus 25 Min oder Schiff 25 Min, dann zu Fuss durch den Ort."
     },
@@ -2031,6 +2286,11 @@
         "lon": 10.606708
       },
       "time_min": 90,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "1–1,5 h, mit Museum 2 h",
       "connection": "Bus oder Schiff nach Sirmione, dann 20 Min zu Fuss hinauf."
     },
@@ -2058,6 +2318,10 @@
         "lon": 10.537866
       },
       "time_min": 60,
+      "moment": [
+        "frueh",
+        "mittag"
+      ],
       "time_label": "45–60 Min",
       "connection": "Zug 8 Min, dann 15 Min bergauf."
     },
@@ -2083,6 +2347,10 @@
       ],
       "geo": null,
       "time_min": 75,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "1–1,5 h",
       "connection": "Zug 8 Min."
     },
@@ -2107,6 +2375,10 @@
       ],
       "geo": null,
       "time_min": 90,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "1,5 h, mit Einkehr 3 h",
       "connection": "Bus 164 bis Pacengo, 5–8 Min, oder Rad 20 Min."
     },
@@ -2135,6 +2407,11 @@
         "lon": 10.685891
       },
       "time_min": 75,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "45 Min kurz, 2,5–3,5 h mit Ort",
       "connection": "Bus 483 ab Peschiera Centro, stündlich um :14, ca. 1h05–1h15."
     },
@@ -2164,6 +2441,10 @@
         "lon": 10.713238
       },
       "time_min": 150,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "1 h Aufstieg, 2,5–3 h komplett",
       "connection": "Bus 164 nach Garda, ca. 20 Min. Letzter Bus zurück 18:25 (So 19:20)."
     },
@@ -2192,6 +2473,11 @@
         "lon": 10.597953
       },
       "time_min": 120,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "45–60 Min nur Turm, 2–3 h mit Museum",
       "connection": "Zug nach Desenzano, dann Bus LN034. Bahnhof San Martino ist seit 1991 stillgelegt. Oder Rad, ca. 10 km flach."
     },
@@ -2218,6 +2504,10 @@
       ],
       "geo": null,
       "time_min": 120,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "1,5–2 h kurze Variante (die lange Runde ist 15 km / 5 h)",
       "connection": "Bus 164 bis Garda, dann Uferweg nach Punta San Vigilio."
     },
@@ -2243,6 +2533,11 @@
       ],
       "geo": null,
       "time_min": 60,
+      "moment": [
+        "mittag",
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "30 Min Fahrt, 1–1,5 h mit Vorlauf"
     },
     {
@@ -2270,6 +2565,9 @@
         "lon": 10.687306
       },
       "time_min": 150,
+      "moment": [
+        "nachmittag"
+      ],
       "time_label": "2 h Fahrt, 2,5 h gesamt"
     },
     {
@@ -2294,6 +2592,11 @@
       ],
       "geo": null,
       "time_min": 120,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "je nach Strecke 20–60 Min pro Richtung"
     },
     {
@@ -2319,6 +2622,10 @@
       ],
       "geo": null,
       "time_min": 120,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "1,5–2 h, grosse Runde 3,5–4 h"
     },
     {
@@ -2343,6 +2650,9 @@
       ],
       "geo": null,
       "time_min": 270,
+      "moment": [
+        "frueh"
+      ],
       "time_label": "halber Tag, 4–5 h mit Rückfahrt per Schiff"
     },
     {
@@ -2368,6 +2678,10 @@
       ],
       "geo": null,
       "time_min": 105,
+      "moment": [
+        "frueh",
+        "nachmittag"
+      ],
       "time_label": "1,5–2 h vor Ort, mit Anfahrt halber Tag",
       "connection": "Rad auf dem Mincio-Radweg, flach und asphaltiert."
     },
@@ -2395,6 +2709,11 @@
         "lon": 10.673724
       },
       "time_min": 90,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "1,5 h (Premium 2 h)"
     },
     {
@@ -2418,6 +2737,11 @@
       ],
       "geo": null,
       "time_min": 90,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "ca. 1,5 h"
     },
     {
@@ -2442,6 +2766,11 @@
       ],
       "geo": null,
       "time_min": 60,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "1 h Verkostung, 2,5–3 h mit Weinberg",
       "connection": "Zug nach Desenzano, dann Bus LN034 — oder Rad, ca. 10 km flach."
     },
@@ -2470,6 +2799,11 @@
         "lon": 10.735099
       },
       "time_min": 90,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "30–45 Min kurz, 1,5–2 h mit Verkostung",
       "connection": "Bus 164 nach Bardolino, 14–18 Min, dann 15 Gehminuten."
     },
@@ -2495,6 +2829,12 @@
       ],
       "geo": null,
       "time_min": 300,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "4–6 h",
       "connection": "7 km ab Peschiera, Busverbindung ungeprüft."
     },
@@ -2521,6 +2861,9 @@
       ],
       "geo": null,
       "time_min": 270,
+      "moment": [
+        "frueh"
+      ],
       "time_label": "2,5 h Rundweg, mit Badepause 4–5 h",
       "connection": "Zug nach Desenzano, dann Bus R-Link 204 Richtung Salò, stündlich. Ca. 1h15–1h45 je Richtung."
     },
@@ -2546,6 +2889,10 @@
       ],
       "geo": null,
       "time_min": 180,
+      "moment": [
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "1 h kurz, 3–4 h am Samstagnachmittag"
     },
     {
@@ -2573,6 +2920,11 @@
         "lon": 10.694581
       },
       "time_min": 75,
+      "moment": [
+        "frueh",
+        "mittag",
+        "nachmittag"
+      ],
       "time_label": "1–1,5 h"
     },
     {
@@ -2600,6 +2952,10 @@
         "lon": 10.764766
       },
       "time_min": 180,
+      "moment": [
+        "nachmittag",
+        "abend"
+      ],
       "time_label": "2–4 h",
       "connection": "Bus 164 ab Peschiera, ca. 15 Min. Rückfahrt am späten Abend ungeprüft."
     },
@@ -2628,6 +2984,7 @@
         "lon": 10.663365
       },
       "time_min": 25,
+      "moment": [],
       "time_label": "20–30 Min"
     },
     {
@@ -2652,6 +3009,7 @@
       ],
       "geo": null,
       "time_min": 25,
+      "moment": [],
       "time_label": "20–30 Min",
       "connection": "Zug 8 Min, dann 12 Gehminuten."
     },
@@ -2680,6 +3038,10 @@
         "lon": 10.538349
       },
       "time_min": 105,
+      "moment": [
+        "frueh",
+        "mittag"
+      ],
       "time_label": "1,5–2 h mit Bummel",
       "connection": "Zug 8 Min, dann 10 Gehminuten."
     }

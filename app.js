@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v8 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v9 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -740,9 +740,14 @@
   }
 
   /* Reihenfolge: was im JSON steht, gilt. Erst wenn dort nichts steht, wird
-     hergeleitet — aus badge, Öffnungszeit, Kategorie und Aufenthaltsdauer. */
+     hergeleitet — aus badge, Öffnungszeit, Kategorie und Aufenthaltsdauer.
+
+     Die leere Liste gilt mit: sie sagt „kein Tagesvorschlag". Vorher fiel sie
+     durch die Längenprüfung in die Herleitung zurück, und die Apotheke stand
+     wegen „ab 8:30" morgens im Vorschlag. Damit schlägt moment die Herleitung
+     jetzt wirklich immer — bisher nur, wenn etwas drinstand. */
   function momentsOf(p) {
-    if (Array.isArray(p.moment) && p.moment.length) return p.moment;
+    if (Array.isArray(p.moment)) return p.moment;
     if (p._m) return p._m;
 
     var m = {};
@@ -1587,7 +1592,7 @@
   }
 
   /* Fragt den Worker nach seinem Cache-Namen und vergleicht nur die Marke
-     davor: 'peschiera-v8' gegen 'v8 · 2026-09-18' ist gleich, das Datum
+     davor: 'peschiera-v9' gegen 'v9 · 2026-09-18' ist gleich, das Datum
      dahinter zaehlt nicht mit. */
   function checkCacheVersion() {
     if (!('serviceWorker' in navigator) || !window.MessageChannel) return;

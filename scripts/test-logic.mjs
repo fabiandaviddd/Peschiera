@@ -65,6 +65,13 @@ group('momentsOf — was im JSON steht, gilt');
 ok('moment im JSON schlägt alles',
    pk.momentsOf({ moment: ['abend'], category: 'cafe', badge: 'Früh morgens', tags: [] }),
    ['abend']);
+/* Auch die leere Liste ist eine Angabe: „kein Tagesvorschlag". Vorher fiel
+   sie in die Herleitung zurück, und die Apotheke stand wegen „ab 8:30"
+   morgens im Vorschlag. */
+ok('leeres moment heißt kein Vorschlag',
+   pk.momentsOf({ moment: [], category: 'cafe', hours: 'ab 8:30', tags: [] }), []);
+ok('leeres moment schlägt auch einen eindeutigen Badge',
+   pk.momentsOf({ moment: [], category: 'essen', badge: 'Der Abend', tags: [] }), []);
 ok('Badge "Der Abend"',
    pk.momentsOf({ category: 'essen', badge: 'Der Abend', tags: [] }), ['abend']);
 ok('Café ohne alles → Morgen und Nachmittag',
@@ -209,6 +216,8 @@ const dupes = [];
 const badCat = [];
 const badDog = [];
 const badMoment = [];
+const badMomentOrder = [];
+const noMoment = [];
 const badTime = [];
 const badGeo = [];
 const MOMENT_IDS = pk.MOMENTS.map((m) => m.id);
@@ -220,9 +229,17 @@ for (const p of data.places) {
   if (!(p.dog === true || p.dog === false || p.dog === null || p.dog === undefined)) {
     badDog.push(`${p.id}: ${JSON.stringify(p.dog)}`);
   }
-  if (p.moment !== undefined && p.moment !== null) {
-    if (!Array.isArray(p.moment)) badMoment.push(`${p.id}: kein Array`);
-    else for (const m of p.moment) if (!MOMENT_IDS.includes(m)) badMoment.push(`${p.id}: ${m}`);
+  if (!Array.isArray(p.moment)) {
+    /* Jeder Ort ist von Hand eingeordnet. Ein neuer Ort ohne moment liefe
+       über die Herleitung — sie ist die Rückfallebene, nicht der Normalfall. */
+    noMoment.push(p.id);
+  } else {
+    for (const m of p.moment) if (!MOMENT_IDS.includes(m)) badMoment.push(`${p.id}: ${m}`);
+    const inOrder = p.moment.slice().sort((a, b) => MOMENT_IDS.indexOf(a) - MOMENT_IDS.indexOf(b));
+    if (JSON.stringify(inOrder) !== JSON.stringify(p.moment)) {
+      badMomentOrder.push(`${p.id}: ${p.moment.join(',')}`);
+    }
+    if (new Set(p.moment).size !== p.moment.length) badMoment.push(`${p.id}: doppelter Abschnitt`);
   }
   for (const f of ['time_min', 'walk_min', 'bike_min', 'distance_km', 'rating', 'reviews']) {
     const v = p[f];
@@ -237,6 +254,8 @@ ok('jede id genau einmal', dupes, []);
 ok('jede category ist in categories definiert', badCat, []);
 ok('dog nur true, false oder null', badDog, []);
 ok('moment nur aus den vier Abschnitten', badMoment, []);
+ok('moment in Tagesreihenfolge', badMomentOrder, []);
+ok('jeder Ort trägt ein moment', noMoment, []);
 ok('Zahlenfelder sind Zahlen oder null', badTime, []);
 ok('geo hat lat und lon als Zahl', badGeo, []);
 truthy('jeder Ort hat einen Namen', data.places.every((p) => p.name && p.name.trim()));
@@ -272,23 +291,29 @@ ok('jede Datei aus SHELL liegt im Repo', missing, []);
 
 /* Die README nennt Zahlen aus den Daten — und genau die sind einmal
    veraltet. Hier stehen sie nachrechenbar, statt abgeschrieben zu werden. */
+const ORDER_LABEL = ['frueh', 'mittag', 'nachmittag', 'abend'];
+
 function stats() {
   const P = data.places.map((p) => ({ ...p, tags: p.tags || [] }));
   const n = P.length;
 
-  /* Greifen die Stufen 1–4, oder läuft der Ort über den Rückfall? Die Frage
-     lässt sich mit momentsOf selbst beantworten, ohne die Stufen hier
-     nachzubauen: Stufe 3 greift bei jedem Café; für alle anderen zeigt ein
-     Lauf als „praktisch", ob Badge, Öffnungszeit oder Dauer etwas hergeben —
-     denn nur dort ist der Rückfall leer. */
-  let explicit = 0, derived = 0, fallback = 0, never = 0;
+  /* Alle Orte sind von Hand eingeordnet. Interessant ist damit nicht mehr,
+     welche Herleitungsstufe greift, sondern wie die Abschnitte besetzt sind:
+     ein Abschnitt mit zu wenigen Orten hat auf „Heute" nichts zu zeigen. */
+  const seg = { frueh: 0, mittag: 0, nachmittag: 0, abend: 0 };
+  let explicit = 0, noSuggestion = 0, derivedStill = 0;
   for (const p of P) {
-    if (Array.isArray(p.moment) && p.moment.length) { explicit++; continue; }
-    const found = p.category === 'cafe'
-      || pk.momentsOf({ ...p, category: 'praktisch', _m: undefined }).length > 0;
-    if (found) derived++;
-    else if (p.category === 'praktisch') never++;
-    else fallback++;
+    if (!Array.isArray(p.moment)) { derivedStill++; continue; }
+    explicit++;
+    if (!p.moment.length) { noSuggestion++; continue; }
+    for (const m of p.moment) seg[m]++;
+  }
+  /* Wie viele Orte je Abschnitt bleiben, wenn Jum mitkommt? Der Dauerschalter
+     ist vierzehn Tage an, das ist der Normalfall und nicht der Sonderfall. */
+  const segJum = { frueh: 0, mittag: 0, nachmittag: 0, abend: 0 };
+  for (const p of P) {
+    if (p.dog !== true || !Array.isArray(p.moment)) continue;
+    for (const m of p.moment) segJum[m]++;
   }
 
   const ind = { true: 0, false: 0, null: 0 };
@@ -299,10 +324,13 @@ function stats() {
   const line = (k, v) => console.log('    ' + k.padEnd(38) + v);
   console.log('\n  Zahlen für die README (aus den Daten gerechnet)');
   line('Orte', n);
-  line('moment explizit im JSON', explicit);
-  line('Tagesabschnitt aus Stufe 1–4', explicit + derived);
-  line('… über den Rückfall', fallback);
-  line('… praktisch, nie ein Vorschlag', never);
+  line('moment im JSON gepflegt', explicit);
+  line('… davon leer, kein Vorschlag', noSuggestion);
+  line('ohne moment, über die Herleitung', derivedStill);
+  line('Orte je Abschnitt',
+       ORDER_LABEL.map((k) => `${k} ${seg[k]}`).join(' · '));
+  line('… davon mit Jum',
+       ORDER_LABEL.map((k) => `${k} ${segJum[k]}`).join(' · '));
   line('indoor: drinnen / draußen / offen',
        `${ind.true} / ${ind.false} / ${ind.null}`);
   line('dog: true / false / ungeklärt', `${dog.true} / ${dog.false} / ${dog.null}`);
