@@ -71,6 +71,7 @@
   var DATA = './data/places.json';
   var PAUSE = 1100;                 // ms — Nominatim erlaubt 1 Anfrage pro Sekunde
   var LS = 'pk.coords';
+  var REGELN = 3;      /* hochzaehlen, wenn sich die Pruefregeln aendern */
 
   var $ = function (id) { return document.getElementById(id); };
   var data = null, found = {}, failed = {}, running = false, stop = false;
@@ -80,10 +81,13 @@
     /* alte Fassung speicherte nur die Treffer */
     found = raw.found || raw;
     failed = raw.failed || {};
+    /* Nach einer Regelaenderung duerfen frueher Abgelehnte nicht dauerhaft
+       haengen bleiben — sonst tut ein zweiter Lauf gar nichts mehr. */
+    if (raw.regeln !== REGELN) failed = {};
   } catch (e) { found = {}; failed = {}; }
 
   function save() {
-    try { localStorage.setItem(LS, JSON.stringify({ found: found, failed: failed })); }
+    try { localStorage.setItem(LS, JSON.stringify({ found: found, failed: failed, regeln: REGELN })); }
     catch (e) {}
   }
 
@@ -187,10 +191,29 @@
     return 2 * R * Math.asin(Math.sqrt(h));
   }
 
+  /* Fuellwoerter, die in italienischen Ortsnamen nichts unterscheiden. */
+  var FUELL = { di:1, del:1, della:1, delle:1, dei:1, degli:1, sul:1, sulla:1,
+                sui:1, alla:1, al:1, il:1, la:1, le:1, lo:1, da:1, e:1, in:1 };
+
+  /* Ortsteile nennt der Dienst oft nur mit der Gemeinde: "Colà di Lazise"
+     kommt als "Colà, Lazise, Verona" zurueck. Deshalb wird nicht die ganze
+     Zeichenkette verlangt, sondern mindestens ein aussagekraeftiges Wort. */
+  function ortPasst(town, displayName) {
+    var dn = nrm(displayName);
+    var woerter = nrm(town).split(' ').filter(function (w) {
+      return w.length >= 4 && !FUELL[w];
+    });
+    if (!woerter.length) return true;            /* nichts Pruefbares */
+    for (var i = 0; i < woerter.length; i++) {
+      if (dn.indexOf(woerter[i]) >= 0) return true;
+    }
+    return false;
+  }
+
   /* Gibt null zurueck, wenn der Treffer passt — sonst den Ablehnungsgrund. */
   function reject(p, hit, displayName) {
     var t = townOf(p);
-    if (t && nrm(displayName).indexOf(nrm(t)) < 0) {
+    if (t && !ortPasst(t, displayName)) {
       return 'liegt nicht in ' + t;
     }
     var base = data.meta && data.meta.base_geo;
@@ -250,6 +273,7 @@
     if (!list.length) { running = false; paint(); return Promise.resolve(); }
 
     running = true; stop = false; paint();
+    log('Starte mit ' + list.length + ' Orten…');
 
     var i = 0;
     function next() {

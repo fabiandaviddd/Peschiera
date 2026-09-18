@@ -142,8 +142,8 @@ button, a, input, label, .chip, .tab, .card__open, .star {
 html {
   -webkit-text-size-adjust: 100%;
   /* Anker- und Fokus-Sprünge nicht unter den Sticky-Header oder die
-     fixierte Tableiste laufen lassen. --bar-h setzt app.js. */
-  scroll-padding-top: calc(var(--bar-h, 8rem) + .5rem);
+     fixierte Tableiste laufen lassen. --bar-full setzt app.js. */
+  scroll-padding-top: calc(var(--bar-full, 9rem) + .5rem);
   scroll-padding-bottom: 5.5rem;
 }
 
@@ -196,21 +196,32 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .skip:focus { left: 0; }
 
 /* --- Kopf --------------------------------------------------------------- */
+/* fixed, nicht sticky. Ein sticky Kopf belegt Platz im Fluss; klappt er beim
+   Scrollen ein, schrumpft das Dokument und die Liste springt unter dem Finger
+   nach oben. Fixed legt ihn ueber die Liste, .main haelt den Abstand. */
 .bar {
-  position: sticky; top: 0; z-index: 30;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30;
   background: var(--bg);
   border-bottom: 1px solid var(--line);
   padding-top: env(safe-area-inset-top);
 }
 
-.bar__row { display: flex; align-items: flex-start; gap: .75rem; padding: .55rem 0 .4rem; }
-/* min-width:0 ist nötig, damit der lange Titel im Flex-Kind kürzen darf. */
-.bar__main { flex: 1 1 auto; min-width: 0; }
+/* Titel, Schalter und Suche fahren beim Scrollen nach unten weg; die
+   Filterzeile bleibt. --bar-top-h misst app.js, damit die Bewegung genau
+   passt; ohne Messung bleibt der Kopf schlicht stehen. */
+.bar__top { transition: max-height 200ms var(--ease), opacity 140ms var(--ease); }
+body.is-compact .bar__top {
+  max-height: 0; opacity: 0; overflow: hidden;
+}
 
-.bar__title { font-size: var(--t-title); letter-spacing: -.015em; }
+/* Titel, Dauerschalter und Farbschema teilen sich eine Zeile. Bis v9 stand
+   der Schalter darunter, was den Kopf eine ganze Zeile hoeher machte. */
+.bar__row { display: flex; align-items: center; gap: .6rem; padding: .3rem 0 .35rem; }
+
+/* min-width:0, damit der Titel bei schmalen Geraeten kuerzen darf. */
+.bar__title { flex: 1 1 auto; min-width: 0; font-size: var(--t-title); letter-spacing: -.015em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bar__title em { font-style: normal; color: var(--lake-ink); }
-.bar__sub { display: flex; align-items: center; gap: .55rem; margin-top: .25rem; }
-.bar__hint { font-size: var(--t-meta); color: var(--soft); }
 
 /* Dauerschalter für den Hund. Kein Chip — ein Chip sagt "jetzt gerade",
    ein Schalter sagt "immer", und genau das ist gemeint. */
@@ -281,25 +292,35 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   color: var(--soft); cursor: pointer; font-size: var(--t-title); line-height: 1;
 }
 
-/* --- Filter-Chips ------------------------------------------------------- */
-.filters { padding-bottom: .4rem; }
+/* --- Filterzeile -------------------------------------------------------- */
+/* Bis v9 standen hier zwei seitlich scrollende Chipreihen: neun Chips, von
+   denen einer ein Sheet oeffnete — drei Bedienmuster fuer eine Aufgabe, und
+   88 px Kopfhoehe. Jetzt ein Knopf fuer alle Filter, daneben nur die, die
+   gerade an sind, rechts die Sortierung. */
+.filterbar { padding-bottom: .4rem; }
+.filterbar__wrap { display: flex; align-items: center; gap: .4rem; }
 
-.chiprow {
+/* Die aktiven Filter scrollen, Filter- und Sortierknopf bleiben stehen. */
+.filterbar__active {
+  flex: 1 1 auto; min-width: 0;
   display: flex; gap: .4rem; align-items: center;
   overflow-x: auto; scrollbar-width: none;
-  margin-inline: -1rem; padding: .1rem 1rem .3rem;
+  padding: .1rem 0;
 }
-.chiprow::-webkit-scrollbar { display: none; }
+.filterbar__active::-webkit-scrollbar { display: none; }
+.filterbar__active:empty { display: none; }
 
-/* Dass die Reihe seitlich weitergeht, sah man bisher nicht. Der Verlauf sitzt
-   auf dem Rahmen, nicht auf der scrollenden Reihe — sonst scrollt er mit. */
-.chipwrap { position: relative; }
-.chipwrap::after {
-  content: ''; position: absolute; top: 0; bottom: 0; right: -1rem;
-  width: 3rem; pointer-events: none;
-  /* Chip und Hintergrund liegen farblich dicht beieinander, ein zarter
-     Verlauf wäre unsichtbar. Deshalb deckt er am Rand vollständig ab. */
-  background: linear-gradient(to right, transparent, var(--bg) 62%, var(--bg));
+.chip--filter { flex: 0 0 auto; }
+.chip--filter[aria-pressed="true"] { background: var(--lake); border-color: var(--lake); color: var(--card); }
+.chip--sort { flex: 0 0 auto; margin-left: auto; }
+
+/* Aktiver Filter im Kopf: der Chip traegt sein eigenes Kreuz. */
+.chip--off { padding-right: .45rem; background: var(--lake); border-color: var(--lake); color: var(--card); }
+.chip--off .chip__x {
+  display: inline-grid; place-items: center;
+  width: 1.15rem; height: 1.15rem; margin-left: .1rem;
+  border-radius: var(--r-pill); background: rgba(255,255,255,.22);
+  font-size: var(--t-micro); line-height: 1;
 }
 
 .chip {
@@ -339,7 +360,10 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .sort button[aria-pressed="true"] { color: var(--card); background: var(--lake); }
 
 /* --- Liste -------------------------------------------------------------- */
-.main { padding-top: .35rem; }
+/* Der Kopf liegt fix ueber der Seite und belegt keinen Platz mehr im Fluss.
+   --bar-full misst app.js nach jedem Rendern, immer im aufgeklappten
+   Zustand — sonst waere der Abstand nach dem ersten Einklappen zu klein. */
+.main { padding-top: calc(var(--bar-full, 9rem) + .35rem); }
 /* Zeile statt Karte. Bei 101 Orten kostet jede Kartenkante Platz, den der
    Name besser gebraucht: kein Schatten, keine Rundung, kein Abstand dazwischen
    — nur eine Haarlinie. Die farbige Kante links bleibt, sie ist das einzige
@@ -354,11 +378,11 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   position: relative;
   display: grid; grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  min-height: 5.7rem;
-  /* Die Typo-Leiter hat Meta und Notiz angehoben (.72/.86 -> .8125/.9375)
-     und damit jede Zeile um rund 7 px wachsen lassen. Bei 101 Orten ist das
-     die falsche Richtung, also kommen die 7 px aus den Innenabstaenden
-     zurueck: Schritt 1 aendert die Schrift, nicht die Zeilenhoehe. */
+  /* Eine Hoehe fuer alle 101 Zeilen. Bis v9 gab es drei (97/100/122 px), je
+     nachdem ob die Faktenreihe umbrach — kein Raster, an dem das Auge beim
+     Scrollen einrastet. Jede der vier Zeilen ist jetzt einzeilig gedeckelt,
+     die Hoehe ergibt sich daraus und wird hier festgehalten. */
+  height: 6.05rem;
   padding: .52rem 3.1rem .58rem .85rem;
   background: var(--card);
   border-bottom: 1px solid var(--line);
@@ -372,11 +396,30 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   -webkit-tap-highlight-color: transparent;
 }
 
-.card > h3, .card > p, .card > .facts { grid-column: 1; margin: 0; min-width: 0; }
+.card > h3, .card > p, .card > .facts, .card > .card__head { grid-column: 1; margin: 0; min-width: 0; }
 .card > * + * { margin-top: .1rem; }
 
-.card__name { font-size: var(--t-name); letter-spacing: -.01em; }
-.card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .45rem; }
+/* Die Bewertung stand bisher irgendwo in der Faktenreihe und wanderte je
+   nach Datenlage. Rechtsbuendig auf der Namenszeile steht sie bei allen
+   Zeilen an derselben Stelle und wird zur Spalte, die man scannen kann. */
+.card__head { display: flex; align-items: baseline; gap: .5rem; }
+.card__name { flex: 1 1 auto; min-width: 0; font-size: var(--t-name); letter-spacing: -.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card__rating {
+  flex: 0 0 auto;
+  display: grid; grid-template-columns: auto 2.9rem; align-items: baseline;
+  font-size: var(--t-meta); font-weight: 500; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.card__stars { display: inline-flex; align-items: center; gap: .2rem; }
+.card__rating svg { width: 13px; height: 13px; fill: currentColor; stroke: none; }
+.card__rating .fact__n { margin-left: .28rem; text-align: right; }
+.card__meta { display: flex; flex-wrap: nowrap; align-items: center; gap: .25rem .45rem;
+  overflow: hidden; }
+.card__meta > * { flex: 0 0 auto; }
+/* Der Badge ist der einzige Freitext hier und darf als einziger kuerzen. */
+.card__badge { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
 /* Kategorie und Badge standen bis v7 beide in Versalien, .72rem gegen
    .68rem — typografisch fast gleich, semantisch das Gegenteil (Taxonomie
    gegen Kuratierung). Beide gemischt geschrieben, der Name bleibt die
@@ -396,8 +439,16 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .card__note { font-size: var(--t-body); line-height: 1.4; color: var(--soft);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.facts { display: flex; flex-wrap: wrap; gap: .1rem .52rem; font-size: var(--t-meta); color: var(--soft); }
-.fact { display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; }
+/* Feste Reihenfolge, feste Zeile: Weg, Dauer, Hund, Oeffnung. Die ersten
+   drei sind kurz und stehen immer ganz da; die Oeffnung ist Freitext (27 der
+   54 Angaben sind laenger als 18 Zeichen) und ist deshalb der einzige Slot,
+   der kuerzen darf. So faellt die Hundregel nie weg, nur weil ein Restaurant
+   seine Ruhetage ausschreibt. */
+.facts { display: flex; flex-wrap: nowrap; gap: .1rem .52rem; font-size: var(--t-meta);
+  color: var(--soft); overflow: hidden; }
+.fact { flex: 0 0 auto; display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; }
+.fact--hours { flex: 0 1 auto; min-width: 0; }
+.fact--hours span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fact--rating { color: var(--ink); font-weight: 500; }
 .fact__n { margin-left: .18rem; font-size: var(--t-micro); font-weight: 400; color: var(--soft); }
 .fact--dog { color: var(--verde-ink); font-weight: 500; }
@@ -589,6 +640,19 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 
 .sheet__acts { display: grid; gap: .5rem; }
 
+/* Gruppenkoepfe im Filter-Sheet. Die Zeile darunter traegt, was ein Filter
+   still ausblendet — dasselbe Versprechen, das die Zaehlzeile beim
+   Jum-Schalter schon einloest. */
+.fgroup__h {
+  font-size: var(--t-meta); font-weight: 700; color: var(--ink);
+  margin: 1.1rem 0 .5rem;
+}
+.fgroup__n { font-weight: 400; color: var(--soft); font-variant-numeric: tabular-nums; }
+.fgroup__x { font-size: var(--t-meta); color: var(--soft); margin: -.25rem 0 .8rem; }
+
+/* Das Suchfeld ueber den 85 Tags sitzt im Fluss, nicht im Kopf. */
+.search--in { padding-bottom: .6rem; }
+
 /* Tag-Auswahl im Filter-Sheet: umbrechend, nicht scrollend — hier ist Platz. */
 .sheet__count { font-size: var(--t-meta); font-weight: 700; color: var(--lake-ink); margin-bottom: .8rem; }
 .tagpick { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.1rem; }
@@ -738,7 +802,12 @@ body.is-typing .tabs { transform: translateY(110%); }
 
 /* --- Druck -------------------------------------------------------------- */
 @media print {
-  .bar, .tabs, .filters, .sheet, .scrim, .star, .seen, .sharebar, .inbox { display: none !important; }
+    /* Der fixe Kopf darf das Papier nicht anfuehren, und auf Papier gibt es
+     keinen Grund, eine Zeile auf eine Bildschirmhoehe zu deckeln. */
+  .bar, .tabs, .filterbar, .sheet, .scrim, .star, .seen, .sharebar, .inbox { display: none !important; }
+  .main { padding-top: 0 !important; }
+  .card { height: auto !important; }
+  .card__note, .facts, .card__meta { overflow: visible; white-space: normal; }
   body { padding-bottom: 0; }
   .card { break-inside: avoid; box-shadow: none; }
 }

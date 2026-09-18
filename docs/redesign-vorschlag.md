@@ -691,4 +691,62 @@ Nicht angefasst, wie angekündigt: Layout, Informationsarchitektur,
 Filterlogik, Datenehrlichkeit, Jum-Dauerschalter, Offline-First und die
 iOS-Safari-Behandlung.
 
-### Schritte 2 bis 4 — offen
+### Schritt 2 — umgesetzt in `v10`
+
+| | v9 | v10 |
+|---|---|---|
+| Kopf über der Liste | 219 px | **147 px**, beim Scrollen **43 px** |
+| Kopf in „Heute" | 219 px | 105 px |
+| Kopf in „Info" | 219 px | 54 px |
+| Sichtbare Zeilen (402×754) | 4 | **6**, beim Scrollen **8** |
+| Zeilenhöhen | 97 / 100 / 122 px | **eine**, 97 px |
+| Chips im Kopf | 9, in zwei scrollenden Reihen | nur die aktiven |
+| Bedienmuster fürs Filtern | 3 | 1 |
+
+Im Einzelnen:
+
+- **Der Kopf liegt `fixed`, nicht `sticky`.** Ein Sticky-Kopf belegt Platz
+  im Fluss; klappt er beim Scrollen ein, schrumpft das Dokument und die
+  Liste springt unter dem Finger nach oben. `.main` hält den Abstand über
+  `--bar-full`, das `measureBar()` nach jedem Rendern misst — immer im
+  aufgeklappten Zustand, sonst wäre er nach dem ersten Einklappen zu klein.
+- **Titel, Dauerschalter und Farbschema teilen sich eine Zeile.** Der
+  Jum-Hinweis („39 Orte mit Hund") zieht in die Zählzeile, wo ohnehin
+  steht, was ein Filter kostet.
+- **Beim Scrollen nach unten** fahren Titel und Suche weg, die Filterzeile
+  bleibt. Beim Scrollen nach oben kommen sie zurück. Während des Tippens
+  und bei offenem Sheet passiert nichts.
+- **Eine Filterzeile statt zweier Chipreihen.** Ein Knopf mit der Zahl der
+  aktiven Filter, daneben nur die, die an sind — jeder mit eigenem Kreuz —,
+  rechts die Sortierung als Knopf, der seinen Stand nennt.
+- **Das Filter-Sheet nimmt alles auf**, nach Gruppen: Kategorie, Weg und
+  Zeit, Zustand, Tags. Die 85 Tags bekommen ein Suchfeld. Der
+  Abschlussknopf trägt die Trefferzahl. Unter „Weg und Zeit" steht, dass
+  53 von 101 Orten keine Gehzeit haben und aus „Zu Fuß" herausfallen — die
+  stumme Ausblendung aus Abschnitt 1.3, jetzt laut.
+- **Eine Zeilenhöhe für alle 101 Zeilen.** Jede der vier Textzeilen ist
+  einzeilig gedeckelt; die Faktenreihe hat feste Slots in fester
+  Reihenfolge (Weg, Dauer, Hund, Öffnung), und nur die Öffnung darf
+  kürzen, weil sie als einzige Freitext ist — 27 der 54 Angaben sind
+  länger als 18 Zeichen. So fällt die Hundregel nie weg, nur weil ein
+  Restaurant seine Ruhetage ausschreibt.
+- **Die Bewertung steht rechtsbündig auf der Namenszeile** und wird zur
+  scanbaren Spalte. Die Zahl der Bewertungen sitzt in einer eigenen, fest
+  breiten Spalte — sonst schöbe „(1.478)" die Note weiter nach links als
+  „(806)" und die Spalte wäre krumm.
+
+Abweichungen vom Vorschlag oben, bewusst:
+
+- **Die Notiz bleibt einzeilig** statt auf zwei Zeilen geklemmt. Abschnitt
+  4.3 nennt beides; bei einer festen Zeilenhöhe von 97 px sind es 6
+  sichtbare Zeilen statt 5, und das wiegt hier schwerer.
+- **Der Gesehen-Haken bleibt auf der Zeile.** Ihn auf eine Wischgeste zu
+  legen (3.11) spart 44 px Breite, aber die Geste ist von dieser Umgebung
+  aus nicht auf echtem iOS prüfbar — und genau dort ist schon einmal eine
+  Geste durchgefallen, die in Chromium lief. Das gehört auf ein Gerät,
+  nicht in diesen Schritt.
+- **„Zu Fuß" bleibt Ja/Nein** bei 25 Minuten statt der Stufenwahl aus 3.8.
+  Die Stufen sind eine Logikänderung; hier ging es um den Ort der Filter,
+  nicht um ihre Semantik. Der Hinweis auf die 53 Orte ist schon da.
+
+### Schritte 3 und 4 — offen

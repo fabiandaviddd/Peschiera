@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v10 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v11 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -160,7 +160,10 @@
     moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.4A8.4 8.4 0 1 1 9.6 4a6.8 6.8 0 0 0 10.4 10.4z"/></svg>',
     auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8" /><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"/></svg>',
     shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 8.4h11.2l-2.6-2.7M20.4 15.6H9.2l2.6 2.7"/></svg>',
-    tags: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 11.2V4.8a1.2 1.2 0 0 1 1.2-1.2h6.4l8.4 8.4a1.4 1.4 0 0 1 0 2l-5.6 5.6a1.4 1.4 0 0 1-2 0z"/><path d="M7.6 7.6h.01"/></svg>'
+    tags: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 11.2V4.8a1.2 1.2 0 0 1 1.2-1.2h6.4l8.4 8.4a1.4 1.4 0 0 1 0 2l-5.6 5.6a1.4 1.4 0 0 1-2 0z"/><path d="M7.6 7.6h.01"/></svg>',
+    /* Schieberegler fuer den Filterknopf, Pfeilpaar fuer die Sortierung. */
+    filter: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+    sort: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>'
   };
 
   /* ----------------------------------------------------------------- Laden */
@@ -258,8 +261,6 @@
     $('foot-note').textContent = has(D.meta.note) ? D.meta.note : '';
 
     buildTabs();
-    buildCatChips();
-    buildFlagChips();
     applyJum();
     bind();
     render();
@@ -314,9 +315,13 @@
   function applyJum() {
     var btn = $('jum-btn');
     btn.setAttribute('aria-checked', S.jum ? 'true' : 'false');
-    $('jum-n').textContent = S.jum
-      ? 'nur wo Jum mit darf'
-      : String(D.places.filter(function (p) { return p.dog === true; }).length) + ' Orte mit Hund';
+    /* Der Hinweis stand bis v9 neben dem Schalter. Titel, Schalter und
+       Farbschema teilen sich jetzt eine Zeile, dafuer nennt ihn die
+       Zaehlzeile — dort, wo ohnehin steht, was ein Filter kostet. */
+  }
+
+  function dogCount() {
+    return D.places.filter(function (p) { return p.dog === true; }).length;
   }
 
   function toggleJum() {
@@ -385,32 +390,71 @@
 
   /* ----------------------------------------------------------------- Chips */
 
-  function buildCatChips() {
-    $('cat-row').innerHTML = D.categories.map(function (c) {
-      var n = D.places.filter(function (p) { return p.category === c.id; }).length;
-      return '<button type="button" class="chip ' + accentClass(c.id) + '" data-cat="' + esc(c.id) + '"'
-        + ' aria-pressed="false">' + esc(c.label)
-        + '<span class="chip__n">' + n + '</span></button>';
-    }).join('');
+  /* Die Filter selbst stehen im Sheet. Im Kopf bleibt ein Knopf dafuer, die
+     Filter die gerade an sind, und die Sortierung. Bis v9 waren es zwei
+     seitlich scrollende Chipreihen mit neun Chips, von denen einer wiederum
+     ein Sheet oeffnete — drei Bedienmuster fuer eine Aufgabe. */
+  var FLAGS = [
+    { key: 'walk',   label: 'Zu Fuß',             icon: 'walk' },
+    { key: 'short',  label: 'Unter 1 h',          icon: 'hourglass' },
+    { key: 'unseen', label: 'Noch nicht gesehen', icon: 'checkRound' }
+  ];
+
+  function catCount(id) {
+    return D.places.filter(function (p) { return p.category === id; }).length;
   }
 
-  function buildFlagChips() {
-    var walks = D.places.filter(function (p) { return has(p.walk_min) && p.walk_min <= WALK_MAX; }).length;
-    var shorts = D.places.filter(function (p) { return has(p.time_min) && p.time_min <= SHORT_MAX; }).length;
-    /* "Hund erlaubt" fehlt hier mit Absicht: der Hund ist keine Filterfrage,
-       die man taeglich neu beantwortet, sondern ein Dauerschalter im Kopf. */
-    $('flag-row').innerHTML =
-      '<button type="button" class="chip chip--walk" id="chip-walk" aria-pressed="false">'
-      + ICON.walk + 'Zu Fuß<span class="chip__n">' + walks + '</span></button>'
-      /* Hiess bis v7 "Noch offen" — direkt neben Fakten wie "oeffnet 9:30"
-         und "bis 22:00" las sich das als Oeffnungszeit, gemeint war aber
-         "noch nicht gesehen". */
-      + '<button type="button" class="chip chip--unseen" id="chip-unseen" aria-pressed="false">'
-      + ICON.checkRound + 'Noch nicht gesehen<span class="chip__n" id="chip-unseen-n"></span></button>'
-      + '<button type="button" class="chip chip--short" id="chip-short" aria-pressed="false">'
-      + ICON.hourglass + 'Unter 1 h<span class="chip__n">' + shorts + '</span></button>'
-      + '<button type="button" class="chip chip--tags" id="chip-tags" aria-pressed="false">'
-      + ICON.tags + 'Tags<span class="chip__n" id="chip-tags-n"></span></button>';
+  function flagCount(key) {
+    if (key === 'walk')   return D.places.filter(function (p) { return has(p.walk_min) && p.walk_min <= WALK_MAX; }).length;
+    if (key === 'short')  return D.places.filter(function (p) { return has(p.time_min) && p.time_min <= SHORT_MAX; }).length;
+    return D.places.length - S.seen.length;
+  }
+
+  function flagOn(key) { return key === 'walk' ? S.walk : key === 'short' ? S.short : S.unseen; }
+
+  function activeCount() {
+    return S.cats.length + S.tags.length + (S.walk ? 1 : 0) + (S.short ? 1 : 0) + (S.unseen ? 1 : 0);
+  }
+
+  /* Der Kopf zeigt nur, was an ist — jeder Chip traegt sein eigenes Kreuz. */
+  function activeChipsHtml() {
+    var out = [];
+    S.cats.forEach(function (c) {
+      out.push(offChip('cat:' + c, catLabel(c)));
+    });
+    FLAGS.forEach(function (f) { if (flagOn(f.key)) out.push(offChip(f.key, f.label)); });
+    S.tags.forEach(function (t) { out.push(offChip('tag:' + t, t)); });
+    return out.join('');
+  }
+
+  function offChip(token, label) {
+    return '<button type="button" class="chip chip--off" data-off="' + esc(token) + '">'
+      + esc(label) + '<span class="chip__x" aria-hidden="true">&times;</span>'
+      + '<span class="sr-only">— Filter entfernen</span></button>';
+  }
+
+  function syncFilterBar() {
+    var n = activeCount();
+    $('chip-filter').innerHTML = ICON.filter + 'Filter'
+      + (n ? '<span class="chip__n">' + n + '</span>' : '');
+    $('chip-filter').setAttribute('aria-pressed', n ? 'true' : 'false');
+    $('chip-filter').setAttribute('aria-label', n
+      ? 'Filter — ' + n + (n === 1 ? ' aktiv' : ' aktive') : 'Filter');
+    $('active-filters').innerHTML = activeChipsHtml();
+
+    var byRating = S.sort === 'rating';
+    $('sort-btn').innerHTML = ICON.sort + (byRating ? 'Bewertung' : 'Entfernung');
+    $('sort-btn').setAttribute('aria-label', 'Sortiert nach '
+      + (byRating ? 'Bewertung' : 'Entfernung') + ' — umschalten auf '
+      + (byRating ? 'Entfernung' : 'Bewertung'));
+  }
+
+  function offFilter(token) {
+    if (token.indexOf('cat:') === 0) toggleIn(S.cats, token.slice(4));
+    else if (token.indexOf('tag:') === 0) toggleIn(S.tags, token.slice(4));
+    else if (token === 'walk') S.walk = false;
+    else if (token === 'short') S.short = false;
+    else if (token === 'unseen') S.unseen = false;
   }
 
   function allTags() {
@@ -423,51 +467,134 @@
     }).map(function (t) { return { tag: t, n: count[t] }; });
   }
 
-  /* Ueber achtzig Tags passen in keine Chip-Reihe. Sie stehen deshalb im
-     Sheet — im selben, das auch den Ort zeigt, nicht in einem zweiten. */
+  /* Alle Filter an einer Stelle: Kategorie, Weg und Zeit, Zustand, Tags.
+     Bis v9 lagen die ersten drei als Chips im Kopf und nur die Tags hier. */
   function filterSheetHtml() {
+    var noWalk = D.places.filter(function (p) { return !has(p.walk_min); }).length;
+
+    var h = '<p class="sheet__cat">Filter</p>'
+      + '<h2 class="sheet__name" id="sheet-name">Eingrenzen</h2>'
+      + '<p class="sheet__count" id="filter-count"></p>';
+
+    h += '<p class="fgroup__h">Kategorie</p><div class="tagpick">'
+      + D.categories.map(function (c) {
+          return '<button type="button" class="chip ' + accentClass(c.id) + '" data-cat="' + esc(c.id) + '"'
+            + ' aria-pressed="' + (S.cats.indexOf(c.id) >= 0 ? 'true' : 'false') + '">'
+            + esc(c.label) + '<span class="chip__n">' + catCount(c.id) + '</span></button>';
+        }).join('') + '</div>';
+
+    /* "Hund erlaubt" fehlt hier mit Absicht: der Hund ist keine Filterfrage,
+       die man taeglich neu beantwortet, sondern ein Dauerschalter im Kopf. */
+    h += '<p class="fgroup__h">Weg und Zeit</p><div class="tagpick">'
+      + FLAGS.filter(function (f) { return f.key !== 'unseen'; }).map(flagChipHtml).join('')
+      + '</div>'
+      /* Der Chip "Zu Fuss" verlangt walk_min <= 25. Orte ohne den Wert fallen
+         heraus, ohne dass es jemand sieht — bei jedem zweiten Ort. Also steht
+         es hier, wie die Zaehlzeile es beim Jum-Schalter auch tut. */
+      + '<p class="fgroup__x">' + noWalk + ' von ' + D.places.length
+      + ' Orten haben keine Gehzeit hinterlegt und fallen aus „Zu Fuß“ heraus.</p>';
+
+    h += '<p class="fgroup__h">Zustand</p><div class="tagpick">'
+      + FLAGS.filter(function (f) { return f.key === 'unseen'; }).map(flagChipHtml).join('')
+      + '</div>';
+
     var tags = allTags();
-    return '<p class="sheet__cat">Filter</p>'
-      + '<h2 class="sheet__name" id="sheet-name">Tags</h2>'
-      + '<p class="sheet__note">Mehrere Tags sind ODER-verknüpft: ein Ort muss nur einem davon entsprechen.</p>'
-      + '<p class="sheet__count" id="filter-count"></p>'
-      + '<div class="tagpick">' + tags.map(function (t) {
-          return '<button type="button" class="chip chip--tag" data-tag="' + esc(t.tag) + '"'
-            + ' aria-pressed="' + (S.tags.indexOf(t.tag) >= 0 ? 'true' : 'false') + '">'
-            + esc(t.tag) + '<span class="chip__n">' + t.n + '</span></button>';
-        }).join('') + '</div>'
+    h += '<p class="fgroup__h">Tags <span class="fgroup__n">' + tags.length + '</span></p>'
+      + '<p class="fgroup__x">Mehrere Tags sind ODER-verknüpft: ein Ort muss nur einem davon entsprechen.</p>'
+      + '<div class="search search--in"><svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">'
+      + '<circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>'
+      + '<input type="search" id="tag-q" class="search__input" autocomplete="off"'
+      + ' autocorrect="off" spellcheck="false" placeholder="Tag suchen" aria-label="Tags durchsuchen"></div>'
+      + '<div class="tagpick" id="tagpick">' + tagChipsHtml('') + '</div>';
+
+    return h
       + '<div class="sheet__acts">'
-      + '<button type="button" class="btn btn--wide" id="tags-clear">Alle Tags abwählen</button>'
-      + '<button type="button" class="btn btn--wide btn--primary" id="tags-done">Fertig</button>'
+      + '<button type="button" class="btn btn--wide" id="filter-clear">Zurücksetzen</button>'
+      + '<button type="button" class="btn btn--wide btn--primary" id="filter-done"></button>'
       + '</div>';
   }
 
-  /* Höhe des Sticky-Headers für scroll-padding-top bereitstellen. */
+  function flagChipHtml(f) {
+    return '<button type="button" class="chip chip--' + f.key + '" data-flag="' + f.key + '"'
+      + ' aria-pressed="' + (flagOn(f.key) ? 'true' : 'false') + '">'
+      + ICON[f.icon] + esc(f.label) + '<span class="chip__n">' + flagCount(f.key) + '</span></button>';
+  }
+
+  /* 85 Tags, 30 davon einmal vergeben — ohne Suchfeld findet man darin nichts. */
+  function tagChipsHtml(q) {
+    var term = norm(q || '');
+    var list = allTags().filter(function (t) {
+      return !term || norm(t.tag).indexOf(term) >= 0 || S.tags.indexOf(t.tag) >= 0;
+    });
+    if (!list.length) return '<p class="fgroup__x">Kein Tag passt zu „' + esc(q) + '“.</p>';
+    return list.map(function (t) {
+      return '<button type="button" class="chip chip--tag" data-tag="' + esc(t.tag) + '"'
+        + ' aria-pressed="' + (S.tags.indexOf(t.tag) >= 0 ? 'true' : 'false') + '">'
+        + esc(t.tag) + '<span class="chip__n">' + t.n + '</span></button>';
+    }).join('');
+  }
+
+  /* Der Kopf liegt fix und belegt keinen Platz im Fluss — .main haelt den
+     Abstand ueber --bar-full. Gemessen wird immer im aufgeklappten Zustand,
+     sonst waere der Abstand nach dem ersten Einklappen zu klein. */
   function measureBar() {
     var bar = document.querySelector('.bar');
+    var top = $('bar-top');
     if (!bar) return;
-    document.documentElement.style.setProperty('--bar-h', bar.offsetHeight + 'px');
+    var was = document.body.classList.contains('is-compact');
+    if (was) document.body.classList.remove('is-compact');
+    var topH = top ? top.offsetHeight : 0;
+    var full = bar.offsetHeight;
+    if (was) document.body.classList.add('is-compact');
+    var root = document.documentElement.style;
+    root.setProperty('--bar-top-h', topH + 'px');
+    root.setProperty('--bar-full', full + 'px');
+  }
+
+  /* Beim Scrollen nach unten fahren Titel, Schalter und Suche weg; die
+     Filterzeile bleibt. Der Kopf kostet beim Lesen damit eine Zeile statt
+     dreier. Oben angekommen klappt er immer wieder auf. */
+  var lastY = 0;
+
+  function setCompact(on) {
+    if (on === document.body.classList.contains('is-compact')) return;
+    document.body.classList.toggle('is-compact', on);
+  }
+
+  function onScroll() {
+    /* Bei offenem Sheet ist body fixiert, waehrend des Tippens steht die
+       Suche im Weg — in beiden Faellen nicht anfassen. */
+    if (document.body.classList.contains('is-locked')) return;
+    if (document.body.classList.contains('is-typing')) { setCompact(false); return; }
+    if (S.view === 'info' || S.view === 'heute') { setCompact(false); lastY = 0; return; }
+
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var top = parseInt(document.documentElement.style.getPropertyValue('--bar-top-h'), 10) || 0;
+    if (y <= top) setCompact(false);
+    else if (y > lastY + 6) setCompact(true);
+    else if (y < lastY - 6) setCompact(false);
+    lastY = y;
   }
 
   function syncChips() {
-    var cats = $('cat-row').querySelectorAll('[data-cat]');
+    syncFilterBar();
+    /* Kategorie-, Flag- und Tag-Chips liegen im Sheet und existieren nur,
+       solange es offen ist — die Liste dahinter zieht trotzdem sofort nach. */
+    var body = $('sheet-body');
+    var cats = body.querySelectorAll('[data-cat]');
     for (var i = 0; i < cats.length; i++) {
       cats[i].setAttribute('aria-pressed', S.cats.indexOf(cats[i].getAttribute('data-cat')) >= 0 ? 'true' : 'false');
     }
-    $('chip-walk').setAttribute('aria-pressed', S.walk ? 'true' : 'false');
-    $('chip-unseen').setAttribute('aria-pressed', S.unseen ? 'true' : 'false');
-    $('chip-short').setAttribute('aria-pressed', S.short ? 'true' : 'false');
-    $('chip-unseen-n').textContent = String(D.places.length - S.seen.length);
-    $('chip-tags').setAttribute('aria-pressed', S.tags.length ? 'true' : 'false');
-    $('chip-tags-n').textContent = S.tags.length ? String(S.tags.length) : '';
-    /* Tag-Chips liegen im Sheet und existieren nur, solange es offen ist. */
-    var tags = $('sheet-body').querySelectorAll('[data-tag]');
-    for (var j = 0; j < tags.length; j++) {
-      tags[j].setAttribute('aria-pressed', S.tags.indexOf(tags[j].getAttribute('data-tag')) >= 0 ? 'true' : 'false');
+    var flags = body.querySelectorAll('[data-flag]');
+    for (var j = 0; j < flags.length; j++) {
+      var k = flags[j].getAttribute('data-flag');
+      flags[j].setAttribute('aria-pressed', flagOn(k) ? 'true' : 'false');
+      var n = flags[j].querySelector('.chip__n');
+      if (n) n.textContent = String(flagCount(k));
     }
-    var sorts = $('sort').querySelectorAll('[data-sort]');
-    for (var k = 0; k < sorts.length; k++) {
-      sorts[k].setAttribute('aria-pressed', sorts[k].getAttribute('data-sort') === S.sort ? 'true' : 'false');
+    var tags = body.querySelectorAll('[data-tag]');
+    for (var t = 0; t < tags.length; t++) {
+      tags[t].setAttribute('aria-pressed', S.tags.indexOf(tags[t].getAttribute('data-tag')) >= 0 ? 'true' : 'false');
     }
     $('q-clear').hidden = !S.q;
   }
@@ -624,7 +751,7 @@
     $('count').textContent = (anyFilter() || S.jum
       ? shown + ' von ' + total + (total === 1 ? ' Ort' : ' Orten')
       : total + (total === 1 ? ' Ort' : ' Orte'))
-      + (S.jum ? ' · mit Jum' : '')
+      + (S.jum ? ' · mit Jum' : ' · ' + dogCount() + ' mit Hund')
       + (unclear ? ' · ' + unclear + ' ohne Jum ausgeblendet' : '')
       + (seenHere ? ' · ' + seenHere + ' gesehen' : '');
 
@@ -632,15 +759,19 @@
     if (live) {
       live.textContent = shown === 1 ? '1 Ort passt' : shown + ' Orte passen';
     }
+    /* Man tippt nie "Fertig" ins Ungewisse — der Knopf nennt das Ergebnis. */
+    var done = $('filter-done');
+    if (done) {
+      done.textContent = shown === 1 ? '1 Ort zeigen' : shown + ' Orte zeigen';
+    }
   }
 
+  /* Feste Reihenfolge, feste Slots: Weg, Dauer, Hund, Oeffnung. Was fehlt,
+     laesst seinen Slot aus, statt die naechsten nachruecken zu lassen — so
+     stehen die Zahlen ueber die Liste hinweg untereinander. Die Bewertung
+     ist raus, sie steht rechts auf der Namenszeile. */
   function factsHtml(p) {
     var f = [];
-    if (has(p.rating)) {
-      f.push('<span class="fact fact--rating">' + ICON.rating + nf1.format(p.rating)
-        + (has(p.reviews) ? '<span class="fact__n">(' + nf0.format(p.reviews) + ')</span>' : '')
-        + '</span>');
-    }
     if (has(p.walk_min)) {
       f.push('<span class="fact">' + ICON.walk + p.walk_min + ' Min</span>');
     } else if (has(p.bike_min)) {
@@ -651,15 +782,30 @@
     if (has(p.time_min)) {
       f.push('<span class="fact fact--time">' + ICON.hourglass + esc(dur(p.time_min)) + '</span>');
     }
-    if (has(p.hours)) {
-      f.push('<span class="fact">' + ICON.clock
-        + esc(String(p.hours).replace(/^ge\u00f6ffnet\s+/i, '')) + '</span>');
-    }
     /* Steht der Dauerschalter auf "Mit Jum", ist jeder gezeigte Ort hundeok —
        die Marke an jeder Zeile sagt dann nichts mehr und kostet nur Platz. */
     if (p.dog === true && !S.jum) f.push('<span class="fact fact--dog">' + ICON.dog + 'Jum ok</span>');
     else if (p.dog === false) f.push('<span class="fact fact--nodog">' + ICON.dog + 'ohne Jum</span>');
+    /* Die Oeffnung steht zuletzt und als einzige darf sie kuerzen: sie ist
+       Freitext, 27 der 54 Angaben sind laenger als 18 Zeichen. Der volle
+       Wortlaut steht im Sheet. */
+    if (has(p.hours)) {
+      f.push('<span class="fact fact--hours">' + ICON.clock + '<span>'
+        + esc(String(p.hours).replace(/^ge\u00f6ffnet\s+/i, '')) + '</span></span>');
+    }
     return f.length ? '<div class="facts">' + f.join('') + '</div>' : '';
+  }
+
+  /* Die Zahl der Bewertungen steht in einer eigenen, fest breiten Spalte —
+     sonst schoebe "(1.478)" die Wertung weiter nach links als "(806)" und
+     die Spalte, die man scannen koennen soll, waere krumm. Sie wird auch
+     ohne Inhalt gesetzt, damit die Wertung bei allen gleich steht. */
+  function ratingHtml(p) {
+    if (!has(p.rating)) return '';
+    return '<span class="card__rating">'
+      + '<span class="card__stars">' + ICON.rating + nf1.format(p.rating) + '</span>'
+      + '<span class="fact__n">' + (has(p.reviews) ? '(' + nf0.format(p.reviews) + ')' : '') + '</span>'
+      + '</span>';
   }
 
   function cardHtml(p) {
@@ -668,7 +814,10 @@
     /* Der Name ist eine echte Überschrift (nicht im Knopf verschachtelt, das
        wäre ungültig). Geöffnet wird über einen Knopf, der die Karte überdeckt. */
     return '<article class="card ' + accentClass(p.category) + (wasSeen ? ' card--seen' : '') + '">'
+      + '<div class="card__head">'
       + '<h3 class="card__name">' + esc(p.name) + '</h3>'
+      + ratingHtml(p)
+      + '</div>'
       + '<p class="card__meta">'
       + '<span class="card__cat">' + esc(catLabel(p.category)) + '</span>'
       + (has(p.badge) ? '<span class="card__badge">' + esc(p.badge) + '</span>' : '')
@@ -1239,7 +1388,7 @@
     setInert(false);
 
     var back = id ? document.querySelector('[data-open="' + id.replace(/"/g, '\\"') + '"]') : null;
-    if (wasFilter) back = $('chip-tags');
+    if (wasFilter) back = $('chip-filter');
     if (back) back.focus({ preventScroll: true });
     else if (lastFocus && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
   }
@@ -1595,7 +1744,7 @@
   }
 
   /* Fragt den Worker nach seinem Cache-Namen und vergleicht nur die Marke
-     davor: 'peschiera-v10' gegen 'v10 · 2026-09-18' ist gleich, das Datum
+     davor: 'peschiera-v11' gegen 'v11 · 2026-09-18' ist gleich, das Datum
      dahinter zaehlt nicht mit. */
   function checkCacheVersion() {
     if (!('serviceWorker' in navigator) || !window.MessageChannel) return;
@@ -1648,28 +1797,17 @@
       $('q').value = ''; S.q = ''; render(); $('q').focus();
     });
 
-    $('cat-row').addEventListener('click', function (e) {
-      var b = e.target.closest('[data-cat]');
-      if (!b) return;
-      toggleIn(S.cats, b.getAttribute('data-cat'));
-      render();
-    });
-
-    $('flag-row').addEventListener('click', function (e) {
-      var b = e.target.closest('.chip');
-      if (!b) return;
-      if (b.id === 'chip-tags') { openFilterSheet(); return; }
-      if (b.id === 'chip-walk') S.walk = !S.walk;
-      if (b.id === 'chip-unseen') S.unseen = !S.unseen;
-      if (b.id === 'chip-short') S.short = !S.short;
-      render();
-    });
-
-    $('sort').addEventListener('click', function (e) {
-      var b = e.target.closest('[data-sort]');
-      if (!b) return;
-      S.sort = b.getAttribute('data-sort');
-      render();
+    $('filters').addEventListener('click', function (e) {
+      if (e.target.closest('#chip-filter')) { openFilterSheet(); return; }
+      /* Zwei Sortierungen brauchen keine dauerhafte Segmentleiste — ein Knopf,
+         der seinen aktuellen Stand nennt und beim Tippen umschaltet. */
+      if (e.target.closest('#sort-btn')) {
+        S.sort = S.sort === 'rating' ? 'distance' : 'rating';
+        render();
+        return;
+      }
+      var off = e.target.closest('[data-off]');
+      if (off) { offFilter(off.getAttribute('data-off')); render(); }
     });
 
     $('tabs').addEventListener('click', function (e) {
@@ -1707,6 +1845,23 @@
 
       /* Filter-Sheet: die Liste dahinter zieht sofort nach, das Sheet bleibt
          offen. Die Zahl am Tag-Knopf zeigt, wie viele Tags aktiv sind. */
+      var cat = e.target.closest('[data-cat]');
+      if (cat) {
+        e.preventDefault();
+        toggleIn(S.cats, cat.getAttribute('data-cat'));
+        render();
+        return;
+      }
+      var flag = e.target.closest('[data-flag]');
+      if (flag) {
+        e.preventDefault();
+        var k = flag.getAttribute('data-flag');
+        if (k === 'walk') S.walk = !S.walk;
+        else if (k === 'short') S.short = !S.short;
+        else if (k === 'unseen') S.unseen = !S.unseen;
+        render();
+        return;
+      }
       var tag = e.target.closest('[data-tag]');
       if (tag) {
         e.preventDefault();
@@ -1714,11 +1869,20 @@
         render();
         return;
       }
-      if (e.target.closest('#tags-clear')) { S.tags = []; render(); return; }
-      if (e.target.closest('#tags-done')) { closeSheet(); }
+      if (e.target.closest('#filter-clear')) { resetFilters(); return; }
+      if (e.target.closest('#filter-done')) { closeSheet(); }
+    });
+
+    /* Das Feld steht im Sheet und lebt nur, solange es offen ist. */
+    $('sheet-body').addEventListener('input', function (e) {
+      if (!e.target || e.target.id !== 'tag-q') return;
+      var pick = $('tagpick');
+      if (pick) pick.innerHTML = tagChipsHtml(e.target.value);
     });
 
     $('empty-reset').addEventListener('click', resetFilters);
+
+    window.addEventListener('scroll', onScroll, { passive: true });
 
     $('today').addEventListener('click', function (e) {
       if (e.target.closest('#today-all')) { setView('orte'); return; }
