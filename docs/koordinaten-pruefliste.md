@@ -27,6 +27,19 @@ auch 17 bis 25 korrekte Orte. Kurze Strecken sind zu grob gerundet.
 Wird ein Treffer verworfen, probiert die Suche die nächste Schreibweise.
 Erst wenn alle scheitern, bleibt der Ort leer — mit Begründung im Protokoll.
 
+### Auch die fertige Datei wird geprüft
+
+Die beiden Regeln griffen bisher nur, während der Dienst befragt wird. Die 13
+Orte unten sollen von Hand aus Google Maps nachgetragen werden, und für die
+prüfte nichts. `node scripts/test-logic.mjs` prüft deshalb dieselben Regeln mit
+denselben Konstanten auf `places.json` selbst:
+
+- jede Koordinate liegt in der Reisegegend (`viewbox` von oben),
+- keine Luftlinie ab dem Zeltplatz ist länger als `distance_km × 1,15 + 0,5`,
+- die drei Zahlen in der Kopfzeile dieser Datei stimmen mit den Daten überein.
+
+Ein Zahlendreher beim Abtippen fällt damit auf, bevor er auf der Karte landet.
+
 ## Offene Punkte
 
 ### Sollten eine Koordinate bekommen (10)
