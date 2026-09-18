@@ -1,0 +1,24 @@
+# Der Prüfstand aus scripts/test-logic.mjs, bei jedem Push und jedem PR.
+#
+# Er lief bisher nur, wenn jemand ihn von Hand startete. In einem Repo, an dem
+# mehrere Hände gleichzeitig arbeiten, heißt das „irgendwann nicht": der stille
+# Datenverlust aus Commit 9a8662b — zwei moment-Schlüssel im selben Objekt nach
+# einem Merge, JSON.parse nimmt still den letzten — wäre hier aufgefallen.
+#
+# Keine Abhängigkeiten, kein npm install, kein Build. node und die Datei.
+name: Prüfstand
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: node scripts/test-logic.mjs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/test-logic.mjs

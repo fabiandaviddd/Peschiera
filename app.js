@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v13 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v14 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -837,10 +837,13 @@
        die Marke an jeder Zeile sagt dann nichts mehr und kostet nur Platz. */
     if (p.dog === true && !S.jum) f.push('<span class="fact fact--dog">' + ICON.dog + 'Jum ok</span>');
     else if (p.dog === false) f.push('<span class="fact fact--nodog">' + ICON.dog + 'ohne Jum</span>');
-    /* Die Oeffnung steht zuletzt und als einzige darf sie kuerzen: sie ist
-       Freitext, 27 der 54 Angaben sind laenger als 18 Zeichen. Der volle
-       Wortlaut steht im Sheet. */
-    if (has(p.hours)) {
+    /* Der Ruhetag belegt denselben Slot, statt einen fuenften aufzumachen —
+       die Zeilenhoehe von 97 px bleibt damit unangetastet. "taeglich 18–23,
+       Ruhetag Mittwoch" hilft am Mittwoch niemandem, "heute zu" schon; der
+       volle Wortlaut steht weiter im Sheet. */
+    if (closedToday(p)) {
+      f.push('<span class="fact fact--closed">' + ICON.clock + 'heute zu</span>');
+    } else if (has(p.hours)) {
       f.push('<span class="fact fact--hours">' + ICON.clock + '<span>'
         + esc(String(p.hours).replace(/^ge\u00f6ffnet\s+/i, '')) + '</span></span>');
     }
@@ -940,6 +943,47 @@
       }
     }
     return { open: open, close: close };
+  }
+
+  /* Der Ruhetag steht bei 14 Orten woertlich in hours — elfmal als
+     "Ruhetag Mittwoch", dreimal als "Mi geschlossen" oder "Mo zu". Gelesen hat
+     ihn bisher niemand, und "Heute" stellte die Palazzina Storica mittwochs auf
+     Platz 2 von 41, mit "Mittwochs geschlossen" in der eigenen Notiz.
+
+     Das ist kein Widerspruch zum Grundsatz, nie zu behaupten, etwas habe
+     gerade offen: der umgekehrte Schluss ist der sichere. Wo woertlich
+     "Ruhetag Mittwoch" steht, ist mittwochs zu — dieselbe Beweislast, die
+     hoursWindow() schon traegt.
+
+     Gelesen wird nur hours, nie note. Dort steht bei lapescheria "italienische
+     Pescherie ... haben montags zu" — eine Faustregel ueber eine Branche, keine
+     Angabe ueber diesen Laden. */
+  var WD_LONG  = ['sonntag', 'montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag'];
+  var WD_SHORT = ['so', 'mo', 'di', 'mi', 'do', 'fr', 'sa'];
+  var CLOSED_LONG  = /ruhetag\s*:?\s*(sonntag|montag|dienstag|mittwoch|donnerstag|freitag|samstag)/i;
+  /* Die Kurzform braucht das Wort dahinter: "Mi–Sa 19:00–23:00" ist eine
+     Oeffnungszeit, "Mi geschlossen" ein Ruhetag. */
+  var CLOSED_SHORT = /\b(so|mo|di|mi|do|fr|sa)\s*(?:geschlossen|zu)\b/i;
+
+  /* Wochentag wie Date#getDay(): 0 ist Sonntag. null heisst "steht nicht da"
+     — und wird nie zu "hat offen" umgedeutet. Mehrere Ruhetage in einer
+     Angabe kommen in den Daten nicht vor; kaeme einer dazu, faengt ihn der
+     Pruefstand. */
+  function closedOn(h) {
+    if (!has(h)) return null;
+    var t = String(h), m;
+    m = CLOSED_LONG.exec(t);
+    if (m) return WD_LONG.indexOf(m[1].toLowerCase());
+    m = CLOSED_SHORT.exec(t);
+    if (m) return WD_SHORT.indexOf(m[1].toLowerCase());
+    return null;
+  }
+
+  /* Ohne Datum gilt der heutige Tag. "Heute" schaut nach 23 Uhr auf morgen
+     und reicht deshalb sein eigenes Bezugsdatum herein. */
+  function closedToday(p, when) {
+    var d = closedOn(p.hours);
+    return d !== null && d === (when || new Date()).getDay();
   }
 
   /* Reihenfolge: was im JSON steht, gilt. Erst wenn dort nichts steht, wird
@@ -1046,6 +1090,12 @@
     });
 
     return out.sort(function (a, b) {
+      /* Vor allem anderen: wer heute Ruhetag hat, steht ganz hinten. Eine
+         gute Bewertung hilft an einem geschlossenen Mittwoch nicht.
+         Herausgefiltert wird nicht — sonst schruempfte die Liste still, und
+         genau das tut diese App nirgends. */
+      var ca = closedToday(a, now) ? 1 : 0, cb = closedToday(b, now) ? 1 : 0;
+      if (ca !== cb) return ca - cb;
       var fa = fitsLeft(a, mins, until) ? 0 : 1, fb = fitsLeft(b, mins, until) ? 0 : 1;
       if (fa !== fb) return fa - fb;
       var ua = unverified(a) ? 1 : 0, ub = unverified(b) ? 1 : 0;
@@ -1109,6 +1159,11 @@
     if (p.dog === true) bits.push('Jum darf mit');
     if (unverified(p)) bits.push('Zeiten ungeprüft, vorher anrufen');
     var out = bits.join(' · ');
+    /* Steht er trotzdem da — weil sonst nichts uebrig ist oder weil jemand
+       weiterblaettert —, dann mit dem Grund. */
+    if (closedToday(p, ref)) {
+      out += '<span class="today__shut"> — ' + (tomorrow ? 'morgen' : 'heute') + ' Ruhetag</span>';
+    }
     if (!fitsLeft(p, mins, until)) {
       out += '<span class="today__late"> — dafür ist es heute zu spät</span>';
     }
@@ -1131,12 +1186,14 @@
       + '</div>';
   }
 
-  function smallHtml(p) {
+  function smallHtml(p, ref) {
     return '<button type="button" class="today__small" data-open="' + esc(p.id) + '">'
       + '<span class="today__small-n">' + esc(p.name) + '</span>'
       + '<span class="today__small-m">' + esc(catLabel(p.category))
       + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min' : '')
-      + (p.dog === true ? ' · Jum ok' : '') + '</span>'
+      + (p.dog === true ? ' · Jum ok' : '')
+      + (closedToday(p, ref) ? '<span class="today__shut"> · heute zu</span>' : '')
+      + '</span>'
       + '</button>';
   }
 
@@ -1187,7 +1244,7 @@
         + '</div>'
         + (others.length
             ? '<p class="today__lead">Sonst noch</p><div class="today__smalls">'
-              + others.map(smallHtml).join('') + '</div>'
+              + others.map(function (o) { return smallHtml(o, ref); }).join('') + '</div>'
             : '');
     } else {
       /* Lieber zugeben, dass nichts Passendes dasteht, als etwas Schwaches
@@ -1520,7 +1577,11 @@
     if (has(p.time_min) || has(p.time_label)) {
       t.push(tile(esc(has(p.time_min) ? dur(p.time_min) : p.time_label), 'Aufenthalt'));
     }
-    if (has(p.hours)) {
+    if (closedToday(p)) {
+      /* "bis 22:30" ueber einem Lokal, das heute Ruhetag hat, waere die
+         falscheste Kachel von allen. */
+      t.push(tile('heute zu', 'Öffnung', 'tile--closed'));
+    } else if (has(p.hours)) {
       /* Auf der Kachel steht nur, was sich sicher lesen laesst; der volle
          Wortlaut steht darunter, sofern er mehr sagt. Nie wird daraus
          "hat offen" abgeleitet. */
@@ -2155,7 +2216,8 @@
      Im Browser gibt es kein `module`, dort passiert hier also nichts. */
   if (typeof module === 'object' && module && module.exports) {
     module.exports = {
-      hoursWindow: hoursWindow, momentsOf: momentsOf, momentNow: momentNow,
+      hoursWindow: hoursWindow, closedOn: closedOn, closedToday: closedToday,
+      momentsOf: momentsOf, momentNow: momentNow,
       runsToday: runsToday, tripDay: tripDay, unverified: unverified,
       closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,
       dur: dur, km: km, norm: norm, haystack: haystack,

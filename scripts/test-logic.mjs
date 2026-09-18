@@ -95,6 +95,50 @@ ok('"Zeiten ungeprüft" — keine Zahl, keine Behauptung',
 /* Ein Fenster über Mitternacht ist kein Fenster: close <= open wird verworfen. */
 ok('"22–2 Uhr" (über Mitternacht)', pk.hoursWindow('22–2 Uhr').close, null);
 
+/* ------------------------------------------------------------- Ruhetage */
+group('closedOn — der Ruhetag steht woertlich da');
+
+/* Die Schreibweisen, die in den Daten wirklich vorkommen. */
+ok('"täglich 18–23, Ruhetag Mittwoch"', pk.closedOn('täglich 18–23, Ruhetag Mittwoch'), 3);
+ok('"12–14 und 19–22:30, Ruhetag Dienstag"', pk.closedOn('12–14 und 19–22:30, Ruhetag Dienstag'), 2);
+ok('"Abend Di–So 19–22, Ruhetag Montag"', pk.closedOn('Abend Di–So 19–22, Ruhetag Montag'), 1);
+ok('"Di–So, Ruhetag Montag"', pk.closedOn('Di–So, Ruhetag Montag'), 1);
+ok('"öffnet 10:00 · Mi geschlossen"', pk.closedOn('öffnet 10:00 · Mi geschlossen'), 3);
+ok('"Di–Do 9:30–12:30, Fr–So 9:30–18:30, Mo zu"',
+   pk.closedOn('Di–Do 9:30–12:30, Fr–So 9:30–18:30, Mo zu'), 1);
+ok('"9:30–12:30 und 14:30–18, Mo zu"', pk.closedOn('9:30–12:30 und 14:30–18, Mo zu'), 1);
+ok('"werktags nur abends, Sa/So auch 12–14, Ruhetag Dienstag"',
+   pk.closedOn('werktags nur abends, Sa/So auch 12–14, Ruhetag Dienstag'), 2);
+
+/* Die Gegenprobe wiegt schwerer als die Treffer: ein erfundener Ruhetag
+   versteckt einen offenen Ort, und das faellt niemandem auf. */
+ok('"Mi–Sa 19:00–23:00" ist eine Oeffnungszeit, kein Ruhetag',
+   pk.closedOn('Mi–Sa 19:00–23:00 (ungeprüft)'), null);
+ok('"Mo 9–13, Di–Sa 8:30–19:30, So 10–19:30" — drei Fenster, kein Ruhetag',
+   pk.closedOn('Mo 9–13, Di–Sa 8:30–19:30, So 10–19:30'), null);
+ok('"Mo–Sa 9–18:30, bis 01.11. auch So"', pk.closedOn('Mo–Sa 9–18:30, bis 01.11. auch So'), null);
+ok('"Weinshop Mo–Sa 8:30–12:30 und 14–18"',
+   pk.closedOn('Weinshop Mo–Sa 8:30–12:30 und 14–18'), null);
+ok('"geöffnet bis 22:30"', pk.closedOn('geöffnet bis 22:30'), null);
+ok('"täglich 9–19"', pk.closedOn('täglich 9–19'), null);
+ok('"Zeiten ungeprüft"', pk.closedOn('Zeiten ungeprüft'), null);
+ok('leer', pk.closedOn(''), null);
+ok('null', pk.closedOn(null), null);
+/* Sonntag ist 0 wie bei Date#getDay() — und 0 ist nicht null. */
+ok('"Ruhetag Sonntag" ist 0, nicht null', pk.closedOn('Ruhetag Sonntag'), 0);
+
+/* closedToday rechnet gegen ein uebergebenes Datum, nicht gegen die Uhr des
+   Rechners — der 16.09.2026 ist ein Mittwoch. Ohne das waere die Pruefung
+   an sechs von sieben Tagen gruen und am siebten rot. */
+const mittwoch = new Date(2026, 8, 16);
+const dienstag = new Date(2026, 8, 15);
+ok('Ruhetag Mittwoch, am Mittwoch',
+   pk.closedToday({ hours: 'täglich 18–23, Ruhetag Mittwoch' }, mittwoch), true);
+ok('Ruhetag Mittwoch, am Dienstag',
+   pk.closedToday({ hours: 'täglich 18–23, Ruhetag Mittwoch' }, dienstag), false);
+ok('ohne Angabe nie geschlossen', pk.closedToday({ hours: 'geöffnet bis 22:30' }, mittwoch), false);
+ok('ohne hours nie geschlossen', pk.closedToday({ hours: null }, mittwoch), false);
+
 /* ----------------------------------------------------------- Tagesabschnitt */
 group('momentsOf — was im JSON steht, gilt');
 
@@ -295,6 +339,14 @@ ok('jeder Ort trägt ein moment', noMoment, []);
 ok('kein Schlüssel zweimal im selben Objekt', duplicateKeys(placesRaw), []);
 ok('Zahlenfelder sind Zahlen oder null', badTime, []);
 ok('geo hat lat und lon als Zahl', badGeo, []);
+/* Wer einen Ruhetag in hours schreibt, muss ihn lesbar schreiben. Sonst
+   sortiert „Heute" den Ort weiter nach vorn, als staende dort nichts — und
+   das faellt erst vor der verschlossenen Tuer auf. */
+const unreadableClosed = data.places
+  .filter((p) => p.hours && /ruhetag|geschlossen|\bzu\b/i.test(p.hours))
+  .filter((p) => pk.closedOn(p.hours) === null)
+  .map((p) => `${p.id}: ${p.hours}`);
+ok('jeder Ruhetag in hours ist lesbar', unreadableClosed, []);
 truthy('jeder Ort hat einen Namen', data.places.every((p) => p.name && p.name.trim()));
 /* Jeder Akzent muss in style.css als .acc-* stehen, sonst bleibt die Kante grau. */
 const css = readFileSync(join(root, 'style.css'), 'utf8');
@@ -374,6 +426,11 @@ function stats() {
   line('geo gesetzt / fehlt',
        `${P.filter((p) => p.geo).length} / ${P.filter((p) => !p.geo).length}`);
   line('hours fehlt', P.filter((p) => !p.hours).length);
+  const shut = P.filter((p) => pk.closedOn(p.hours) !== null);
+  line('Ruhetag lesbar in hours', shut.length);
+  line('… verteilt auf', ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+    .map((w, i) => ({ w, n: shut.filter((p) => pk.closedOn(p.hours) === (i + 1) % 7).length }))
+    .filter((x) => x.n).map((x) => `${x.w} ${x.n}`).join(' · '));
   line('verschiedene Tags', new Set(P.flatMap((p) => p.tags)).size);
   line('merken / offene Punkte / Faktencheck',
        `${data.merken.length} / ${data.open_questions.length} / ${data.faktencheck.length}`);

@@ -14,6 +14,7 @@ GitHub Pages liefert das Repo unverändert aus.
 | **PWA** | `manifest.webmanifest` + `sw.js`. App-Shell und `places.json` liegen im Cache, nach einmaligem Laden läuft alles offline — Merkliste inklusive. Auf dem iPhone-Homescreen installierbar, mit Icon und Startbild. |
 | **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. Das Feld steht auch auf „Heute" — sonst ist von der Startansicht aus nicht zu sehen, dass hinter dem einen Vorschlag 101 Orte liegen. Hineingreifen wechselt in die Liste. |
 | **Heute** | Startansicht statt Liste: Datum, Reisetag, Tagesabschnitt aus der Geräteuhr, ein Vorschlag mit Begründung aus den Daten — jeder Ort ist dafür von Hand einem Tagesabschnitt zugeordnet (`moment`), geraten wird nicht mehr —, zwei Alternativen, ein Knopf für den nächsten. Weiß sie nichts Passendes, sagt sie das und verweist auf die Liste. Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert; die Antwort hält einen Besuch lang (`sessionStorage`, `pk.wet`), damit man sie am Regentag nicht bei jedem Öffnen neu gibt. Ab 45 Minuten vor Ende eines Abschnitts zeigt sie den nächsten („Gleich: Abend"). |
+| **Ruhetage** | Steht der Ruhetag wörtlich in `hours` („Ruhetag Mittwoch", „Mi geschlossen", „Mo zu"), wird er gelesen: 14 der 101 Orte tragen einen, verteilt auf Mo 4, Di 4, Mi 6. In „Heute" sinken sie an ihrem Ruhetag ans Ende der Liste — vor jedem anderen Kriterium, eine gute Bewertung hilft an einem geschlossenen Mittwoch nicht. Herausgefiltert werden sie nicht, sonst schrumpfte die Liste still; wer weiterblättert, bekommt den Grund dazugeschrieben („heute Ruhetag"). In der Liste und im Detail ersetzt „heute zu" die Öffnungsangabe — derselbe Slot, dieselbe Zeilenhöhe. Gelesen wird nur `hours`, nie `note`: dort steht bei einem Ort eine Faustregel über italienische Fischläden allgemein, keine Angabe über diesen Laden. |
 | **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". Die Zählzeile sagt immer, wie viele Orte er gerade ausblendet. |
 | **Filter** | Ein Knopf, ein Sheet: Kategorie, „Zu Fuß" (`walk_min ≤ 25`), „Unter 1 h" (`time_min ≤ 60`), „Noch nicht gesehen" und die 85 Tags mit eigenem Suchfeld. Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. Im Kopf steht nur, was gerade an ist — jeder Chip trägt sein Kreuz, ein Tipp nimmt ihn weg. Der Abschlussknopf nennt die Trefferzahl, man tippt nie „Fertig" ins Ungewisse. Unter „Weg und Zeit" steht, dass 53 der 101 Orte keine Gehzeit hinterlegt haben und aus „Zu Fuß" herausfallen — dieselbe Auskunft, die die Zählzeile beim Jum-Schalter gibt. |
 | **Kopf** | Titel, Dauerschalter und Farbschema teilen sich eine Zeile, darunter Suche und Filterzeile: 147 px statt 219. Beim Scrollen nach unten fahren Titel und Suche weg und nur die Filterzeile bleibt — 43 px. Oben angekommen klappt er wieder auf. Er liegt `fixed`, nicht `sticky`: ein Sticky-Kopf belegt Platz im Fluss, und beim Einklappen würde die Liste unter dem Finger wegspringen. |
@@ -80,6 +81,7 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
 | `category` | eine der `id`s aus `categories` am Dateianfang |
 | `badge` | optionale Notiz, eine pro Ort. Die Klasse steckt nicht im Text, sondern in `badgeKind()` in `app.js`, und sie bestimmt Marke und Farbe in der Liste: **Termin** (Datumsmuster `Tag.Monat.`, gefüllter Punkt, Ziegel), **Ungeprüft** („Zeiten prüfen", „Erst anrufen", Warndreieck, gestrichelt), **Tageszeit** (alles aus `BADGE_MOMENT`, Uhr, grau — Zusammenhang, keine Empfehlung), **Einschränkung** („Ohne Auto nicht machbar", „Buchen", „Ohne Termin", durchgestrichener Kreis), **Kuratiert** (alles übrige, Raute, Kategoriefarbe). Dazu die drei **Hundregeln** („Burg ohne Hund", „Hund an der Leine ok", „Hund gratis"): sie erscheinen nicht in der Liste, sondern als Zusatz in der Hundzeile des Sheets. Stand 18.09.2026 sind es 27 Texte auf 31 Orten. |
 | | **Was kein Badge sein sollte:** was schon als Tag gesetzt ist (`aussicht`, `foto`, `schatten`, `wein`, `livemusik`, `cocktails`, `regen`), was `dog` schon sagt, was in `hours` gehört („Montags", „Immer offen"), was in `connection` gehört, und was `time_min` schon trägt. 23 solcher Badges sind am 18.09. entfernt worden. |
+| `hours` | Freitext, fehlt bei 47 Orten. Gelesen wird daraus nur, was eindeutig ist: „ab 9:30" und „bis 22:30" für die Kachel, und ein Ruhetag in der Form `Ruhetag <Wochentag>` oder `<Mo|Di|…> geschlossen` / `<Mo|Di|…> zu`. Ein Wochentagsbereich wie „Mi–Sa 19–23" ist eine Öffnungszeit und kein Ruhetag — der Prüfstand prüft beide Richtungen. Mehrere Ruhetage in einer Angabe kommen nicht vor; käme einer dazu, schlägt der Prüfstand an. |
 | `dog` | `true` = erlaubt, `false` = verboten, `null` = ungeklärt. Nur `true` erscheint im Hundefilter. |
 | `walk_min` / `bike_min` / `distance_km` | ab dem Zeltplatz. `null`, wenn nicht sinnvoll messbar. |
 | `time_min` | empfohlene Aufenthaltsdauer in Minuten, **ohne** An- und Abreise. Basis für den Filter „Unter 1 h" und für die Frage in „Heute", ob sich etwas vor dem Abend noch ausgeht. |
@@ -170,6 +172,13 @@ Freitext und fehlt bei knapp der Hälfte. Abgeleitet wird daraus nur
 „schließt in weniger als 30 Minuten" — und das nur, wenn eine Uhrzeit
 dasteht.
 
+Der umgekehrte Schluss ist dagegen sicher und wird seit v14 gezogen: wo
+wörtlich „Ruhetag Mittwoch" steht, ist mittwochs zu. Das ist dieselbe
+Beweislast, die `hoursWindow` schon trägt — gelesen wird, was eindeutig
+dasteht, und sonst nichts. Bis v13 stand die Palazzina Storica mittwochs auf
+Platz 2 von 41 im Mittagsvorschlag, mit „Mittwochs geschlossen" in der
+eigenen Notiz.
+
 `merken[]` und `open_questions[]` dürfen Objekte (`{title, text}` bzw.
 `{topic, status, contact}`) und blanken Text gemischt enthalten. Bei blankem
 Text in `open_questions[]` wird eine enthaltene Telefonnummer automatisch
@@ -202,12 +211,13 @@ ohne Build:
 node scripts/test-logic.mjs
 ```
 
-Er prüft `hoursWindow`, `momentsOf`, `momentNow`, `runsToday`, `tripDay`,
-`unverified`, `closingSoon`, `fitsLeft`, `indoorOf` und die Formatierer gegen
-die Schreibweisen, die in den Daten wirklich vorkommen — und dazu
-`places.json` selbst: eindeutige `id`s, bekannte Kategorien, `dog` nur
-`true`/`false`/`null`, `moment` nur aus den vier Abschnitten, Zahlenfelder als
-Zahlen, jeder Kategorie-Akzent mit passender `.acc-`Regel in `style.css`,
+Er prüft `hoursWindow`, `closedOn`, `closedToday`, `momentsOf`, `momentNow`,
+`runsToday`, `tripDay`, `unverified`, `closingSoon`, `fitsLeft`, `indoorOf`
+und die Formatierer gegen die Schreibweisen, die in den Daten wirklich
+vorkommen — und dazu `places.json` selbst: eindeutige `id`s, bekannte
+Kategorien, `dog` nur `true`/`false`/`null`, `moment` nur aus den vier
+Abschnitten, jeder Ruhetag in `hours` lesbar, Zahlenfelder als Zahlen, jeder
+Kategorie-Akzent mit passender `.acc-`Regel in `style.css`,
 jede Datei aus `SHELL` vorhanden und `CACHE` wie `FONTS` gleich `VERSION`. Am
 Ende stehen die Zahlen, die auch in dieser README vorkommen — abgeschrieben
 veralten sie, gerechnet nicht.

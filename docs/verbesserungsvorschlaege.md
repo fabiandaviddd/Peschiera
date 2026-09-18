@@ -1,8 +1,12 @@
-# Verbesserungsvorschläge — Stand 18.09.2026 (v13)
+# Verbesserungsvorschläge — Stand 18.09.2026
 
-Bestandsaufnahme einer vierten Hand am selben Repo. Kein Code geändert, nur
-gelesen, gerechnet und geprüft. Alle Zahlen sind aus `data/places.json`
-gerechnet, nicht geschätzt; die Rechenwege stehen jeweils dabei.
+Bestandsaufnahme einer vierten Hand am selben Repo. Alle Zahlen sind aus
+`data/places.json` gerechnet, nicht geschätzt; die Rechenwege stehen jeweils
+dabei. Die Befunde beschreiben den Stand `v13`.
+
+**Vorschlag 1 und 2 sind in `v14` umgesetzt** — siehe „Umsetzungsstand" unten.
+Die Vorschläge 3 bis 8 stehen weiter offen und sind absichtlich so
+beschrieben, dass sie jede Hand einzeln aufgreifen kann.
 
 Der Vorschlag von `docs/redesign-vorschlag.md` ist bis Schritt 3 umgesetzt
 (v8–v12). Was hier steht, ist bewusst **nicht** Schritt 4 — der ist dort schon
@@ -329,6 +333,55 @@ mitzuziehen.
 | **Gehzeiten aus der Luftlinie rechnen** | Bei 53 Orten fehlt `walk_min`, und aus Koordinaten ließe sich etwas ableiten — aber das wäre geraten. Die App zeigt lieber nichts, und das ist richtig so. Der ehrliche Weg ist, die 53 Werte nachzutragen. |
 | **Laufende Synchronisierung über einen Dienst** | Steht in der README unter „Später angedacht" und widerspricht dem Grundsatz „kein Backend". |
 | **Bilder zu den Orten** | Kostet Offline-Gewicht und ist für ein Nachschlagewerk nicht die knappe Ressource. |
+
+---
+
+## Umsetzungsstand
+
+### Vorschlag 1 — umgesetzt in `v14`
+
+`.github/workflows/pruefstand.yml`: `node scripts/test-logic.mjs` bei jedem
+Push und jedem Pull Request. Kein `npm install`, keine Abhängigkeiten.
+
+### Vorschlag 2 — umgesetzt in `v14`
+
+| | v13 | v14 |
+|---|---|---|
+| Orte mit lesbarem Ruhetag in `hours` | 14 — von nichts gelesen | 14 — gelesen |
+| Palazzina Storica, Mittwochmittag | Platz 2 von 41 | ans Ende sortiert, nicht mehr unter den drei gezeigten |
+| S'Aligusta, Dienstagmittag | Platz 3 von 41 | ans Ende sortiert |
+| Prüfungen im Prüfstand | 94 | 117 |
+
+Gebaut wurde:
+
+- `closedOn(hours)` neben `hoursWindow()` — Wochentagsindex wie
+  `Date#getDay()` oder `null`. Zwei Muster: `Ruhetag <Wochentag>` und
+  `<Mo|Di|…> geschlossen` / `<Mo|Di|…> zu`. Gelesen wird nur `hours`, nie
+  `note`.
+- `closedToday(p, datum)` — rechnet gegen ein übergebenes Datum, damit „Heute"
+  nach 23 Uhr seinen Vorausblick auf morgen mitgeben kann und der Prüfstand
+  nicht an sechs von sieben Tagen grün und am siebten rot ist.
+- In `todayList()` eine Sortierstufe **vor** allen anderen. Nicht
+  herausgefiltert — die Liste soll nicht still schrumpfen.
+- In `whyLine()` der Grund, wenn ein geschlossener Ort doch erscheint:
+  „— heute Ruhetag". Am Mittwochabend erreicht man Café Momus nach 30 Klicks
+  auf „Anderer Vorschlag", und dann steht der Grund dabei.
+- In der Faktenzeile und auf der Öffnungskachel ersetzt „heute zu" die
+  Öffnungsangabe. Derselbe Slot, keine neue Zeilenhöhe; der volle Wortlaut
+  bleibt im Sheet stehen.
+- 23 neue Prüfungen, davon zehn Gegenproben: ein erfundener Ruhetag versteckt
+  einen offenen Ort, und das fällt niemandem auf. Dazu ein Datenwächter —
+  wer künftig „Ruhetag" oder „geschlossen" in `hours` schreibt, muss es
+  lesbar schreiben, sonst schlägt der Prüfstand an.
+
+Nicht gebaut: der optionale Filterchip „heute geöffnet". Er berührt die
+Filterleiste, und die ist frisch umgebaut — der Gewinn rechtfertigt die
+Kollision nicht.
+
+Geprüft: 117 Prüfungen im Prüfstand, dazu Chromium auf 390×844 mit gestellter
+Uhr auf Mittwoch 12:30, Mittwoch 19:30 und Dienstag 12:30 — die
+Gegenrichtung zählt mit, S'Aligusta verschwindet dienstags und steht
+mittwochs wieder da.
 
 ---
 
