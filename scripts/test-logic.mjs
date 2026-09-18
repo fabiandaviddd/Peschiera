@@ -301,6 +301,61 @@ const css = readFileSync(join(root, 'style.css'), 'utf8');
 ok('jeder Kategorie-Akzent hat eine .acc-Regel',
    data.categories.map((c) => c.accent).filter((a) => !css.includes(`.acc-${a}`)), []);
 
+/* ------------------------------------------------------------- Koordinaten */
+/* Die Plausibilitätsregeln stehen in koordinaten.html und add-coords.mjs —
+   dort greifen sie aber nur, während der Dienst befragt wird. Die 13 Orte
+   ohne sinnvollen Einzelpunkt sollen laut docs/koordinaten-pruefliste.md von
+   Hand aus Google Maps nachgetragen werden, und für die prüft bisher nichts.
+   Deshalb hier dieselben zwei Regeln auf die fertige Datei, mit denselben
+   Konstanten. */
+group('data/places.json — Koordinaten');
+
+const BOX = { lonMin: 10.35, lonMax: 11.15, latMin: 45.05, latMax: 45.95 };
+const baseGeo = data.meta && data.meta.base_geo;
+
+function airKm(a, b) {
+  const R = 6371;
+  const p1 = a.lat * Math.PI / 180, p2 = b.lat * Math.PI / 180;
+  const dp = p2 - p1, dl = (b.lon - a.lon) * Math.PI / 180;
+  const h = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+truthy('die Basis hat eine Koordinate',
+   baseGeo && typeof baseGeo.lat === 'number' && typeof baseGeo.lon === 'number');
+
+const outOfBox = [];
+const tooFar = [];
+for (const p of data.places) {
+  const g = p.geo;
+  if (!g) continue;
+  if (g.lat < BOX.latMin || g.lat > BOX.latMax || g.lon < BOX.lonMin || g.lon > BOX.lonMax) {
+    outOfBox.push(`${p.id}: ${g.lat}, ${g.lon}`);
+  }
+  /* Die Luftlinie kann nie länger sein als der gemessene Straßenweg. Grenze
+     wie in der Prüfliste: distance_km × 1,15 + 0,5 km. */
+  if (typeof p.distance_km === 'number') {
+    const air = airKm(baseGeo, g);
+    const limit = p.distance_km * 1.15 + 0.5;
+    if (air > limit) {
+      tooFar.push(`${p.id}: Luftlinie ${air.toFixed(2)} km > Grenze ${limit.toFixed(2)} km`);
+    }
+  }
+}
+ok('jede Koordinate liegt in der Reisegegend', outOfBox, []);
+ok('keine Luftlinie länger als der Straßenweg', tooFar, []);
+
+/* Die Prüfliste nennt Zahlen im Kopf. Abgeschrieben veralten sie. */
+const listeDoc = readFileSync(join(root, 'docs', 'koordinaten-pruefliste.md'), 'utf8');
+const withGeo = data.places.filter((p) => p.geo).length;
+const head = listeDoc.match(/(\d+) Orte · (\d+) mit Koordinaten · (\d+) offen/);
+truthy('die Prüfliste nennt ihre Zahlen im Kopf', !!head);
+if (head) {
+  ok('Prüfliste: Zahl der Orte stimmt', Number(head[1]), data.places.length);
+  ok('Prüfliste: Zahl der Koordinaten stimmt', Number(head[2]), withGeo);
+  ok('Prüfliste: Zahl der offenen stimmt', Number(head[3]), data.places.length - withGeo);
+}
+
 /* Die Fassung in app.js und der Cache in sw.js müssen zusammenpassen — sonst
    läuft die App still auf altem Stand weiter. */
 group('app.js und sw.js — dieselbe Fassung');
@@ -373,6 +428,17 @@ function stats() {
   line('dog: true / false / ungeklärt', `${dog.true} / ${dog.false} / ${dog.null}`);
   line('geo gesetzt / fehlt',
        `${P.filter((p) => p.geo).length} / ${P.filter((p) => !p.geo).length}`);
+  /* Mehrere Orte auf einem Punkt heisst meist: der Dienst gab einen
+     Ortsmittelpunkt statt der Adresse. Teils harmlos (Nachbarn), teils
+     grob — aufgelistet in docs/koordinaten-pruefliste.md. */
+  const spots = new Map();
+  for (const p of P) {
+    if (!p.geo) continue;
+    const k = `${p.geo.lat},${p.geo.lon}`;
+    spots.set(k, (spots.get(k) || 0) + 1);
+  }
+  line('Punkte mit mehr als einem Ort',
+       [...spots.values()].filter((n) => n > 1).length);
   line('hours fehlt', P.filter((p) => !p.hours).length);
   line('verschiedene Tags', new Set(P.flatMap((p) => p.tags)).size);
   line('merken / offene Punkte / Faktencheck',
