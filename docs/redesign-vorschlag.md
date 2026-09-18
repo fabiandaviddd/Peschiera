@@ -809,4 +809,45 @@ Geschmacksnotiz.
 Statt der im Audit geschätzten 20 Texte auf 30 Orten sind es **27 auf 31**
 — die Schätzung war zu niedrig.
 
-### Schritt 4 — offen
+### Schritt 4 — umgesetzt in `v14`
+
+Die Voraussetzung aus der Reihenfolge unten war inzwischen erfüllt:
+`moment` ist bei allen 101 Orten gepflegt (88 mit Werten, 13 bewusst leer).
+
+**„Heute" als Tagesblatt:**
+
+- **Die Vier-Abschnitte-Leiste.** Man sieht den ganzen Tag und kann den
+  Abschnitt wechseln; bis `v13` zeigte die Ansicht nur, was die Uhr sagte.
+  Vergangene Abschnitte sind gestrichelt umrandet, aber erreichbar. Die
+  Dämpfung läuft bewusst über den Rahmen und nicht über `opacity`: mit
+  `opacity: .55` wäre der Kontrast auf **2,48:1** gefallen, an einem
+  Bedienelement.
+- **„3 / 35" statt blindem „Anderer"**, mit Knöpfen vor und zurück; am
+  Anfang des Stapels ist der Zurück-Knopf deaktiviert.
+- **„Sonst noch" mit Gesamtzahl** und Ausklappen, drei statt zwei.
+- **„Abends dann"** — ein Blick auf den nächsten Abschnitt.
+- **Der Regen-Leerzustand liefert.** Schränkt der Jum-Schalter ein, sagt
+  er das und zeigt, was ohne ihn ginge — morgens im Trockenen sind es 7
+  Orte, mit Jum keiner.
+
+**„Plan" statt „Gemerkt":**
+
+- **Die Reihenfolge war immer schon da.** `S.saved` ist ein Array und wird
+  beim Merken hinten angehängt; benutzt wurde das nie, weil die Ansicht
+  nach Entfernung sortierte. Der Teilen-Link trägt sie damit automatisch mit.
+- **Pfeile statt Ziehen.** Eine Wischgeste lässt sich von hier aus nicht
+  auf echtem iOS prüfen, und bei einer Handvoll Stationen sind zwei
+  Knöpfe ohnehin treffsicherer.
+- **Das Zeitbudget** aus `time_min` und `walk_min`, mit der Angabe, auf
+  wie viele Orte sich die Summe stützt, wo Werte fehlen.
+- **Die Wegwarnung** ab 1,2 km Luftlinie zwischen zwei Stationen. Fehlt
+  `geo` bei einer der beiden (23 von 101), bleibt die Zeile weg.
+- **Suche, Filter und Sortierung sind dort ausgeblendet** — sie würden
+  die Reihenfolge zerschießen, um die es gerade geht.
+
+**Abweichung:** die Tab-Kennung bleibt intern `gemerkt`. Daran hängen der
+Teilen-Link und der Speicher; sichtbar ist es ein Plan.
+
+Damit sind alle vier Schritte umgesetzt. Offen bleibt aus Abschnitt 3.1
+die größere Umbauung der Informationsarchitektur (ein Tab „Mehr", der Info,
+Teilen und Einstellungen aufnimmt) — sie war nie Teil der vier Schritte.

@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v13 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v14 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -35,6 +35,8 @@
     filterOpen: false,
     wet: false,             // vom Benutzer gesagt, nicht abgerufen
     pick: 0,                // welcher Vorschlag gerade dran ist
+    mid: null,              // gewaehlter Tagesabschnitt; null = aus der Uhr
+    moreOpen: false,        // "Sonst noch" ausgeklappt
     saved: [],
     seen: [],
     theme: 'auto',
@@ -388,7 +390,9 @@
   var TABS = [
     { id: 'heute', label: 'Heute', icon: ICON.sun },
     { id: 'orte', label: 'Orte', icon: ICON.list },
-    { id: 'gemerkt', label: 'Gemerkt', icon: ICON.star },
+    /* Die Kennung bleibt "gemerkt": daran haengen der Teilen-Link und der
+       Speicher. Sichtbar ist es ein Plan. */
+    { id: 'gemerkt', label: 'Plan', icon: ICON.star },
     { id: 'info', label: 'Info', icon: ICON.info }
   ];
 
@@ -419,14 +423,16 @@
       n.textContent = String(S.saved.length);
       n.hidden = S.saved.length === 0;
       /* Die Zahl allein ist ohne den Reiter darunter nicht zu deuten. */
-      n.setAttribute('aria-label', S.saved.length + ' gemerkt');
+      n.setAttribute('aria-label', S.saved.length + ' im Plan');
     }
   }
 
   function setView(v) {
     if (v === S.view) return;
     if (v === 'heute') {
-      S.pick = 0;
+      /* Zurueck auf "Heute" heisst zurueck auf jetzt: eine Abschnittswahl
+         von vorhin waere sonst eine stille Voreinstellung. */
+      S.pick = 0; S.mid = null; S.moreOpen = false;
       /* "Heute" sucht nicht. Das Feld bleibt dort sichtbar, damit man den
          Bestand ueberhaupt bemerkt — dann darf darin aber kein Text stehen,
          der gar nicht wirkt. */
@@ -730,13 +736,17 @@
 
   function render() {
     syncChips();
+    var isPlan = S.view === 'gemerkt';
     var bare = S.view === 'info' || S.view === 'heute';
-    $('filters').hidden = bare;
+    /* Der Plan ist eine Liste, die man selbst gebaut hat — Suchen, Filtern
+       und Sortieren haetten dort nichts zu suchen und wuerden die
+       Reihenfolge zerschiessen, um die es gerade geht. */
+    $('filters').hidden = bare || isPlan;
     /* Auf "Heute" bleibt das Suchfeld stehen. Ohne es ist von der Startansicht
        aus nicht zu sehen, dass hinter dem einen Vorschlag ein ganzer Bestand
        liegt — der Weg dorthin stand bisher nur unten am Ende der Seite. */
-    $('search-wrap').hidden = S.view === 'info';
-    $('meta-row').hidden = bare;
+    $('search-wrap').hidden = S.view === 'info' || isPlan;
+    $('meta-row').hidden = bare || isPlan;
     renderShareBar();
     measureBar();
 
@@ -759,8 +769,28 @@
     $('today').hidden = true;
     $('today').innerHTML = '';
 
+    /* Der Plan hat seine eigene Darstellung: Reihenfolge statt Sortierung,
+       Zeitbudget statt Trefferzahl. */
+    if (isPlan) {
+      var plan = planList();
+      if (!plan.length) {
+        $('list').hidden = true;
+        $('list').innerHTML = '';
+        $('empty').hidden = false;
+        $('empty-h').textContent = 'Noch nichts im Plan';
+        $('empty-p').textContent = 'Auf einer Zeile den Stern antippen — der Plan bleibt auch offline erhalten '
+          + 'und lässt sich in der Reihenfolge umstellen.';
+        $('empty-reset').hidden = true;
+        return;
+      }
+      $('empty').hidden = true;
+      $('list').hidden = false;
+      $('list').innerHTML = planHtml();
+      return;
+    }
+
     var items = selected();
-    var total = S.view === 'gemerkt' ? S.saved.length : D.places.length;
+    var total = D.places.length;
 
     renderCount(items.length, total);
 
@@ -768,11 +798,7 @@
       $('list').hidden = true;
       $('list').innerHTML = '';
       $('empty').hidden = false;
-      if (S.view === 'gemerkt' && !anyFilter()) {
-        $('empty-h').textContent = 'Noch nichts gemerkt';
-        $('empty-p').textContent = 'Auf einer Karte den Stern antippen — die Merkliste bleibt auch offline erhalten.';
-        $('empty-reset').hidden = true;
-      } else {
+      {
         $('empty-h').textContent = 'Nichts gefunden';
         /* "Filter zurücksetzen" räumt den Jum-Schalter absichtlich nicht mit
            ab. Wenn er der Grund ist, muss das hier stehen — sonst drückt man
@@ -1115,7 +1141,7 @@
     return out;
   }
 
-  function pickHtml(p, mins, until, ref, tomorrow) {
+  function pickHtml(p, mins, until, ref, tomorrow, atStart) {
     var on = S.saved.indexOf(p.id) >= 0;
     return '<p class="today__cat ' + accentClass(p.category) + '">' + esc(catLabel(p.category))
       + (has(p.hours) ? '<span class="today__hours">' + esc(String(p.hours).replace(/^geöffnet\s+/i, '')) + '</span>' : '')
@@ -1127,6 +1153,13 @@
       + '<button type="button" class="btn btn--primary" data-open="' + esc(p.id) + '">Ansehen</button>'
       + '<button type="button" class="btn" data-save="' + esc(p.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
       + ICON.star + (on ? 'Gemerkt' : 'Merken') + '</button>'
+      + '</div>'
+      /* Zwei Knoepfe statt eines: der Stapel hat jetzt Anfang, Ende und
+         Rueckweg. Der Zaehler steht oben im Kicker. */
+      + '<div class="today__nav">'
+      + '<button type="button" class="btn" id="today-prev" aria-label="Voriger Vorschlag"'
+      + (atStart ? ' disabled' : '') + '>'
+      + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>'
       + '<button type="button" class="btn" id="today-next">' + ICON.shuffle + 'Anderer Vorschlag</button>'
       + '</div>';
   }
@@ -1143,33 +1176,82 @@
   function setWet(v) {
     if (S.wet === v) return;
     S.wet = v;
-    S.pick = 0;
+    S.pick = 0; S.moreOpen = false;
     ssSet(SS_WET, v);
     render();
+  }
+
+  function momentIndex(id) {
+    for (var i = 0; i < MOMENTS.length; i++) if (MOMENTS[i].id === id) return i;
+    return 0;
+  }
+
+  /* Die Vier-Abschnitte-Leiste. Bis v13 zeigte "Heute" nur, was die Uhr
+     sagte — man sah weder den ganzen Tag noch konnte man vorausblaettern.
+     Vergangene Abschnitte sind gedaempft, aber erreichbar. */
+  function segbarHtml(nowId, shownId, tomorrow) {
+    var ni = momentIndex(nowId);
+    return '<div class="segbar" role="group" aria-label="Tagesabschnitt">'
+      + MOMENTS.map(function (m, i) {
+          var state = tomorrow ? 'ahead' : i < ni ? 'past' : i === ni ? 'now' : 'ahead';
+          return '<button type="button" class="seg seg--' + state + '" data-mid="' + m.id + '"'
+            + ' aria-pressed="' + (m.id === shownId ? 'true' : 'false') + '">'
+            + esc(m.label) + '</button>';
+        }).join('')
+      + '</div>';
+  }
+
+  /* Bei Regen ist "nichts da" oft die richtige Antwort — aber sie muss
+     sagen, was stattdessen geht. Die Zahlen kommen aus den Daten. */
+  function wetNoneHtml(mid) {
+    var trocken = D.places.filter(function (p) {
+      return momentsOf(p).indexOf(mid) >= 0 && indoorOf(p) === true;
+    });
+    var offen = D.places.filter(function (p) { return indoorOf(p) === null; }).length;
+    var h = '<div class="today__none"><h3>Bei Regen steht hier nichts</h3>';
+    if (S.jum && trocken.length) {
+      h += '<p>Im Trockenen wäre in diesem Abschnitt etwas dabei — aber nicht'
+        + ' mit Jum. Ohne den Schalter sind es ' + trocken.length
+        + (trocken.length === 1 ? ' Ort:' : ' Orte:') + '</p>'
+        + '<div class="today__smalls">' + trocken.slice(0, 3).map(smallHtml).join('') + '</div>';
+    } else {
+      h += '<p>Bei ' + offen + ' von ' + D.places.length + ' Orten ist nicht hinterlegt, '
+        + 'ob man dort im Trockenen sitzt. Ungeprüft wird hier nichts vorgeschlagen.</p>';
+    }
+    return h + '</div>';
   }
 
   function todayHtml() {
     var now = new Date();
     var mins = now.getHours() * 60 + now.getMinutes();
     var mn = momentNow(mins);
-    var until = mn.m.until;
     var trip = tripDay(now);
-    var ref = mn.tomorrow
+
+    /* Der gewaehlte Abschnitt schlaegt die Uhr. Ohne Wahl gilt, was die Uhr
+       sagt — und beim Wechseln zurueck auf "jetzt" verschwindet die Wahl. */
+    var chosen = S.mid && S.mid !== mn.m.id;
+    var m = chosen ? MOMENTS[momentIndex(S.mid)] : mn.m;
+    var tomorrow = !chosen && mn.tomorrow;
+    var until = m.until;
+    var ref = tomorrow
       ? new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
       : now;
 
     /* Beim Vorausschauen rechnet die Restzeit ab dem Beginn des nächsten
        Abschnitts — sonst fällt alles durch, was "jetzt" nicht mehr passt. */
-    var from = mn.tomorrow ? 0 : (mn.soon ? until - 180 : mins);
-    var list = todayList(mn.m.id, from, until, ref);
+    var from = tomorrow ? 0 : chosen ? Math.min(mins, until - 180)
+             : (mn.soon ? until - 180 : mins);
+    var list = todayList(m.id, from, until, ref);
     var pick = list.length ? list[S.pick % list.length] : null;
-    var others = list.filter(function (p) { return !pick || p.id !== pick.id; }).slice(0, 2);
+    var others = list.filter(function (p) { return !pick || p.id !== pick.id; });
+    var shown = S.moreOpen ? others : others.slice(0, 3);
 
     var head = '<p class="today__date">' + WEEKDAYS[now.getDay()] + ', ' + now.getDate() + '. '
       + MONTHS_LONG[now.getMonth()]
       + (trip ? ' · Tag ' + trip.n + ' von ' + trip.of : '') + '</p>'
-      + '<h2 class="today__now">' + (mn.tomorrow ? 'Morgen früh' : (mn.soon ? 'Gleich: ' : '') + mn.m.label)
-      + '<span class="today__clock">' + hhmm(mins) + '</span></h2>';
+      + '<h2 class="today__now">' + (tomorrow ? 'Morgen früh' : (!chosen && mn.soon ? 'Gleich: ' : '') + m.label)
+      + '<span class="today__clock">' + hhmm(mins) + '</span></h2>'
+      + segbarHtml(mn.m.id, m.id, mn.tomorrow);
 
     /* Das Wetter weiß die App nicht und holt es auch nicht — sie fragt. */
     var weather = '<div class="today__weather">'
@@ -1181,33 +1263,48 @@
     var body;
     if (pick) {
       body = '<div class="today__pick">'
-        + '<p class="today__kicker">' + (mn.tomorrow ? 'Für morgen früh' : mn.m.kicker)
-        + (S.jum ? ' · mit Jum' : '') + '</p>'
-        + pickHtml(pick, from, until, ref, mn.tomorrow)
+        + '<p class="today__kicker">' + (tomorrow ? 'Für morgen früh' : m.kicker)
+        + (S.jum ? ' · mit Jum' : '')
+        /* "Anderer" lief bis v13 blind durch die Liste: kein Zaehler, kein
+           Zurueck. Wer einmal zu weit tippte, fand den Vorschlag nicht wieder. */
+        + '<span class="today__pos">' + ((S.pick % list.length) + 1) + ' / ' + list.length + '</span>'
+        + '</p>'
+        + pickHtml(pick, from, until, ref, tomorrow, S.pick % list.length === 0)
         + '</div>'
-        + (others.length
-            ? '<p class="today__lead">Sonst noch</p><div class="today__smalls">'
-              + others.map(smallHtml).join('') + '</div>'
+        + (shown.length
+            ? '<p class="today__lead">Sonst noch'
+              + '<span class="today__n">' + others.length + '</span></p>'
+              + '<div class="today__smalls">' + shown.map(smallHtml).join('') + '</div>'
+              + (others.length > shown.length
+                  ? '<button type="button" class="today__more" id="today-more">alle '
+                    + others.length + ' zeigen</button>' : '')
             : '');
+    } else if (S.wet) {
+      body = wetNoneHtml(m.id);
     } else {
       /* Lieber zugeben, dass nichts Passendes dasteht, als etwas Schwaches
          vorschlagen. Der Weg in die Liste steht direkt darunter. */
-      var why;
-      if (S.wet) {
-        var unknown = D.places.filter(function (p) { return indoorOf(p) === null; }).length;
-        why = 'Bei ' + unknown + ' von ' + D.places.length + ' Orten ist nicht hinterlegt, '
-            + 'ob man dort im Trockenen sitzt. Ungeprüft wird hier nichts vorgeschlagen.';
-      } else {
-        why = 'Für diesen Tagesabschnitt ist nichts hinterlegt.';
-      }
-      body = '<div class="today__none"><h3>Heute steht hier nichts</h3><p>' + why
+      body = '<div class="today__none"><h3>Hier steht nichts</h3><p>'
+        + 'Für diesen Tagesabschnitt ist nichts hinterlegt.'
         + (S.jum ? ' Der Schalter „Mit Jum“ schränkt zusätzlich ein.' : '') + '</p></div>';
     }
 
-    return head + weather + body
+    return head + weather + body + aheadHtml(m.id, ref)
       + '<button type="button" class="today__all" id="today-all">'
       + 'Alle ' + D.places.length + ' Orte durchsuchen'
       + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>';
+  }
+
+  /* Ein Blick nach vorn. Wer um 15:16 auf "Heute" geht, plant oft schon das
+     Abendessen — bis v13 musste man dafuer erst den Abschnitt erraten. */
+  function aheadHtml(mid, ref) {
+    var i = momentIndex(mid);
+    if (i >= MOMENTS.length - 1) return '';
+    var nx = MOMENTS[i + 1];
+    var list = todayList(nx.id, 0, nx.until, ref);
+    if (!list.length) return '';
+    return '<p class="today__lead">' + esc(nx.label === 'Abend' ? 'Abends dann' : nx.label + ' dann')
+      + '</p><div class="today__smalls">' + smallHtml(list[0]) + '</div>';
   }
 
   /* ----------------------------------------------------------- Info-Ansicht */
@@ -1814,13 +1911,97 @@
     clearHash();
   }
 
+  /* Aus "Gemerkt" wird ein Plan. Die Reihenfolge steckt schon in S.saved —
+     das Feld ist ein Array und wird beim Merken hinten angehaengt; bis v13
+     wurde sie nur nie benutzt, weil die Ansicht nach Entfernung sortierte.
+     Der Teilen-Link traegt sie damit automatisch mit. */
+  function planList() {
+    return S.saved.map(function (id) {
+      for (var i = 0; i < D.places.length; i++) if (D.places[i].id === id) return D.places[i];
+      return null;
+    }).filter(Boolean);
+  }
+
+  function movePlan(id, delta) {
+    var i = S.saved.indexOf(id);
+    var j = i + delta;
+    if (i < 0 || j < 0 || j >= S.saved.length) return;
+    S.saved.splice(j, 0, S.saved.splice(i, 1)[0]);
+    lsSet(LS_SAVED, S.saved);
+    render();
+  }
+
+  /* Luftlinie in km. Nur fuer die Warnung zwischen zwei Stationen — wo geo
+     fehlt (23 von 101), bleibt die Zeile weg statt zu raten. */
+  function airKm(a, b) {
+    if (!a || !a.geo || !b || !b.geo) return null;
+    var R = 6371, rad = Math.PI / 180;
+    var dLat = (b.geo.lat - a.geo.lat) * rad;
+    var dLon = (b.geo.lon - a.geo.lon) * rad;
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+      + Math.cos(a.geo.lat * rad) * Math.cos(b.geo.lat * rad)
+      * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  }
+
+  var PLAN_FAR = 1.2;   // ab hier ist der Weg zwischen zwei Stationen erwaehnenswert
+
+  function planHtml() {
+    var list = planList();
+    if (!list.length) return '';
+
+    var stay = 0, walk = 0, stayN = 0, walkN = 0;
+    list.forEach(function (p) {
+      if (has(p.time_min)) { stay += p.time_min; stayN++; }
+      if (has(p.walk_min)) { walk += p.walk_min; walkN++; }
+    });
+
+    /* Die Summe sagt dazu, worauf sie sich stuetzt — sonst liest sie sich
+       als Gesamtzeit, obwohl Orte ohne Wert fehlen. */
+    var sum = '<p class="plan__sum">' + list.length + (list.length === 1 ? ' Ort' : ' Orte')
+      + (stayN ? ' · ' + esc(dur(stay)) + ' Aufenthalt'
+          + (stayN < list.length ? ' (' + stayN + ' von ' + list.length + ')' : '') : '')
+      + (walkN ? ' · ' + esc(dur(walk)) + ' Weg'
+          + (walkN < list.length ? ' (' + walkN + ' von ' + list.length + ')' : '') : '')
+      + '</p>';
+
+    var rows = list.map(function (p, i) {
+      var seen = S.seen.indexOf(p.id) >= 0;
+      var h = '<div class="planrow' + (seen ? ' planrow--seen' : '') + ' ' + accentClass(p.category) + '">'
+        + '<span class="planrow__n">' + (i + 1) + '</span>'
+        + '<button type="button" class="planrow__open" data-open="' + esc(p.id) + '">'
+        + '<span class="planrow__name">' + esc(p.name) + '</span>'
+        + '<span class="planrow__m">' + esc(catLabel(p.category))
+        + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
+        + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
+        + (seen ? ' · gesehen' : '') + '</span></button>'
+        + '<span class="planrow__move">'
+        + '<button type="button" class="pmove" data-up="' + esc(p.id) + '"'
+        + (i === 0 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach oben">'
+        + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>'
+        + '<button type="button" class="pmove" data-down="' + esc(p.id) + '"'
+        + (i === list.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach unten">'
+        + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg></button>'
+        + '</span></div>';
+
+      var d = airKm(p, list[i + 1]);
+      if (d !== null && d >= PLAN_FAR) {
+        h += '<p class="plan__far">' + ICON.warn + 'Zwischen ' + (i + 1) + ' und ' + (i + 2)
+          + ' liegen ' + esc(km(d)) + ' Luftlinie.</p>';
+      }
+      return h;
+    }).join('');
+
+    return sum + '<div class="plan">' + rows + '</div>';
+  }
+
   function renderShareBar() {
     var bar = $('sharebar');
     if (S.view !== 'gemerkt') { bar.hidden = true; return; }
     bar.hidden = false;
     var n = S.saved.length, g = S.seen.length;
     $('sharebar-t').textContent = n || g
-      ? n + ' gemerkt · ' + g + ' gesehen'
+      ? n + ' im Plan · ' + g + ' gesehen'
       : 'Noch nichts markiert';
     var btn = $('share-btn');
     btn.hidden = !(n || g);
@@ -1995,6 +2176,10 @@
     });
 
     $('list').addEventListener('click', function (e) {
+      var up = e.target.closest('[data-up]');
+      if (up) { e.preventDefault(); movePlan(up.getAttribute('data-up'), -1); return; }
+      var down = e.target.closest('[data-down]');
+      if (down) { e.preventDefault(); movePlan(down.getAttribute('data-down'), 1); return; }
       var save = e.target.closest('[data-save]');
       if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); return; }
       var seen = e.target.closest('[data-seen]');
@@ -2073,7 +2258,16 @@
 
     $('today').addEventListener('click', function (e) {
       if (e.target.closest('#today-all')) { setView('orte'); return; }
+      var seg = e.target.closest('[data-mid]');
+      if (seg) {
+        S.mid = seg.getAttribute('data-mid');
+        S.pick = 0; S.moreOpen = false;
+        render(); window.scrollTo(0, 0);
+        return;
+      }
+      if (e.target.closest('#today-more')) { S.moreOpen = true; render(); return; }
       if (e.target.closest('#today-next')) { S.pick += 1; render(); return; }
+      if (e.target.closest('#today-prev')) { S.pick = S.pick > 0 ? S.pick - 1 : 0; render(); return; }
       if (e.target.closest('#wx-dry')) { setWet(false); return; }
       if (e.target.closest('#wx-wet')) { setWet(true); return; }
       var save = e.target.closest('[data-save]');
