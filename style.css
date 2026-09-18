@@ -101,7 +101,13 @@
 /* --- Basis --------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  /* Anker- und Fokus-Sprünge nicht unter den Sticky-Header oder die
+     fixierte Tableiste laufen lassen. --bar-h setzt app.js. */
+  scroll-padding-top: calc(var(--bar-h, 8rem) + .5rem);
+  scroll-padding-bottom: 5.5rem;
+}
 
 body {
   margin: 0;
@@ -212,7 +218,12 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   -webkit-overflow-scrolling: touch;
 }
 .chiprow::-webkit-scrollbar { display: none; }
-.chiprow--wrap { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; }
+.chiprow--wrap {
+  flex-wrap: wrap; align-items: flex-start;
+  margin-inline: 0; padding-inline: 0;
+  /* Begrenzt, damit der Sticky-Header nie den halben Bildschirm frisst */
+  max-height: 7.5rem; overflow-y: auto; overscroll-behavior: contain;
+}
 
 .chip {
   flex: 0 0 auto;
@@ -276,8 +287,8 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 }
 .card__open::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-card); }
 
-.card__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .5rem; }
 .card__name { font-size: 1.06rem; letter-spacing: -.01em; }
+.card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .45rem; }
 .card__badge {
   font-family: var(--font-body); font-size: .68rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: .06em;
