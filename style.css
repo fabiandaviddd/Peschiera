@@ -364,9 +364,10 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .card__note { font-size: .86rem; color: var(--soft);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.facts { display: flex; flex-wrap: wrap; gap: .1rem .6rem; font-size: .78rem; color: var(--soft); }
+.facts { display: flex; flex-wrap: wrap; gap: .1rem .52rem; font-size: .78rem; color: var(--soft); }
 .fact { display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; }
 .fact--rating { color: var(--ink); font-weight: 500; }
+.fact__n { margin-left: .18rem; font-size: .72rem; font-weight: 400; color: var(--soft); }
 .fact--dog { color: var(--verde-ink); font-weight: 500; }
 .fact--nodog { color: var(--soft); }
 .fact svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9;

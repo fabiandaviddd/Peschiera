@@ -161,6 +161,17 @@ ok('Badge "Regentag"', pk.indoorOf({ badge: 'Regentag', tags: [] }), true);
 ok('Tag "museum" → drinnen', pk.indoorOf({ tags: ['museum'] }), true);
 ok('Tag "strand" → draußen', pk.indoorOf({ tags: ['strand'] }), false);
 ok('ohne Anhalt bleibt es offen', pk.indoorOf({ tags: ['pizza'] }), null);
+/* Die Kategorieregel steht vor den Außen-Tags: "wasser" heißt bei einem
+   Lokal „liegt am See", nicht „man sitzt im Regen". */
+ok('Restaurant mit Tag "wasser" → drinnen',
+   pk.indoorOf({ category: 'essen', tags: ['wasser', 'seeblick'] }), true);
+ok('Café mit Tag "terrasse" → drinnen',
+   pk.indoorOf({ category: 'cafe', tags: ['terrasse'] }), true);
+/* … aber ein ausdrückliches false schlägt die Regel (7 Ponti). */
+ok('Lokal mit "indoor": false bleibt draußen',
+   pk.indoorOf({ category: 'cafe', indoor: false, tags: ['aperitivo'] }), false);
+ok('Ausflug mit Tag "wasser" bleibt draußen',
+   pk.indoorOf({ category: 'ausflug', tags: ['wasser'] }), false);
 
 /* ------------------------------------------------------------------- Formate */
 group('dur / km / norm');
