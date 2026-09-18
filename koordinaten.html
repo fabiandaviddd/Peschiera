@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Koordinaten holen — Peschiera kompakt</title>
+<link rel="stylesheet" href="./style.css">
+<style>
+  .k { max-width: 34rem; margin-inline: auto; padding: 1.2rem 1rem 3rem; }
+  .k h1 { font-size: 1.45rem; margin-bottom: .4rem; }
+  .k__lead { color: var(--soft); font-size: .92rem; margin-bottom: 1.4rem; }
+  .k__box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card);
+    padding: 1rem 1.1rem; margin-bottom: .8rem; box-shadow: var(--shadow); }
+  .k__big { font-size: 2rem; font-family: var(--font-head); font-weight: 600; line-height: 1.1; }
+  .k__sub { color: var(--soft); font-size: .86rem; margin-top: .2rem; }
+  .bar2 { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; margin: .9rem 0 .5rem; }
+  .bar2 i { display: block; height: 100%; width: 0; background: var(--lake); transition: width .3s ease; }
+  .k__acts { display: grid; gap: .5rem; margin-top: .5rem; }
+  .log { font-family: ui-monospace, Menlo, monospace; font-size: .74rem; line-height: 1.5;
+    max-height: 15rem; overflow-y: auto; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: .6rem .7rem; margin-top: .8rem; }
+  .log b { color: var(--verde-ink); font-weight: 600; }
+  .log s { color: var(--brick); text-decoration: none; }
+  .k__note { font-size: .82rem; color: var(--soft); margin-top: 1.4rem; }
+  .k__step { display: flex; gap: .6rem; align-items: flex-start; margin-bottom: .7rem; font-size: .92rem; }
+  .k__step span:first-child { flex: 0 0 1.4rem; height: 1.4rem; border-radius: 50%;
+    background: var(--lake); color: var(--card); display: grid; place-items: center;
+    font-size: .78rem; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="k">
+  <h1>Koordinaten holen</h1>
+  <p class="k__lead">
+    Diese Seite fragt für jeden Ort nach, wo er auf der Landkarte liegt. Danach lädst du
+    eine Datei herunter und schickst sie mir. Ohne das gibt es keine Karte und keine Tagesrouten.
+  </p>
+
+  <div class="k__box">
+    <div class="k__step"><span>1</span><span>Auf <b>Starten</b> tippen und die Seite offen lassen.</span></div>
+    <div class="k__step"><span>2</span><span>Warten. Es dauert etwa <b id="eta">8 Minuten</b> — ein Ort pro Sekunde, das verlangt der Dienst so.</span></div>
+    <div class="k__step"><span>3</span><span>Am Ende auf <b>Datei herunterladen</b> tippen und mir die Datei schicken.</span></div>
+  </div>
+
+  <div class="k__box">
+    <div class="k__big" id="count">…</div>
+    <div class="k__sub" id="sub">wird geladen</div>
+    <div class="bar2"><i id="bar"></i></div>
+    <div class="k__acts">
+      <button type="button" class="btn btn--primary btn--wide" id="start">Starten</button>
+      <button type="button" class="btn btn--wide" id="dl" hidden>Datei herunterladen</button>
+      <button type="button" class="btn btn--wide" id="reset" hidden>Von vorn anfangen</button>
+    </div>
+    <div class="log" id="log" hidden></div>
+  </div>
+
+  <p class="k__note">
+    Es wird nichts verändert und nichts hochgeladen. Die Seite fragt nur öffentliche
+    Kartendaten ab (OpenStreetMap/Nominatim) und legt das Ergebnis in deinem Browser ab.
+    Wenn du zwischendurch abbrichst, macht sie beim nächsten Mal dort weiter, wo sie war.
+  </p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var DATA = './data/places.json';
+  var PAUSE = 1100;                 // ms — Nominatim erlaubt 1 Anfrage pro Sekunde
+  var LS = 'pk.coords';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var data = null, found = {}, running = false, stop = false;
+
+  try { found = JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { found = {}; }
+
+  function save() { try { localStorage.setItem(LS, JSON.stringify(found)); } catch (e) {} }
+
+  function todo() {
+    return data.places.filter(function (p) { return !p.geo && !found[p.id]; });
+  }
+
+  function done() {
+    return data.places.filter(function (p) { return p.geo || found[p.id]; }).length;
+  }
+
+  function paint() {
+    var n = data.places.length, d = done();
+    $('count').textContent = d + ' von ' + n;
+    $('sub').textContent = d === n ? 'Alle Orte haben Koordinaten.'
+      : (running ? 'läuft…' : 'noch ' + (n - d) + ' offen');
+    $('bar').style.width = (d / n * 100) + '%';
+    $('eta').textContent = Math.max(1, Math.round(todo().length * PAUSE / 60000)) + ' Minuten';
+    $('dl').hidden = d === 0;
+    $('reset').hidden = d === 0 || running;
+    $('start').hidden = d === n && !running;
+    /* Waehrend des Laufs ist derselbe Knopf die Notbremse — nicht sperren. */
+    $('start').textContent = running ? 'Anhalten' : (d > 0 ? 'Weitermachen' : 'Starten');
+    $('start').classList.toggle('btn--primary', !running);
+    $('start').disabled = false;
+  }
+
+  function log(msg, cls) {
+    var el = $('log');
+    el.hidden = false;
+    var line = document.createElement('div');
+    if (cls) { var t = document.createElement(cls); t.textContent = msg; line.appendChild(t); }
+    else line.textContent = msg;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  /* Von genau nach grob — die erste Anfrage, die etwas findet, gewinnt. */
+  function queries(p) {
+    var out = [], addr = (p.address || '').trim();
+    if (addr) {
+      out.push(addr + ', Italia');
+      var noNr = addr.replace(/\s+\d+[\/\w]*(?=,|$)/, '');
+      if (noNr !== addr) out.push(noNr + ', Italia');
+    }
+    if (p.name) {
+      var parts = addr.split(',');
+      var town = parts.length ? parts[parts.length - 1].trim() : '';
+      out.push(town ? p.name + ', ' + town + ', Italia' : p.name + ', Italia');
+    }
+    var seen = {}, uniq = [];
+    out.forEach(function (q) { if (q && !seen[q]) { seen[q] = 1; uniq.push(q); } });
+    return uniq;
+  }
+
+  function ask(q) {
+    var url = 'https://nominatim.openstreetmap.org/search'
+      + '?format=jsonv2&limit=1&countrycodes=it&accept-language=de&q=' + encodeURIComponent(q);
+    return fetch(url, { headers: { 'Accept': 'application/json' } }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (hits) {
+      if (!hits || !hits.length) return null;
+      return { lat: Number(Number(hits[0].lat).toFixed(6)),
+               lon: Number(Number(hits[0].lon).toFixed(6)) };
+    });
+  }
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function run() {
+    var list = todo();
+    if (!list.length) { running = false; paint(); return Promise.resolve(); }
+
+    running = true; stop = false; paint();
+
+    var i = 0;
+    function next() {
+      if (stop || i >= list.length) { running = false; paint();
+        log(stop ? 'angehalten' : 'fertig — jetzt die Datei herunterladen', stop ? null : 'b');
+        return Promise.resolve(); }
+
+      var p = list[i++];
+      var qs = queries(p), qi = 0;
+
+      function tryOne() {
+        if (qi >= qs.length) {
+          log('✗ ' + p.name + ' — nichts gefunden', 's');
+          return wait(PAUSE).then(next);
+        }
+        var q = qs[qi++];
+        return ask(q).then(function (hit) {
+          if (hit) {
+            found[p.id] = hit; save(); paint();
+            log('✓ ' + p.name);
+            return wait(PAUSE).then(next);
+          }
+          return wait(PAUSE).then(tryOne);
+        }).catch(function (err) {
+          log('… ' + p.name + ' — ' + err.message + ', neuer Versuch');
+          return wait(3000).then(tryOne);
+        });
+      }
+      return tryOne();
+    }
+    return next();
+  }
+
+  function download() {
+    var out = JSON.parse(JSON.stringify(data));
+    out.places.forEach(function (p) { if (!p.geo && found[p.id]) p.geo = found[p.id]; });
+    var missing = out.places.filter(function (p) { return !p.geo; }).length;
+    var blob = new Blob([JSON.stringify(out, null, 2) + '\n'], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'places.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    log('Datei gespeichert' + (missing ? ' — ' + missing + ' Orte ohne Koordinaten' : ''), 'b');
+  }
+
+  $('start').addEventListener('click', function () {
+    if (running) { stop = true; return; }
+    run();
+  });
+  $('dl').addEventListener('click', download);
+  $('reset').addEventListener('click', function () {
+    if (!window.confirm('Alle bisher geholten Koordinaten verwerfen?')) return;
+    found = {}; save(); $('log').innerHTML = ''; $('log').hidden = true; paint();
+  });
+
+  fetch(DATA, { cache: 'no-cache' }).then(function (r) { return r.json(); })
+    .then(function (d) { data = d; paint(); })
+    .catch(function () {
+      $('count').textContent = 'Fehler';
+      $('sub').textContent = 'data/places.json nicht gefunden — läuft diese Seite im Projektordner?';
+      $('start').hidden = true;
+    });
+})();
+</script>
+</body>
+</html>

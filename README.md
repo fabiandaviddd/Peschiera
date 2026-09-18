@@ -201,8 +201,15 @@ Vorgesehen ist ein Tab „Karte" mit Leaflet und OpenStreetMap-Tiles, Marker in
 den Kategoriefarben, Hundefilter live auf den Markern und Marker-Tap öffnet das
 bestehende Sheet. Dafür fehlen noch zwei Dinge:
 
-**1. Koordinaten.** In `places.json` ist `geo` überall `null`. Das Skript trägt
-sie einmalig nach — zur Laufzeit wird nie geocodiert:
+**1. Koordinaten.** In `places.json` ist `geo` überall `null`. Zur Laufzeit wird
+nie geocodiert — die Werte werden einmalig nachgetragen. Zwei Wege:
+
+**Ohne Terminal:** `koordinaten.html` im Browser öffnen, auf *Starten* tippen,
+warten, *Datei herunterladen* — die geladene `places.json` ersetzt die alte.
+Die Seite hält das Limit von einer Anfrage pro Sekunde ein, speichert laufend
+mit und macht nach einem Abbruch dort weiter, wo sie war.
+
+**Mit Terminal:** dasselbe als Skript.
 
 ```bash
 node scripts/add-coords.mjs --dry     # zeigt nur, was passieren würde
@@ -243,6 +250,7 @@ python3 scripts/make-icons.py
 ```
 index.html              Shell
 selbsttest.html         Diagnoseseite für echte Geräte (nicht Teil der App)
+koordinaten.html        Einmalige Koordinatensuche im Browser (nicht Teil der App)
 style.css               Tokens, Light und Dark, Layout
 app.js                  Laden, Zustand, Filter, Sortierung, Sheet, Merkliste
 sw.js                   Service Worker: App-Shell, places.json, Google Fonts
