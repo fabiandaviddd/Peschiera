@@ -749,4 +749,64 @@ Abweichungen vom Vorschlag oben, bewusst:
   Die Stufen sind eine Logikänderung; hier ging es um den Ort der Filter,
   nicht um ihre Semantik. Der Hinweis auf die 53 Orte ist schon da.
 
-### Schritte 3 und 4 — offen
+### Schritt 3 — teilweise umgesetzt in `v11`
+
+Umgesetzt ist alles außer der Badge-Umstellung; die wartet auf die
+Einteilung der 43 Texte.
+
+- **Drei Faktenkacheln** oben im Sheet: Weg, Aufenthalt, Öffnung. Sie
+  ersetzen die Definitionsliste mit ihrer 6,2rem breiten Label-Spalte, die
+  das Gewicht auf das Label statt auf den Wert legte.
+- **Die Öffnungs-Kachel ist bewusst streng.** `hoursWindow()` liest zur Not
+  auch ein Zeitfenster und nimmt davon das erste — als Kachel stünde dann
+  „bis 14:00" über einem Restaurant, das abends bis 22 Uhr offen hat. Die
+  Kachel zeigt deshalb nur ein ausgeschriebenes „bis" oder „ab" (22 der 54
+  Angaben); alles andere steht im vollen Wortlaut darunter. Die Zeile
+  darunter entfällt, wenn sie nichts sagt, was die Kachel nicht schon zeigt.
+- **Die Hundzeile** mit drei Zuständen und eigener Fläche. „Nicht geklärt"
+  trägt Ziegel, dieselbe Achtungsfarbe wie „Zeiten ungeprüft", und eine
+  gestrichelte Kante.
+- **Ein Primär plus Icon-Reihe** statt vierer gleich breiter Pillen.
+- **Tippbare Tags** unter „Mehr dieser Art". Sie ersetzen die bisherige
+  Auswahl, statt sie zu erweitern, und räumen den Suchbegriff mit ab —
+  sonst stünde über dem Ergebnis „1 von 101", weil die alte Suche noch
+  mitfiltert, und niemand sähe warum.
+- **`history.pushState`**: die Systemzurück-Geste schließt das Sheet,
+  statt die App zu verlassen. `closeSheet(fromPop)` prüft auf `=== true`,
+  weil `onTap` sein Event als erstes Argument durchreicht — als truthy
+  wäre der Verlaufseintrag stehengeblieben und die Geste tot.
+
+**Die Badges** sind seit `v12` mit umgestellt. Die Einteilung aus
+Abschnitt 3.4 war an drei Stellen zu grob und wurde vor der Umsetzung
+korrigiert:
+
+- **Sieben Badges verdoppelten einen Tag**, der bei allen betroffenen Orten
+  ohnehin gesetzt war (`aussicht`, `foto`, `schatten`, `wein`, `livemusik`,
+  `cocktails`, `regen`) — geprüft, ausnahmslos. Ersatzlos entfernt.
+- **Drei der elf Hund-Badges tragen Information, die `dog` nicht hat:** in
+  Sirmione ist nur die Burg tabu (`dog: true`), auf der Isola gilt
+  Leinenpflicht, auf dem Linienschiff fährt er gratis. Sie bleiben in den
+  Daten und stehen als Zusatz in der Hundzeile des Sheets — in der Liste
+  wären sie neben „Jum ok" nur Lärm. Die übrigen acht sind entfernt.
+- **Fünf weitere waren gar keine Badges:** „Montags", „Auch sonntags" und
+  „Immer offen" standen bereits wortgleich in `hours`, „Ganzer Tag" ist
+  über `time_min: 270` ohnehin abgedeckt, und „Schiff hin, Bus zurück"
+  gehört in `connection`, wo es jetzt steht.
+
+Zwei Orte hätten durch das Löschen ihre Tageszeit verloren, weil
+`BADGE_MOMENT` sie über den Badge herleitete (7 Ponti über „Livemusik",
+Lido 3.9 über „Cocktails", beide → Abend). Sie haben jetzt ein explizites
+`moment` — die ersten beiden von 101.
+
+**Abweichung vom Vorschlag:** Abschnitt 3.4 sagte „in der Liste trägt der
+Badge nur noch sein Zeichen". Der Text bleibt stehen. Das Problem war nie
+seine Länge, sondern dass 43 Texte identisch aussahen; nach dem Aufräumen
+tragen nur noch 31 Orte einen Badge, und „Rohfisch" oder „Fine Dining"
+sagen mehr als jedes Zeichen für sich. Das Zeichen sagt jetzt die Klasse
+dazu — ein Termin, der heute läuft, sieht nicht mehr aus wie eine
+Geschmacksnotiz.
+
+Statt der im Audit geschätzten 20 Texte auf 30 Orten sind es **27 auf 31**
+— die Schätzung war zu niedrig.
+
+### Schritt 4 — offen
