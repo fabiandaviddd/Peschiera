@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v11 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v12 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -124,6 +124,51 @@
       .replace(/ß/g, 'ss');
   }
 
+  /* Der Badge-Kanon. Bis v11 sahen 43 Freitexte identisch aus und mischten
+     sechs Bedeutungsklassen: ein Termin, der heute laeuft, trug dieselbe
+     Auszeichnung wie eine Geschmacksnotiz. Nach dem Aufraeumen der Daten
+     sind es 27 Texte auf 31 Orten, verteilt auf fuenf Klassen.
+
+     Die Klasse steckt nicht im Text, sondern hier — Datumsmuster und zwei
+     Namenslisten reichen, der Rest ist Kuratierung. */
+  var BADGE_UNVERIFIED = ['Zeiten prüfen', 'Erst anrufen'];
+  var BADGE_LIMIT      = ['Ohne Auto nicht machbar', 'Buchen', 'Ohne Termin'];
+  var BADGE_DOG        = ['Burg ohne Hund', 'Hund an der Leine ok', 'Hund gratis'];
+  /* Tag.Monat — deckt "18.–20.09.", "26./27.09." und "Di 22.09." gleichermassen,
+     ohne auf die Trennzeichen dazwischen angewiesen zu sein. */
+  var BADGE_DATE       = /\d{1,2}\.\d{2}\./;
+
+  var BADGE_MARK = {
+    termin: 'dot', unverified: 'warn', moment: 'clock',
+    limit: 'limit', curated: 'diamond'
+  };
+
+  /* Gibt die Klasse zurueck, oder null wenn der Ort keinen Badge hat.
+     "dog" erscheint nicht in der Zeile — die Hundregel hat dort schon ihren
+     Platz, und der Zusatz ("nur die Burg", "an der Leine") steht im Sheet,
+     wo er hingehoert. */
+  function badgeKind(p) {
+    if (!has(p.badge)) return null;
+    var b = String(p.badge);
+    if (BADGE_DOG.indexOf(b) >= 0) return 'dog';
+    if (BADGE_DATE.test(b)) return 'termin';
+    if (BADGE_UNVERIFIED.indexOf(b) >= 0) return 'unverified';
+    if (BADGE_LIMIT.indexOf(b) >= 0) return 'limit';
+    if (BADGE_MOMENT[b]) return 'moment';
+    return 'curated';
+  }
+
+  /* Der Text bleibt stehen. Das Problem war nie seine Laenge — 43 Texte, die
+     alle gleich aussahen, waren das Problem. Nach dem Aufraeumen tragen nur
+     noch 31 Orte einen Badge, und "Rohfisch" oder "Fine Dining" sagen mehr
+     als jedes Zeichen allein. Das Zeichen sagt jetzt die Klasse dazu. */
+  function badgeHtml(p) {
+    var k = badgeKind(p);
+    if (!k || k === 'dog') return '';
+    return '<span class="card__badge card__badge--' + k + '">'
+      + ICON[BADGE_MARK[k]] + esc(p.badge) + '</span>';
+  }
+
   function accentClass(catId) {
     var c = catById[catId];
     return 'acc-' + (c && c.accent ? c.accent : 'lake');
@@ -163,7 +208,13 @@
     tags: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 11.2V4.8a1.2 1.2 0 0 1 1.2-1.2h6.4l8.4 8.4a1.4 1.4 0 0 1 0 2l-5.6 5.6a1.4 1.4 0 0 1-2 0z"/><path d="M7.6 7.6h.01"/></svg>',
     /* Schieberegler fuer den Filterknopf, Pfeilpaar fuer die Sortierung. */
     filter: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
-    sort: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>'
+    sort: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>',
+    /* Die vier Marken des Badge-Kanons. Termin und Kuratiert sind gefuellt,
+       weil sie etwas behaupten; Ungeprueft und Einschraenkung sind offen. */
+    dot:     '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/></svg>',
+    diamond: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l8 8-8 8-8-8z" fill="currentColor" stroke="none"/></svg>',
+    warn:    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5l8.5 15h-17z"/><path d="M12 10v4M12 17h.01"/></svg>',
+    limit:   '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M6.4 6.4l11.2 11.2"/></svg>'
   };
 
   /* ----------------------------------------------------------------- Laden */
@@ -820,7 +871,7 @@
       + '</div>'
       + '<p class="card__meta">'
       + '<span class="card__cat">' + esc(catLabel(p.category)) + '</span>'
-      + (has(p.badge) ? '<span class="card__badge">' + esc(p.badge) + '</span>' : '')
+      + badgeHtml(p)
       + (wasSeen ? '<span class="card__seen">' + ICON.check + 'Gesehen</span>' : '')
       + '</p>'
       + (has(p.note) ? '<p class="card__note">' + esc(p.note) + '</p>' : '')
@@ -1481,8 +1532,15 @@
     var state = p.dog === true ? 'yes' : p.dog === false ? 'no' : 'unknown';
     var text = { yes: 'Jum darf mit', no: 'Ohne Jum',
                  unknown: 'Nicht geklärt — vorher fragen' }[state];
+    /* Drei Orte tragen eine Einschraenkung, die dog nicht ausdrueckt: in
+       Sirmione ist nur die Burg tabu, auf der Isola gilt Leinenpflicht, auf
+       dem Linienschiff faehrt er gratis. Der Badge bleibt dafuer in den
+       Daten und steht hier — in der Zeile waere er neben "Jum ok" nur Laerm. */
+    var zusatz = badgeKind(p) === 'dog' ? p.badge : null;
     return '<p class="dogrow dogrow--' + state + '">' + ICON.dog
-      + '<span>' + esc(text) + '</span></p>';
+      + '<span>' + esc(text)
+      + (zusatz ? '<span class="dogrow__x">' + esc(zusatz) + '</span>' : '')
+      + '</span></p>';
   }
 
   function sheetHtml(p) {
@@ -1495,8 +1553,9 @@
     if (has(p.bike_min)) dist.push(p.bike_min + ' Min mit dem Rad');
     if (has(p.distance_km)) dist.push(km(p.distance_km));
 
+    var bk = badgeKind(p);
     var h = '<p class="sheet__cat">' + esc(catLabel(p.category))
-      + (has(p.badge) ? ' · ' + esc(p.badge) : '') + '</p>'
+      + (bk && bk !== 'dog' ? ' · ' + esc(p.badge) : '') + '</p>'
       + '<h2 class="sheet__name" id="sheet-name">' + esc(p.name) + '</h2>'
       + (has(p.rating)
           ? '<p class="sheet__rate">' + ICON.rating + nf1.format(p.rating)

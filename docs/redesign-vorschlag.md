@@ -776,12 +776,37 @@ Einteilung der 43 Texte.
   weil `onTap` sein Event als erstes Argument durchreicht — als truthy
   wäre der Verlaufseintrag stehengeblieben und die Geste tot.
 
-**Offen:** die Zuordnungstabelle für die Badges. Beim Aufstellen hat sich
-gezeigt, dass die Einteilung aus Abschnitt 3.4 an drei Stellen zu grob war:
-sieben Badges verdoppeln einen Tag, der ohnehin gesetzt ist; drei der elf
-Hund-Badges tragen Information, die `dog` nicht hat („Burg ohne Hund" bei
-`dog: true`, Leinenpflicht, Hund gratis); und fünf weitere sind gar keine
-Badges, sondern Öffnungs-, Anfahrts- oder Dauerangaben. Nach Bereinigung
-blieben 20 Texte auf 30 Orten statt 43 auf 54.
+**Die Badges** sind seit `v12` mit umgestellt. Die Einteilung aus
+Abschnitt 3.4 war an drei Stellen zu grob und wurde vor der Umsetzung
+korrigiert:
+
+- **Sieben Badges verdoppelten einen Tag**, der bei allen betroffenen Orten
+  ohnehin gesetzt war (`aussicht`, `foto`, `schatten`, `wein`, `livemusik`,
+  `cocktails`, `regen`) — geprüft, ausnahmslos. Ersatzlos entfernt.
+- **Drei der elf Hund-Badges tragen Information, die `dog` nicht hat:** in
+  Sirmione ist nur die Burg tabu (`dog: true`), auf der Isola gilt
+  Leinenpflicht, auf dem Linienschiff fährt er gratis. Sie bleiben in den
+  Daten und stehen als Zusatz in der Hundzeile des Sheets — in der Liste
+  wären sie neben „Jum ok" nur Lärm. Die übrigen acht sind entfernt.
+- **Fünf weitere waren gar keine Badges:** „Montags", „Auch sonntags" und
+  „Immer offen" standen bereits wortgleich in `hours`, „Ganzer Tag" ist
+  über `time_min: 270` ohnehin abgedeckt, und „Schiff hin, Bus zurück"
+  gehört in `connection`, wo es jetzt steht.
+
+Zwei Orte hätten durch das Löschen ihre Tageszeit verloren, weil
+`BADGE_MOMENT` sie über den Badge herleitete (7 Ponti über „Livemusik",
+Lido 3.9 über „Cocktails", beide → Abend). Sie haben jetzt ein explizites
+`moment` — die ersten beiden von 101.
+
+**Abweichung vom Vorschlag:** Abschnitt 3.4 sagte „in der Liste trägt der
+Badge nur noch sein Zeichen". Der Text bleibt stehen. Das Problem war nie
+seine Länge, sondern dass 43 Texte identisch aussahen; nach dem Aufräumen
+tragen nur noch 31 Orte einen Badge, und „Rohfisch" oder „Fine Dining"
+sagen mehr als jedes Zeichen für sich. Das Zeichen sagt jetzt die Klasse
+dazu — ein Termin, der heute läuft, sieht nicht mehr aus wie eine
+Geschmacksnotiz.
+
+Statt der im Audit geschätzten 20 Texte auf 30 Orten sind es **27 auf 31**
+— die Schätzung war zu niedrig.
 
 ### Schritt 4 — offen

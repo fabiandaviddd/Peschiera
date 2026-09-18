@@ -423,13 +423,30 @@ body.is-compact .bar__top {
 /* Kategorie und Badge standen bis v7 beide in Versalien, .72rem gegen
    .68rem — typografisch fast gleich, semantisch das Gegenteil (Taxonomie
    gegen Kuratierung). Beide gemischt geschrieben, der Name bleibt die
-   einzige Spitze der Zeile. */
+   einzige Spitze der Zeile.
+
+   Seit v12 traegt der Badge ausserdem seine Klasse: bis dahin sahen ein
+   Termin, der heute laeuft, eine Warnung und eine Geschmacksnotiz
+   identisch aus. Vier Marken, jede mit eigener Farbe. */
 .card__badge {
+  display: inline-flex; align-items: center; gap: .22rem;
   font-family: var(--font-body); font-size: var(--t-micro); font-weight: 700;
   color: var(--accent-ink, var(--soft));
   border: 1px solid currentColor; border-radius: 5px;
-  padding: .04rem .36rem;
+  padding: .04rem .36rem .04rem .3rem;
 }
+.card__badge svg { width: 11px; height: 11px; flex: 0 0 auto;
+  fill: none; stroke: currentColor; stroke-width: 2.2;
+  stroke-linecap: round; stroke-linejoin: round; }
+
+/* Termin und Kuratiert behaupten etwas, also sind ihre Marken gefuellt.
+   Ungeprueft und Einschraenkung schraenken ein, also sind sie offen. */
+.card__badge--termin { color: var(--brick-ink); }
+.card__badge--unverified { color: var(--brick-ink); border-style: dashed; }
+/* Tageszeit ist Zusammenhang, keine Empfehlung — sie tritt zurueck. */
+.card__badge--moment { color: var(--soft); border-color: var(--line); }
+.card__badge--limit { color: var(--soft); border-style: dashed; }
+/* Kuratiert behaelt die Kategoriefarbe: das ist die Empfehlung des Hauses. */
 .card__cat { font-size: var(--t-micro); font-weight: 700;
   color: var(--accent-ink, var(--soft)); }
 
@@ -653,6 +670,8 @@ body.is-compact .bar__top {
 }
 .dogrow svg { width: 17px; height: 17px; flex: 0 0 auto; fill: none; stroke: currentColor;
   stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+/* Der Zusatz aus dem Badge: "nur die Burg", "an der Leine", "gratis". */
+.dogrow__x { display: block; font-size: var(--t-meta); font-weight: 400; color: var(--soft); }
 .dogrow--yes { color: var(--verde-ink); border-color: currentColor; }
 .dogrow--no { color: var(--soft); background: var(--wash); }
 .dogrow--no span { text-decoration: line-through; }

@@ -78,7 +78,8 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
 |---|---|
 | `id` | eindeutig, wird für die Merkliste gespeichert — nicht nachträglich ändern |
 | `category` | eine der `id`s aus `categories` am Dateianfang |
-| `badge` | optionale Kuratierungsnotiz („Der Abend", „Für Jum", „Regentag") |
+| `badge` | optionale Notiz, eine pro Ort. Die Klasse steckt nicht im Text, sondern in `badgeKind()` in `app.js`, und sie bestimmt Marke und Farbe in der Liste: **Termin** (Datumsmuster `Tag.Monat.`, gefüllter Punkt, Ziegel), **Ungeprüft** („Zeiten prüfen", „Erst anrufen", Warndreieck, gestrichelt), **Tageszeit** (alles aus `BADGE_MOMENT`, Uhr, grau — Zusammenhang, keine Empfehlung), **Einschränkung** („Ohne Auto nicht machbar", „Buchen", „Ohne Termin", durchgestrichener Kreis), **Kuratiert** (alles übrige, Raute, Kategoriefarbe). Dazu die drei **Hundregeln** („Burg ohne Hund", „Hund an der Leine ok", „Hund gratis"): sie erscheinen nicht in der Liste, sondern als Zusatz in der Hundzeile des Sheets. Stand 18.09.2026 sind es 27 Texte auf 31 Orten. |
+| | **Was kein Badge sein sollte:** was schon als Tag gesetzt ist (`aussicht`, `foto`, `schatten`, `wein`, `livemusik`, `cocktails`, `regen`), was `dog` schon sagt, was in `hours` gehört („Montags", „Immer offen"), was in `connection` gehört, und was `time_min` schon trägt. 23 solcher Badges sind am 18.09. entfernt worden. |
 | `dog` | `true` = erlaubt, `false` = verboten, `null` = ungeklärt. Nur `true` erscheint im Hundefilter. |
 | `walk_min` / `bike_min` / `distance_km` | ab dem Zeltplatz. `null`, wenn nicht sinnvoll messbar. |
 | `time_min` | empfohlene Aufenthaltsdauer in Minuten, **ohne** An- und Abreise. Basis für den Filter „Unter 1 h" und für die Frage in „Heute", ob sich etwas vor dem Abend noch ausgeht. |
@@ -96,7 +97,7 @@ Platzhaltern gefüllt, `null` wird nie als 0 einsortiert.
 
 Steht `moment` im JSON, gilt es. Sonst wird in dieser Reihenfolge hergeleitet:
 
-1. `badge` — „Der Abend", „Früh morgens", „Nur mittags", „Sonnenuntergang",
+1. `badge`, sofern er in `BADGE_MOMENT` steht — „Der Abend", „Früh morgens", „Nur mittags", „Sonnenuntergang",
    „Livemusik" und Verwandte sind eindeutig.
 2. `hours`, soweit lesbar: Schluss ab 21:00 heißt Abend, Öffnung bis 8:30
    heißt Morgen, Öffnung ab 17:00 heißt ebenfalls Abend, ein Fenster über
