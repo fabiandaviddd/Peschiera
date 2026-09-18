@@ -1,6 +1,6 @@
 # Koordinaten — Stand und Prüfregeln
 
-101 Orte · 78 mit Koordinaten · 23 offen
+101 Orte · 72 mit Koordinaten · 29 offen
 
 ## Wie geprüft wird
 
@@ -36,7 +36,15 @@ denselben Konstanten auf `places.json` selbst:
 
 - jede Koordinate liegt in der Reisegegend (`viewbox` von oben),
 - keine Luftlinie ab dem Zeltplatz ist länger als `distance_km × 1,15 + 0,5`,
+- **kein Punkt trägt drei oder mehr Orte**,
+- **Orte auf demselben Punkt nennen dieselbe Straße** (Hausnummer und Ortsteil
+  abgeschnitten, damit *Via Venezia 86* und *Via Venezia 72* zusammenfallen,
+  *Strada Bergamini* und *Strada Santa Cristina* aber nicht),
 - die drei Zahlen in der Kopfzeile dieser Datei stimmen mit den Daten überein.
+
+Die beiden Punkt-Regeln sind aus den drei falschen Gruppen unten abgeleitet.
+Die zwei Regeln davor hätten sie **nicht** gefangen: „Peschiera del Garda" als
+Adresse bestätigt den Ortspunkt, und die Luftlinie bleibt dabei klein.
 
 Ein Zahlendreher beim Abtippen fällt damit auf, bevor er auf der Karte landet.
 
@@ -54,6 +62,34 @@ Ein Zahlendreher beim Abtippen fällt damit auf, bevor er auf der Karte landet.
 - **Parco Termale Villa dei Cedri** (`villa-dei-cedri`) — Piazza di Sopra 4, Colà di Lazise
 - **Riserva Rocca e Sasso di Manerba** (`rocca-manerba`) — Via della Rocca 16, Manerba del Garda
 - **Pescheria Cavallaro** (`pescheria-cavallaro`) — Località Stretta Castello 19, Desenzano del Garda
+
+### Geleert, weil der Punkt ein Ortsmittelpunkt war (6)
+
+Diese Orte trugen eine Koordinate, die der Dienst für eine ganze Gemeinde
+geliefert hatte. Auf `null` gesetzt — eine falsche Nadel schickt jemanden hin,
+eine fehlende nicht.
+
+Vier davon brauchen **zuerst eine genauere Adresse**, sonst liefert der nächste
+Lauf denselben Ortspunkt und beide Regeln nicken ihn durch:
+
+- **Festung Peschiera** (`fortezza`) — Adresse ist nur „Peschiera del Garda"; die
+  Festung liegt bei 10,69 Ost, der geliefert Punkt bei 10,68
+- **Bahnhof Peschiera del Garda** (`bahnhof`) — dito, braucht die Via Venezia
+- **Imbarcadero Peschiera** (`imbarcadero`) — dito, braucht das Lungolago
+- **Ammazza Caffè** (`ammazza-verona`) — Adresse ist nur „Verona", das Café bekam
+  den Stadtpunkt. Zum Vergleich: *BASƎ* hat mit *Vicolo San Silvestro 29* eine
+  eigene Koordinate
+
+Zwei haben eine brauchbare Adresse und sollten beim nächsten Lauf durchgehen:
+
+- **Trattoria al Combattente** (`combattente`) — Strada Bergamini 60
+- **Lago del Frassino** (`lago-frassino`) — Strada Santa Cristina
+
+Beide trugen denselben Punkt; welcher von beiden ihn zu Recht trug, ließ sich
+nicht entscheiden, also sind beide leer.
+
+Nicht geleert wurde **Verona** (`verona`): für einen Städteausflug ist der
+Stadtpunkt die richtige Nadel. Er teilte ihn nur mit dem Café.
 
 ### Ohne sinnvollen Einzelpunkt (13)
 
@@ -73,20 +109,19 @@ Wege, Radrunden, Bootstouren und Termine. Bleiben leer; die Karte muss das ausha
 - Radweg Peschiera – Lazise – Bardolino – Garda (`ciclabile-ostufer`)
 - Rievocazione Storica Peschiera (`rievocazione`)
 
-## Mehrere Orte auf demselben Punkt (11)
+## Mehrere Orte auf demselben Punkt (8)
 
-Der Dienst hat einen Ortsmittelpunkt statt der Adresse geliefert. Teils harmlos,
-weil die Orte tatsächlich nebeneinander liegen, teils grob. Auf der Karte
-überlappen die Marker.
+Die verbleibenden acht sind harmlos: alle nennen dieselbe Straße oder denselben
+Flurnamen, die Orte liegen also tatsächlich nebeneinander. Auf der Karte
+überlappen die Marker, sie zeigen aber nicht woandershin.
 
-- Trattoria al Combattente  +  Lago del Frassino
-- Osteria sugli Scavi  +  Dom San Martino
-- Pavillon  +  Parco Catullo
-- Ammazza Caffè  +  Verona
-- Festung Peschiera  +  Bahnhof Peschiera del Garda  +  Imbarcadero Peschiera
-- Porta Brescia  +  Velolake Bike Rental
-- Bastione San Marco  +  Museo della Pesca
-- Punta San Vigilio  +  Taverna San Vigilio
-- Braccobaldo Beach  +  Lapescheria
-- Supermercato Orvea  +  Penny Market
-- Lido 3.9 Lounge Bar  +  Wochenmarkt Desenzano (Dienstag)
+- Osteria sugli Scavi  +  Dom San Martino — *Piazza Ferdinando di Savoia*
+- Pavillon  +  Parco Catullo — *Parco Catullo*
+- Porta Brescia  +  Velolake Bike Rental — *Porta Brescia*
+- Bastione San Marco  +  Museo della Pesca — *Bastione San Marco*
+- Punta San Vigilio  +  Taverna San Vigilio — *Punta San Vigilio*
+- Braccobaldo Beach  +  Lapescheria — *Località Fornaci*
+- Supermercato Orvea  +  Penny Market — *Via Venezia*
+- Lido 3.9 Lounge Bar  +  Wochenmarkt Desenzano — *Lungolago Cesare Battisti*
+
+Die drei groben Gruppen sind oben geleert.

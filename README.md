@@ -324,8 +324,10 @@ Vorgesehen ist ein Tab „Karte" mit Leaflet und OpenStreetMap-Tiles, Marker in
 den Kategoriefarben, Hundefilter live auf den Markern und Marker-Tap öffnet das
 bestehende Sheet. Dafür fehlen noch zwei Dinge:
 
-**1. Koordinaten.** Stand 18.09.2026 tragen 78 der 101 Orte ein `geo`, bei 23
-steht noch `null`. Zur Laufzeit wird nie geocodiert — die Werte werden
+**1. Koordinaten.** Stand 18.09.2026 tragen 72 der 101 Orte ein `geo`, bei 29
+steht noch `null` — sechs davon wurden geleert, weil der Dienst dort einen
+Ortsmittelpunkt statt der Adresse geliefert hatte (siehe
+`docs/koordinaten-pruefliste.md`). Zur Laufzeit wird nie geocodiert — die Werte werden
 einmalig nachgetragen. Zwei Wege:
 
 **Ohne Terminal:** `koordinaten.html` im Browser öffnen, auf *Starten* tippen,
@@ -343,7 +345,7 @@ node scripts/add-coords.mjs           # schreibt geo in places.json
 Es hält Nominatims Limit von einer Anfrage pro Sekunde ein, schickt einen
 eigenen User-Agent, probiert pro Ort mehrere Schreibweisen (Adresse → Adresse
 ohne Hausnummer → Name plus Ort) und überspringt alles, wo `geo` schon steht.
-Läuft also beliebig oft. Für die verbleibenden 23 Orte ist es eine halbe
+Läuft also beliebig oft. Für die verbleibenden 29 Orte ist es eine halbe
 Minute. Was es nicht findet, listet es am Ende auf — das von Hand aus Google
 Maps nachtragen.
 

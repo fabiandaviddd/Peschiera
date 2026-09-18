@@ -148,10 +148,7 @@
         "seefisch",
         "terrasse"
       ],
-      "geo": {
-        "lat": 45.449042,
-        "lon": 10.669794
-      },
+      "geo": null,
       "time_min": 120,
       "moment": [
         "abend"
@@ -585,10 +582,7 @@
         "specialty coffee",
         "verona"
       ],
-      "geo": {
-        "lat": 45.442498,
-        "lon": 10.985738
-      },
+      "geo": null,
       "time_min": 45,
       "moment": [
         "frueh",
@@ -615,10 +609,7 @@
         "festung",
         "foto"
       ],
-      "geo": {
-        "lat": 45.439158,
-        "lon": 10.680395
-      },
+      "geo": null,
       "time_min": 90,
       "moment": [
         "frueh",
@@ -885,10 +876,7 @@
         "rad",
         "vögel"
       ],
-      "geo": {
-        "lat": 45.449042,
-        "lon": 10.669794
-      },
+      "geo": null,
       "time_min": 75,
       "moment": [
         "frueh",
@@ -1568,10 +1556,7 @@
         "zug",
         "verkehr"
       ],
-      "geo": {
-        "lat": 45.439158,
-        "lon": 10.680395
-      },
+      "geo": null,
       "time_min": 10,
       "moment": [],
       "time_label": "10 Min Vorlauf"
@@ -1594,10 +1579,7 @@
         "schiff",
         "verkehr"
       ],
-      "geo": {
-        "lat": 45.439158,
-        "lon": 10.680395
-      },
+      "geo": null,
       "time_min": 10,
       "moment": [],
       "time_label": "10 Min Vorlauf"
