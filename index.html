@@ -52,7 +52,13 @@
       <div class="bar__row">
         <div style="flex:1 1 auto; min-width:0">
           <h1 class="bar__title"><em>Peschiera</em> kompakt</h1>
-          <p class="bar__sub" id="sub"></p>
+          <p class="bar__sub">
+            <button type="button" class="switch" id="jum-btn" role="switch" aria-checked="false">
+              <span class="switch__box" aria-hidden="true"><span class="switch__knob"></span></span>
+              <span class="switch__lbl">Mit Jum</span>
+            </button>
+            <span class="bar__hint" id="jum-n"></span>
+          </p>
         </div>
         <button type="button" class="icon-btn" id="theme-btn" aria-live="polite">
           <span class="sr-only" id="theme-label">Farbschema</span>
@@ -72,9 +78,8 @@
       </div>
 
       <div class="filters" id="filters">
-        <div class="chiprow" id="cat-row" role="group" aria-label="Kategorie"></div>
-        <div class="chiprow" id="flag-row" role="group" aria-label="Weitere Filter"></div>
-        <div class="chiprow chiprow--wrap" id="tag-row" role="group" aria-label="Tags"></div>
+        <div class="chipwrap"><div class="chiprow" id="cat-row" role="group" aria-label="Kategorie"></div></div>
+        <div class="chipwrap"><div class="chiprow" id="flag-row" role="group" aria-label="Weitere Filter"></div></div>
       </div>
     </div>
   </header>
@@ -114,6 +119,7 @@
       </div>
 
       <footer class="foot">
+        <p id="foot-sub"></p>
         <p id="foot-note"></p>
         <p id="foot-offline"></p>
       </footer>

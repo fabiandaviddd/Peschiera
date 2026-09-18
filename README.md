@@ -13,12 +13,15 @@ GitHub Pages liefert das Repo unverändert aus.
 |---|---|
 | **PWA** | `manifest.webmanifest` + `sw.js`. App-Shell und `places.json` liegen im Cache, nach einmaligem Laden läuft alles offline — Merkliste inklusive. Auf dem iPhone-Homescreen installierbar, mit Icon und Startbild. |
 | **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. |
-| **Filter** | Chip-Leiste, beliebig kombinierbar: Kategorie, „Hund erlaubt" (`dog: true`), „Zu Fuß" (`walk_min ≤ 25`), „Unter 1 h" (`time_min ≤ 60`), Tags. Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. |
+| **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". Die Zählzeile sagt immer, wie viele Orte er gerade ausblendet. |
+| **Filter** | Chip-Leiste, beliebig kombinierbar: Kategorie, „Zu Fuß" (`walk_min ≤ 25`), „Noch offen", „Unter 1 h" (`time_min ≤ 60`). Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. Am rechten Rand zeigt ein Verlauf, dass die Reihe weitergeht. |
+| **Tags** | Über achtzig Stück — zu viele für eine Chip-Reihe. Sie liegen hinter dem Knopf „Tags" im selben Sheet, das auch den Ort zeigt, nach Häufigkeit sortiert und mit laufender Trefferzahl. |
 | **Aufenthaltsdauer** | Auf jeder Karte kompakt (`3 h`, `45 Min`), im Detail die volle Textfassung („1–1,5 h, mit Museum 2 h"). |
 | **Sortierung** | Entfernung (Standard) oder Bewertung. Orte ohne Wert stehen hinten, nicht vorne. |
 | **Merkliste** | Stern auf jeder Karte, eigener Tab „Gemerkt" mit Zähler. Persistenz über `localStorage`, jeder Zugriff in try/catch. |
 | **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch offen" blendet sie aus. Eigener Speicher, unabhängig vom Merken. |
 | **Teilen** | Im Tab „Gemerkt": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. |
+| **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind es rund 102 px je Zeile statt 228. |
 | **Detailansicht** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. |
 | **Info** | „Gut zu wissen" (die 9 Hinweise aus `merken`), „Offene Punkte" (die 8 aus `open_questions`, mit Telefonnummer als Link) und der Faktencheck. |
 | **Dark Mode** | Über `prefers-color-scheme`, mit manuellem Override. Der Knopf oben rechts schaltet automatisch → hell → dunkel. |
@@ -27,14 +30,16 @@ Keine Cookies, kein Tracking, keine externen Requests außer Google Fonts.
 
 ## Bedienung in zehn Sekunden
 
-Die Frage „wo essen wir heute, das nah ist, gut ist und wo Jum mit darf?"
-beantwortet man mit drei Tipps: **Essen** → **Hund erlaubt** → **Zu Fuß**.
-Übrig bleibt die Osteria Rivelin. Sortierung auf **Bewertung** umstellen, wenn
-die Entfernung nicht das Kriterium ist.
+Den Schalter **Mit Jum** einmal anstellen — er bleibt an, auch nach dem
+Schließen der App. Die Frage „wo essen wir heute, das nah ist, gut ist und wo
+Jum mit darf?" kostet danach zwei Tipps: **Essen** → **Zu Fuß**. Sortierung auf
+**Bewertung** umstellen, wenn die Entfernung nicht das Kriterium ist.
 
-Stand 17.09.2026 ist `dog: true` nur bei 21 der 54 Orte gesetzt; bei 32 ist die
-Regelung ungeklärt (`null`) und sie fallen aus dem Hundefilter heraus. Das ist
-Absicht — lieber zu wenig anzeigen als falsch.
+Stand 18.09.2026 ist `dog: true` bei 39 der 101 Orte gesetzt, `false` bei 4;
+bei 58 ist die Regelung ungeklärt (`null`), und sie fallen aus dem Hundefilter
+heraus. Das ist Absicht — lieber zu wenig anzeigen als falsch. Weil das mehr
+als die Hälfte ist, schreibt die Zählzeile bei angeschaltetem Jum dazu, wie
+viele Orte gerade ausgeblendet sind.
 
 ## Orte ergänzen oder ändern
 

@@ -7,14 +7,14 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v5 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v6 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
   var LS_THEME = 'pk.theme';
+  var LS_JUM   = 'pk.jum';
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
   var SHORT_MAX = 60;         // Schwelle für den Filter "Unter 1 h"
-  var TAGS_SHOWN = 12;        // sichtbare Tag-Chips, Rest hinter "mehr"
 
   /* ---------------------------------------------------------------- Zustand */
 
@@ -25,13 +25,13 @@
     view: 'orte',
     q: '',
     cats: [],
-    dog: false,
+    jum: false,          // Dauereinstellung, kein Filter: ueberlebt den Neustart
     walk: false,
     tags: [],
     unseen: false,
     short: false,
     sort: 'distance',
-    tagsOpen: false,
+    filterOpen: false,
     saved: [],
     seen: [],
     theme: 'auto',
@@ -147,7 +147,8 @@
     info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 10.8V17M12 7.6h.01"/></svg>',
     sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>',
     moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.4A8.4 8.4 0 1 1 9.6 4a6.8 6.8 0 0 0 10.4 10.4z"/></svg>',
-    auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8" /><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"/></svg>'
+    auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8" /><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"/></svg>',
+    tags: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 11.2V4.8a1.2 1.2 0 0 1 1.2-1.2h6.4l8.4 8.4a1.4 1.4 0 0 1 0 2l-5.6 5.6a1.4 1.4 0 0 1-2 0z"/><path d="M7.6 7.6h.01"/></svg>'
   };
 
   /* ----------------------------------------------------------------- Laden */
@@ -231,13 +232,18 @@
     if (['auto', 'light', 'dark'].indexOf(S.theme) < 0) S.theme = 'auto';
     applyTheme();
 
-    $('sub').textContent = has(D.meta.subtitle) ? D.meta.subtitle : '';
+    S.jum = lsGet(LS_JUM, false) === true;
+
+    /* Der Reisezeitraum stand bisher als zweite Zeile im Kopf. Dort steht
+       jetzt der Jum-Schalter; die Angabe wandert in den Fuss, wo schon der
+       Datenstand steht. */
+    $('foot-sub').textContent = has(D.meta.subtitle) ? D.meta.subtitle : '';
     $('foot-note').textContent = has(D.meta.note) ? D.meta.note : '';
 
     buildTabs();
     buildCatChips();
     buildFlagChips();
-    buildTagChips();
+    applyJum();
     bind();
     render();
 
@@ -276,6 +282,26 @@
     S.theme = S.theme === 'auto' ? 'light' : S.theme === 'light' ? 'dark' : 'auto';
     lsSet(LS_THEME, S.theme);
     applyTheme();
+  }
+
+  /* ------------------------------------------------------------- Jum-Schalter */
+
+  /* Der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei. Das ist
+     keine Filterfrage, die man dreimal am Tag neu beantwortet, sondern eine
+     Einstellung — wie das Farbschema, und genauso dauerhaft. */
+  function applyJum() {
+    var btn = $('jum-btn');
+    btn.setAttribute('aria-checked', S.jum ? 'true' : 'false');
+    $('jum-n').textContent = S.jum
+      ? 'nur wo Jum mit darf'
+      : String(D.places.filter(function (p) { return p.dog === true; }).length) + ' Orte mit Hund';
+  }
+
+  function toggleJum() {
+    S.jum = !S.jum;
+    lsSet(LS_JUM, S.jum);
+    applyJum();
+    render();
   }
 
   /* ------------------------------------------------------------------ Tabs */
@@ -327,18 +353,19 @@
   }
 
   function buildFlagChips() {
-    var dogs = D.places.filter(function (p) { return p.dog === true; }).length;
     var walks = D.places.filter(function (p) { return has(p.walk_min) && p.walk_min <= WALK_MAX; }).length;
     var shorts = D.places.filter(function (p) { return has(p.time_min) && p.time_min <= SHORT_MAX; }).length;
+    /* "Hund erlaubt" fehlt hier mit Absicht: der Hund ist keine Filterfrage,
+       die man taeglich neu beantwortet, sondern ein Dauerschalter im Kopf. */
     $('flag-row').innerHTML =
-      '<button type="button" class="chip chip--dog" id="chip-dog" aria-pressed="false">'
-      + ICON.dog + 'Hund erlaubt<span class="chip__n">' + dogs + '</span></button>'
-      + '<button type="button" class="chip chip--walk" id="chip-walk" aria-pressed="false">'
+      '<button type="button" class="chip chip--walk" id="chip-walk" aria-pressed="false">'
       + ICON.walk + 'Zu Fuß<span class="chip__n">' + walks + '</span></button>'
       + '<button type="button" class="chip chip--unseen" id="chip-unseen" aria-pressed="false">'
       + ICON.checkRound + 'Noch offen<span class="chip__n" id="chip-unseen-n"></span></button>'
       + '<button type="button" class="chip chip--short" id="chip-short" aria-pressed="false">'
-      + ICON.hourglass + 'Unter 1 h<span class="chip__n">' + shorts + '</span></button>';
+      + ICON.hourglass + 'Unter 1 h<span class="chip__n">' + shorts + '</span></button>'
+      + '<button type="button" class="chip chip--tags" id="chip-tags" aria-pressed="false">'
+      + ICON.tags + 'Tags<span class="chip__n" id="chip-tags-n"></span></button>';
   }
 
   function allTags() {
@@ -351,23 +378,23 @@
     }).map(function (t) { return { tag: t, n: count[t] }; });
   }
 
-  function buildTagChips() {
+  /* Ueber achtzig Tags passen in keine Chip-Reihe. Sie stehen deshalb im
+     Sheet — im selben, das auch den Ort zeigt, nicht in einem zweiten. */
+  function filterSheetHtml() {
     var tags = allTags();
-    var shown = S.tagsOpen ? tags : tags.slice(0, TAGS_SHOWN);
-    var html = shown.map(function (t) {
-      return '<button type="button" class="chip chip--tag" data-tag="' + esc(t.tag) + '"'
-        + ' aria-pressed="' + (S.tags.indexOf(t.tag) >= 0 ? 'true' : 'false') + '">'
-        + esc(t.tag) + '<span class="chip__n">' + t.n + '</span></button>';
-    }).join('');
-    if (tags.length > TAGS_SHOWN) {
-      html += '<button type="button" class="chip chip--ghost" id="tags-more">'
-        + (S.tagsOpen ? 'weniger' : 'alle ' + tags.length + ' Tags') + '</button>';
-    }
-    $('tag-row').innerHTML = html;
-    /* Eingeklappt einzeilig und horizontal scrollbar, aufgeklappt umbrechend —
-       so bleibt der Header in der Standardansicht flach. */
-    $('tag-row').classList.toggle('chiprow--wrap', S.tagsOpen);
-    measureBar();
+    return '<p class="sheet__cat">Filter</p>'
+      + '<h2 class="sheet__name" id="sheet-name">Tags</h2>'
+      + '<p class="sheet__note">Mehrere Tags sind ODER-verknüpft: ein Ort muss nur einem davon entsprechen.</p>'
+      + '<p class="sheet__count" id="filter-count"></p>'
+      + '<div class="tagpick">' + tags.map(function (t) {
+          return '<button type="button" class="chip chip--tag" data-tag="' + esc(t.tag) + '"'
+            + ' aria-pressed="' + (S.tags.indexOf(t.tag) >= 0 ? 'true' : 'false') + '">'
+            + esc(t.tag) + '<span class="chip__n">' + t.n + '</span></button>';
+        }).join('') + '</div>'
+      + '<div class="sheet__acts">'
+      + '<button type="button" class="btn btn--wide" id="tags-clear">Alle Tags abwählen</button>'
+      + '<button type="button" class="btn btn--wide btn--primary" id="tags-done">Fertig</button>'
+      + '</div>';
   }
 
   /* Höhe des Sticky-Headers für scroll-padding-top bereitstellen. */
@@ -382,12 +409,14 @@
     for (var i = 0; i < cats.length; i++) {
       cats[i].setAttribute('aria-pressed', S.cats.indexOf(cats[i].getAttribute('data-cat')) >= 0 ? 'true' : 'false');
     }
-    $('chip-dog').setAttribute('aria-pressed', S.dog ? 'true' : 'false');
     $('chip-walk').setAttribute('aria-pressed', S.walk ? 'true' : 'false');
     $('chip-unseen').setAttribute('aria-pressed', S.unseen ? 'true' : 'false');
     $('chip-short').setAttribute('aria-pressed', S.short ? 'true' : 'false');
     $('chip-unseen-n').textContent = String(D.places.length - S.seen.length);
-    var tags = $('tag-row').querySelectorAll('[data-tag]');
+    $('chip-tags').setAttribute('aria-pressed', S.tags.length ? 'true' : 'false');
+    $('chip-tags-n').textContent = S.tags.length ? String(S.tags.length) : '';
+    /* Tag-Chips liegen im Sheet und existieren nur, solange es offen ist. */
+    var tags = $('sheet-body').querySelectorAll('[data-tag]');
     for (var j = 0; j < tags.length; j++) {
       tags[j].setAttribute('aria-pressed', S.tags.indexOf(tags[j].getAttribute('data-tag')) >= 0 ? 'true' : 'false');
     }
@@ -404,16 +433,20 @@
   }
 
   function anyFilter() {
-    return !!S.q || S.cats.length > 0 || S.dog || S.walk || S.unseen || S.short || S.tags.length > 0;
+    /* S.jum fehlt hier bewusst: eine Dauereinstellung wird nicht
+       mitzurueckgesetzt, sonst waere Jum nach jedem Reset wieder weg. */
+    return !!S.q || S.cats.length > 0 || S.walk || S.unseen || S.short || S.tags.length > 0;
   }
 
   function resetFilters() {
-    S.q = ''; S.cats = []; S.dog = false; S.walk = false; S.unseen = false; S.short = false; S.tags = [];
+    S.q = ''; S.cats = []; S.walk = false; S.unseen = false; S.short = false; S.tags = [];
     $('q').value = '';
     render();
   }
 
   /* --------------------------------------------------------------- Auswahl */
+
+  var jumHidden = 0;          // wie viele Orte der Jum-Schalter zuletzt ausblendete
 
   function selected() {
     var pool = S.view === 'gemerkt'
@@ -424,7 +457,6 @@
 
     var out = pool.filter(function (p) {
       if (S.cats.length && S.cats.indexOf(p.category) < 0) return false;
-      if (S.dog && p.dog !== true) return false;
       if (S.walk && !(has(p.walk_min) && p.walk_min <= WALK_MAX)) return false;
       if (S.unseen && S.seen.indexOf(p.id) >= 0) return false;
       if (S.short && !(has(p.time_min) && p.time_min <= SHORT_MAX)) return false;
@@ -436,6 +468,16 @@
       for (var t = 0; t < terms.length; t++) if (p._h.indexOf(terms[t]) < 0) return false;
       return true;
     });
+
+    /* Jum greift zuletzt, damit die Zaehlzeile sagen kann, wie viele Orte
+       der Dauerschalter gerade kostet — und nicht nur, wie viele bleiben. */
+    if (S.jum) {
+      var withJum = out.filter(function (p) { return p.dog === true; });
+      jumHidden = out.length - withJum.length;
+      out = withJum;
+    } else {
+      jumHidden = 0;
+    }
 
     return out.sort(S.sort === 'rating' ? byRating : byDistance);
   }
@@ -498,7 +540,11 @@
         $('empty-reset').hidden = true;
       } else {
         $('empty-h').textContent = 'Nichts gefunden';
-        $('empty-p').textContent = 'Kein Ort passt zu dieser Kombination aus Suche und Filtern.';
+        /* "Filter zurücksetzen" räumt den Jum-Schalter absichtlich nicht mit
+           ab. Wenn er der Grund ist, muss das hier stehen — sonst drückt man
+           auf Zurücksetzen und es bleibt leer. */
+        $('empty-p').textContent = 'Kein Ort passt zu dieser Kombination aus Suche und Filtern.'
+          + (S.jum ? ' Der Schalter „Mit Jum“ oben blendet zusätzlich alle Orte ohne geklärte Hundregel aus.' : '');
         $('empty-reset').hidden = false;
       }
       return;
@@ -515,32 +561,42 @@
     if (shown === undefined) { shown = lastCount.shown; total = lastCount.total; }
     lastCount = { shown: shown, total: total };
     var seenHere = S.seen.length;
-    $('count').textContent = (anyFilter()
+    /* Der Jum-Schalter blendet still aus. Damit das nie unbemerkt passiert,
+       steht hier, wie viele Orte er gerade kostet. Bei 58 von 101 Orten ist
+       die Hundregel ungeklärt — das ist viel, und man muss es sehen. */
+    var unclear = S.jum ? jumHidden : 0;
+    $('count').textContent = (anyFilter() || S.jum
       ? shown + ' von ' + total + (total === 1 ? ' Ort' : ' Orten')
       : total + (total === 1 ? ' Ort' : ' Orte'))
+      + (S.jum ? ' · mit Jum' : '')
+      + (unclear ? ' · ' + unclear + ' ohne Jum ausgeblendet' : '')
       + (seenHere ? ' · ' + seenHere + ' gesehen' : '');
+
+    var live = $('filter-count');
+    if (live) {
+      live.textContent = shown === 1 ? '1 Ort passt' : shown + ' Orte passen';
+    }
   }
 
   function factsHtml(p) {
     var f = [];
     if (has(p.rating)) {
-      f.push('<span class="fact fact--rating">' + ICON.rating + nf1.format(p.rating)
-        + (has(p.reviews) ? ' <span style="font-weight:400;opacity:.8">(' + nf0.format(p.reviews) + ')</span>' : '')
-        + '</span>');
+      f.push('<span class="fact fact--rating">' + ICON.rating + nf1.format(p.rating) + '</span>');
     }
     if (has(p.walk_min)) {
-      f.push('<span class="fact">' + ICON.walk + p.walk_min + ' Min'
-        + (has(p.distance_km) ? ' · ' + km(p.distance_km) : '') + '</span>');
+      f.push('<span class="fact">' + ICON.walk + p.walk_min + ' Min</span>');
     } else if (has(p.bike_min)) {
-      f.push('<span class="fact">' + ICON.bike + p.bike_min + ' Min'
-        + (has(p.distance_km) ? ' · ' + km(p.distance_km) : '') + '</span>');
+      f.push('<span class="fact">' + ICON.bike + p.bike_min + ' Min</span>');
     } else if (has(p.distance_km)) {
       f.push('<span class="fact">' + ICON.pin + km(p.distance_km) + '</span>');
     }
     if (has(p.time_min)) {
       f.push('<span class="fact fact--time">' + ICON.hourglass + esc(dur(p.time_min)) + '</span>');
     }
-    if (has(p.hours)) f.push('<span class="fact">' + ICON.clock + esc(p.hours) + '</span>');
+    if (has(p.hours)) {
+      f.push('<span class="fact">' + ICON.clock
+        + esc(String(p.hours).replace(/^ge\u00f6ffnet\s+/i, '')) + '</span>');
+    }
     if (p.dog === true) f.push('<span class="fact fact--dog">' + ICON.dog + 'Jum ok</span>');
     else if (p.dog === false) f.push('<span class="fact fact--nodog">' + ICON.dog + 'ohne Jum</span>');
     return f.length ? '<div class="facts">' + f.join('') + '</div>' : '';
@@ -560,8 +616,6 @@
       + '</p>'
       + (has(p.note) ? '<p class="card__note">' + esc(p.note) + '</p>' : '')
       + factsHtml(p)
-      + (p.tags.length ? '<p class="card__tags">' + p.tags.slice(0, 4).map(function (t) {
-          return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</p>' : '')
       + '<button type="button" class="card__open" data-open="' + esc(p.id) + '"'
       + ' aria-label="' + esc(p.name) + ' — Details"></button>'
       + '<span class="card__marks">'
@@ -693,17 +747,15 @@
   }
 
 
-  function openSheet(id) {
-    var p = null;
-    for (var i = 0; i < D.places.length; i++) if (D.places[i].id === id) { p = D.places[i]; break; }
-    if (!p) return;
-
-    S.openId = id;
+  /* Gemeinsamer Unterbau fuer Ort und Filter: Body-Fixierung, Scrim, Fokus,
+     Wischen nach unten und die iOS-Eigenheiten stecken hier — und nur hier.
+     Ein zweites Sheet daneben wuerde die Haertung ein zweites Mal brauchen. */
+  function showSheet(html, cls) {
+    var sheet = $('sheet');
     lastFocus = document.activeElement;
 
-    var sheet = $('sheet');
-    sheet.className = 'sheet ' + accentClass(p.category);
-    $('sheet-body').innerHTML = sheetHtml(p);
+    sheet.className = 'sheet' + (cls ? ' ' + cls : '');
+    $('sheet-body').innerHTML = html;
 
     lockBody();
 
@@ -718,6 +770,22 @@
     });
 
     $('sheet-close').focus({ preventScroll: true });
+  }
+
+  function openSheet(id) {
+    var p = null;
+    for (var i = 0; i < D.places.length; i++) if (D.places[i].id === id) { p = D.places[i]; break; }
+    if (!p) return;
+
+    S.openId = id;
+    S.filterOpen = false;
+    showSheet(sheetHtml(p), accentClass(p.category));
+  }
+
+  function openFilterSheet() {
+    S.openId = null;
+    S.filterOpen = true;
+    showSheet(filterSheetHtml(), 'sheet--filter');
   }
 
   function closeSheet() {
@@ -735,9 +803,12 @@
     }, 260);
 
     var id = S.openId;
+    var wasFilter = S.filterOpen;
     S.openId = null;
+    S.filterOpen = false;
 
     var back = id ? document.querySelector('[data-open="' + id.replace(/"/g, '\\"') + '"]') : null;
+    if (wasFilter) back = $('chip-tags');
     if (back) back.focus({ preventScroll: true });
     else if (lastFocus && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
   }
@@ -1086,6 +1157,7 @@
 
   function bind() {
     $('theme-btn').addEventListener('click', cycleTheme);
+    $('jum-btn').addEventListener('click', toggleJum);
 
     if (window.matchMedia) {
       var mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1119,19 +1191,10 @@
     $('flag-row').addEventListener('click', function (e) {
       var b = e.target.closest('.chip');
       if (!b) return;
-      if (b.id === 'chip-dog') S.dog = !S.dog;
+      if (b.id === 'chip-tags') { openFilterSheet(); return; }
       if (b.id === 'chip-walk') S.walk = !S.walk;
       if (b.id === 'chip-unseen') S.unseen = !S.unseen;
       if (b.id === 'chip-short') S.short = !S.short;
-      render();
-    });
-
-    $('tag-row').addEventListener('click', function (e) {
-      var more = e.target.closest('#tags-more');
-      if (more) { S.tagsOpen = !S.tagsOpen; buildTagChips(); syncChips(); return; }
-      var b = e.target.closest('[data-tag]');
-      if (!b) return;
-      toggleIn(S.tags, b.getAttribute('data-tag'));
       render();
     });
 
@@ -1173,7 +1236,19 @@
       var save = e.target.closest('[data-save]');
       if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); return; }
       var seen = e.target.closest('[data-seen]');
-      if (seen) { e.preventDefault(); toggleSeen(seen.getAttribute('data-seen')); }
+      if (seen) { e.preventDefault(); toggleSeen(seen.getAttribute('data-seen')); return; }
+
+      /* Filter-Sheet: die Liste dahinter zieht sofort nach, das Sheet bleibt
+         offen. Die Zahl am Tag-Knopf zeigt, wie viele Tags aktiv sind. */
+      var tag = e.target.closest('[data-tag]');
+      if (tag) {
+        e.preventDefault();
+        toggleIn(S.tags, tag.getAttribute('data-tag'));
+        render();
+        return;
+      }
+      if (e.target.closest('#tags-clear')) { S.tags = []; render(); return; }
+      if (e.target.closest('#tags-done')) { closeSheet(); }
     });
 
     $('empty-reset').addEventListener('click', resetFilters);
