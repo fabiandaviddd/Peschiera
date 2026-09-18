@@ -95,6 +95,61 @@ ok('"Zeiten ungeprüft" — keine Zahl, keine Behauptung',
 /* Ein Fenster über Mitternacht ist kein Fenster: close <= open wird verworfen. */
 ok('"22–2 Uhr" (über Mitternacht)', pk.hoursWindow('22–2 Uhr').close, null);
 
+/* ------------------------------------------------------------- Ruhetage */
+group('closedOn — der Ruhetag steht woertlich da');
+
+/* Die Schreibweisen, die in den Daten wirklich vorkommen. */
+ok('"täglich 18–23, Ruhetag Mittwoch"', pk.closedOn('täglich 18–23, Ruhetag Mittwoch'), 3);
+ok('"12–14 und 19–22:30, Ruhetag Dienstag"', pk.closedOn('12–14 und 19–22:30, Ruhetag Dienstag'), 2);
+ok('"Abend Di–So 19–22, Ruhetag Montag"', pk.closedOn('Abend Di–So 19–22, Ruhetag Montag'), 1);
+ok('"Di–So, Ruhetag Montag"', pk.closedOn('Di–So, Ruhetag Montag'), 1);
+ok('"öffnet 10:00 · Mi geschlossen"', pk.closedOn('öffnet 10:00 · Mi geschlossen'), 3);
+ok('"Di–Do 9:30–12:30, Fr–So 9:30–18:30, Mo zu"',
+   pk.closedOn('Di–Do 9:30–12:30, Fr–So 9:30–18:30, Mo zu'), 1);
+ok('"9:30–12:30 und 14:30–18, Mo zu"', pk.closedOn('9:30–12:30 und 14:30–18, Mo zu'), 1);
+ok('"werktags nur abends, Sa/So auch 12–14, Ruhetag Dienstag"',
+   pk.closedOn('werktags nur abends, Sa/So auch 12–14, Ruhetag Dienstag'), 2);
+
+/* Die Gegenprobe wiegt schwerer als die Treffer: ein erfundener Ruhetag
+   versteckt einen offenen Ort, und das faellt niemandem auf. */
+ok('"Mi–Sa 19:00–23:00" ist eine Oeffnungszeit, kein Ruhetag',
+   pk.closedOn('Mi–Sa 19:00–23:00 (ungeprüft)'), null);
+ok('"Mo 9–13, Di–Sa 8:30–19:30, So 10–19:30" — drei Fenster, kein Ruhetag',
+   pk.closedOn('Mo 9–13, Di–Sa 8:30–19:30, So 10–19:30'), null);
+ok('"Mo–Sa 9–18:30, bis 01.11. auch So"', pk.closedOn('Mo–Sa 9–18:30, bis 01.11. auch So'), null);
+ok('"Weinshop Mo–Sa 8:30–12:30 und 14–18"',
+   pk.closedOn('Weinshop Mo–Sa 8:30–12:30 und 14–18'), null);
+ok('"geöffnet bis 22:30"', pk.closedOn('geöffnet bis 22:30'), null);
+ok('"täglich 9–19"', pk.closedOn('täglich 9–19'), null);
+ok('"Zeiten ungeprüft"', pk.closedOn('Zeiten ungeprüft'), null);
+ok('leer', pk.closedOn(''), null);
+ok('null', pk.closedOn(null), null);
+/* Sonntag ist 0 wie bei Date#getDay() — und 0 ist nicht null. */
+ok('"Ruhetag Sonntag" ist 0, nicht null', pk.closedOn('Ruhetag Sonntag'), 0);
+
+/* closedToday rechnet gegen ein uebergebenes Datum, nicht gegen die Uhr des
+   Rechners — der 16.09.2026 ist ein Mittwoch. Ohne das waere die Pruefung
+   an sechs von sieben Tagen gruen und am siebten rot. */
+const mittwoch = new Date(2026, 8, 16);
+const dienstag = new Date(2026, 8, 15);
+ok('Ruhetag Mittwoch, am Mittwoch',
+   pk.closedToday({ hours: 'täglich 18–23, Ruhetag Mittwoch' }, mittwoch), true);
+ok('Ruhetag Mittwoch, am Dienstag',
+   pk.closedToday({ hours: 'täglich 18–23, Ruhetag Mittwoch' }, dienstag), false);
+ok('ohne Angabe nie geschlossen', pk.closedToday({ hours: 'geöffnet bis 22:30' }, mittwoch), false);
+ok('ohne hours nie geschlossen', pk.closedToday({ hours: null }, mittwoch), false);
+/* Array#map reicht den Index als zweites Argument durch, und .map(smallHtml)
+   ist im Haus die uebliche Schreibweise. Vor dem Haerten warf closedToday bei
+   Index 1 einen TypeError und nahm die ganze Heute-Ansicht mit — aufgetaucht
+   ist das erst, als der Ruhetag-Zweig und der Tagesblatt-Zweig
+   zusammenkamen. Keiner der beiden hatte den Fehler allein. */
+const ruhetagMi = { hours: 'täglich 18–23, Ruhetag Mittwoch' };
+ok('ein durchgereichter Index stuerzt nicht ab', pk.closedToday(ruhetagMi, 1), false);
+ok('Index 0 ebenso', pk.closedToday(ruhetagMi, 0), pk.closedToday(ruhetagMi));
+ok('ein ungueltiges Datum faellt auf heute zurueck',
+   pk.closedToday(ruhetagMi, new Date('kein Datum')), pk.closedToday(ruhetagMi));
+ok('ein String ist kein Datum', pk.closedToday(ruhetagMi, '2026-09-16'), pk.closedToday(ruhetagMi));
+
 /* ----------------------------------------------------------- Tagesabschnitt */
 group('momentsOf — was im JSON steht, gilt');
 
@@ -295,11 +350,74 @@ ok('jeder Ort trägt ein moment', noMoment, []);
 ok('kein Schlüssel zweimal im selben Objekt', duplicateKeys(placesRaw), []);
 ok('Zahlenfelder sind Zahlen oder null', badTime, []);
 ok('geo hat lat und lon als Zahl', badGeo, []);
+/* Wer einen Ruhetag in hours schreibt, muss ihn lesbar schreiben. Sonst
+   sortiert „Heute" den Ort weiter nach vorn, als staende dort nichts — und
+   das faellt erst vor der verschlossenen Tuer auf. */
+const unreadableClosed = data.places
+  .filter((p) => p.hours && /ruhetag|geschlossen|\bzu\b/i.test(p.hours))
+  .filter((p) => pk.closedOn(p.hours) === null)
+  .map((p) => `${p.id}: ${p.hours}`);
+ok('jeder Ruhetag in hours ist lesbar', unreadableClosed, []);
 truthy('jeder Ort hat einen Namen', data.places.every((p) => p.name && p.name.trim()));
 /* Jeder Akzent muss in style.css als .acc-* stehen, sonst bleibt die Kante grau. */
 const css = readFileSync(join(root, 'style.css'), 'utf8');
 ok('jeder Kategorie-Akzent hat eine .acc-Regel',
    data.categories.map((c) => c.accent).filter((a) => !css.includes(`.acc-${a}`)), []);
+
+/* ------------------------------------------------------------- Koordinaten */
+/* Die Plausibilitätsregeln stehen in koordinaten.html und add-coords.mjs —
+   dort greifen sie aber nur, während der Dienst befragt wird. Die 13 Orte
+   ohne sinnvollen Einzelpunkt sollen laut docs/koordinaten-pruefliste.md von
+   Hand aus Google Maps nachgetragen werden, und für die prüft bisher nichts.
+   Deshalb hier dieselben zwei Regeln auf die fertige Datei, mit denselben
+   Konstanten. */
+group('data/places.json — Koordinaten');
+
+const BOX = { lonMin: 10.35, lonMax: 11.15, latMin: 45.05, latMax: 45.95 };
+const baseGeo = data.meta && data.meta.base_geo;
+
+function airKm(a, b) {
+  const R = 6371;
+  const p1 = a.lat * Math.PI / 180, p2 = b.lat * Math.PI / 180;
+  const dp = p2 - p1, dl = (b.lon - a.lon) * Math.PI / 180;
+  const h = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+truthy('die Basis hat eine Koordinate',
+   baseGeo && typeof baseGeo.lat === 'number' && typeof baseGeo.lon === 'number');
+
+const outOfBox = [];
+const tooFar = [];
+for (const p of data.places) {
+  const g = p.geo;
+  if (!g) continue;
+  if (g.lat < BOX.latMin || g.lat > BOX.latMax || g.lon < BOX.lonMin || g.lon > BOX.lonMax) {
+    outOfBox.push(`${p.id}: ${g.lat}, ${g.lon}`);
+  }
+  /* Die Luftlinie kann nie länger sein als der gemessene Straßenweg. Grenze
+     wie in der Prüfliste: distance_km × 1,15 + 0,5 km. */
+  if (typeof p.distance_km === 'number') {
+    const air = airKm(baseGeo, g);
+    const limit = p.distance_km * 1.15 + 0.5;
+    if (air > limit) {
+      tooFar.push(`${p.id}: Luftlinie ${air.toFixed(2)} km > Grenze ${limit.toFixed(2)} km`);
+    }
+  }
+}
+ok('jede Koordinate liegt in der Reisegegend', outOfBox, []);
+ok('keine Luftlinie länger als der Straßenweg', tooFar, []);
+
+/* Die Prüfliste nennt Zahlen im Kopf. Abgeschrieben veralten sie. */
+const listeDoc = readFileSync(join(root, 'docs', 'koordinaten-pruefliste.md'), 'utf8');
+const withGeo = data.places.filter((p) => p.geo).length;
+const head = listeDoc.match(/(\d+) Orte · (\d+) mit Koordinaten · (\d+) offen/);
+truthy('die Prüfliste nennt ihre Zahlen im Kopf', !!head);
+if (head) {
+  ok('Prüfliste: Zahl der Orte stimmt', Number(head[1]), data.places.length);
+  ok('Prüfliste: Zahl der Koordinaten stimmt', Number(head[2]), withGeo);
+  ok('Prüfliste: Zahl der offenen stimmt', Number(head[3]), data.places.length - withGeo);
+}
 
 /* Die Fassung in app.js und der Cache in sw.js müssen zusammenpassen — sonst
    läuft die App still auf altem Stand weiter. */
@@ -373,7 +491,23 @@ function stats() {
   line('dog: true / false / ungeklärt', `${dog.true} / ${dog.false} / ${dog.null}`);
   line('geo gesetzt / fehlt',
        `${P.filter((p) => p.geo).length} / ${P.filter((p) => !p.geo).length}`);
+  /* Mehrere Orte auf einem Punkt heisst meist: der Dienst gab einen
+     Ortsmittelpunkt statt der Adresse. Teils harmlos (Nachbarn), teils
+     grob — aufgelistet in docs/koordinaten-pruefliste.md. */
+  const spots = new Map();
+  for (const p of P) {
+    if (!p.geo) continue;
+    const k = `${p.geo.lat},${p.geo.lon}`;
+    spots.set(k, (spots.get(k) || 0) + 1);
+  }
+  line('Punkte mit mehr als einem Ort',
+       [...spots.values()].filter((n) => n > 1).length);
   line('hours fehlt', P.filter((p) => !p.hours).length);
+  const shut = P.filter((p) => pk.closedOn(p.hours) !== null);
+  line('Ruhetag lesbar in hours', shut.length);
+  line('… verteilt auf', ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+    .map((w, i) => ({ w, n: shut.filter((p) => pk.closedOn(p.hours) === (i + 1) % 7).length }))
+    .filter((x) => x.n).map((x) => `${x.w} ${x.n}`).join(' · '));
   line('verschiedene Tags', new Set(P.flatMap((p) => p.tags)).size);
   line('merken / offene Punkte / Faktencheck',
        `${data.merken.length} / ${data.open_questions.length} / ${data.faktencheck.length}`);
