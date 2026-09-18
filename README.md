@@ -405,7 +405,14 @@ icons/                  App-Icons und iOS-Startbilder
 scripts/test-logic.mjs  Prüfstand für die Freitext-Logik und die Daten (node)
 scripts/add-coords.mjs  einmaliges Geocoding für die Karte
 scripts/make-icons.py   Icon-Generator
+docs/uebergabe.md       Übergabe: Regeln des Hauses, Fallen, offene Punkte
+docs/redesign-vorschlag.md   Audit, Design-Richtung, die vier Schritte
+docs/koordinaten-pruefliste.md   Regeln der Geocodierung
 ```
+
+Wer hier neu anfängt, liest **`docs/uebergabe.md`** zuerst. Dort stehen die
+Konventionen, die Fallen (parallele Zweige, doppelte JSON-Schlüssel,
+Kontrast richtig messen, was iOS anders macht) und was offen ist.
 
 ## Getestet
 
