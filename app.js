@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v7 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v8 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -366,8 +366,11 @@
     $('flag-row').innerHTML =
       '<button type="button" class="chip chip--walk" id="chip-walk" aria-pressed="false">'
       + ICON.walk + 'Zu Fuß<span class="chip__n">' + walks + '</span></button>'
+      /* Hiess bis v7 "Noch offen" — direkt neben Fakten wie "oeffnet 9:30"
+         und "bis 22:00" las sich das als Oeffnungszeit, gemeint war aber
+         "noch nicht gesehen". */
       + '<button type="button" class="chip chip--unseen" id="chip-unseen" aria-pressed="false">'
-      + ICON.checkRound + 'Noch offen<span class="chip__n" id="chip-unseen-n"></span></button>'
+      + ICON.checkRound + 'Noch nicht gesehen<span class="chip__n" id="chip-unseen-n"></span></button>'
       + '<button type="button" class="chip chip--short" id="chip-short" aria-pressed="false">'
       + ICON.hourglass + 'Unter 1 h<span class="chip__n">' + shorts + '</span></button>'
       + '<button type="button" class="chip chip--tags" id="chip-tags" aria-pressed="false">'
@@ -628,7 +631,7 @@
       + '<p class="card__meta">'
       + '<span class="card__cat">' + esc(catLabel(p.category)) + '</span>'
       + (has(p.badge) ? '<span class="card__badge">' + esc(p.badge) + '</span>' : '')
-      + (wasSeen ? '<span class="card__seen">' + ICON.check + 'gesehen</span>' : '')
+      + (wasSeen ? '<span class="card__seen">' + ICON.check + 'Gesehen</span>' : '')
       + '</p>'
       + (has(p.note) ? '<p class="card__note">' + esc(p.note) + '</p>' : '')
       + factsHtml(p)
@@ -1220,14 +1223,14 @@
       if (now && meta && !badge) {
         badge = document.createElement('span');
         badge.className = 'card__seen';
-        badge.innerHTML = ICON.check + 'gesehen';
+        badge.innerHTML = ICON.check + 'Gesehen';
         meta.appendChild(badge);
       } else if (!now && badge) {
         badge.remove();
       }
     }
 
-    /* Im Filter "Noch offen" verschwindet der Eintrag sofort */
+    /* Im Filter "Noch nicht gesehen" verschwindet der Eintrag sofort */
     if (S.unseen && now) { closeSheet(); render(); }
     else { syncChips(); renderCount(); renderShareBar(); }
   }

@@ -21,7 +21,7 @@ umsetzbar.
 | Nutzbare Listenfläche | 427 px |
 | Sichtbare Zeilen | **4** von 101 |
 | Vorkommende Zeilenhöhen | **100 / 102 / 123 px** |
-| Verschiedene Schriftgrößen in `style.css` | **16** |
+| Verschiedene Schriftgrößen in `style.css` | **30** |
 | Gleichzeitig sichtbare Versalien-Stile | **7** |
 | Verschiedene `badge`-Texte | **43** auf 54 Orten, 33 davon einmalig |
 | Kategorien, die sich eine Farbe teilen | `ausflug` + `praktisch` (beide `lake`) |
@@ -33,6 +33,10 @@ umsetzbar.
 | Verschiedene Tags | **85**, davon 30 genau einmal vergeben |
 
 ### 1.2 Visuelle Hierarchie und Konsistenz
+
+> **Korrektur 18.09.2026:** In der ersten Fassung standen hier 16
+> Schriftgrößen. Ausgezählt sind es **30** — von `.62rem` bis `1.9rem`. Der
+> Befund wird dadurch nicht kleiner.
 
 **Der Kopf kostet mehr als ein Drittel des Schirms.** Titel, Jum-Schalter,
 Suchfeld und zwei Chipreihen stehen sticky über allem: 220 px, bevor der
@@ -332,17 +336,21 @@ am selben Ort.
 
 ### 3.6 Typografie
 
-`style.css` verwendet heute sechzehn Schriftgrößen. Vorschlag: **sechs
+`style.css` verwendet heute dreißig Schriftgrößen. Vorschlag: **sechs
 Tokens**, und Versalien nur noch auf einem davon.
 
 | Token | Größe / Zeilenhöhe | Schnitt | Verwendung |
 |---|---|---|---|
-| `--t-display` | 1.75rem / 1.15 | Fraunces 600 | „Nachmittag", Sheet-Name |
-| `--t-title` | 1.25rem / 1.2 | Fraunces 600 | Kopf, Sektionsköpfe |
-| `--t-name` | 1.0625rem / 1.25 | Fraunces 600 | Ortsname in der Zeile |
-| `--t-body` | 0.9375rem / 1.5 | Karla 400 | Notiz, Fließtext |
-| `--t-meta` | 0.8125rem / 1.35 | Karla 500 | Fakten, Chips, Zähler |
-| `--t-micro` | 0.6875rem / 1.3 | Karla 700, +.06em | **einzige** Versalien |
+| `--t-display` | 1.625rem | Fraunces 600 | „Nachmittag", Ortsname in „Heute", Sheet-Name |
+| `--t-title` | 1.25rem | Fraunces 600 | Kopf, Sektionsköpfe |
+| `--t-name` | 1.0625rem | Fraunces 600 | Ortsname in der Zeile |
+| `--t-body` | 0.9375rem | Karla 400 | Notiz, Fließtext |
+| `--t-meta` | 0.8125rem | Karla 500 | Fakten, Chips, Zählzeile |
+| `--t-micro` | 0.6875rem | Karla 700 | Marken, Zähler, Tableiste, Versalien |
+
+Dazu die `1rem`-Basis für Body und Suchfeld — nicht verhandelbar, darunter
+zoomt iOS beim Tippen. Die Zeile bekommt damit drei klare Stufen:
+**Name 1.0625 › Fakten 0.8125 › Marken 0.6875.**
 
 Regeln:
 
@@ -572,7 +580,7 @@ Sheet.**
 | Chrom über der Liste | 220 px | 132 px, beim Scrollen 40 |
 | Sichtbare Zeilen (402×754) | 4 | 6, beim Scrollen 7 |
 | Zeilenhöhen | 100 / 102 / 123 | eine, 96 |
-| Schriftgrößen | 16 | 6 |
+| Schriftgrößen | 30 | 6 (+ die 1rem-Basis) |
 | Gleichzeitige Versalien-Stile | 7 | 1 |
 | Badge-Varianten in der Liste | 43 Texte | 6 Zeichen |
 | Kategorien ohne eigene Farbe | 2 | 0 |
@@ -634,3 +642,53 @@ Die Schritte 1 bis 3 sind unabhängig voneinander und einzeln
 auslieferbar. Schritt 4 ist der größte und lohnt erst, wenn `moment` und
 `indoor` in `places.json` gepflegt sind — sonst wird eine bessere
 Oberfläche auf dieselbe dünne Datenlage gesetzt.
+
+---
+
+## 5. Umsetzungsstand
+
+### Schritt 1 — umgesetzt in `v8`
+
+| | v7 | v8 |
+|---|---|---|
+| Schriftgrößen im Stylesheet | 30 | 6 Tokens + die 1rem-Basis |
+| Gleichzeitige Versalien-Stile | 7 | 1 (drei Sektionsmarken in „Heute") |
+| Kategorien ohne eigene Farbe | 2 | 0 |
+| Farben für „dieser Filter ist an" | 3 (Seeblau, Verde, Gold) | 1 (Seeblau) |
+| Gold als Zustandsfarbe | 4 Bedeutungen | 1 (Merkliste) |
+| Verde als Zustandsfarbe | 4 Bedeutungen | 1 (Jum) |
+| Name zu Kategorie in der Zeile | 1,42 | 1,55 |
+| Zeilenhöhen | 100 / 102 / 123 px | 97 / 100 / 122 px |
+
+Im Einzelnen:
+
+- **`--t-display` … `--t-micro`** ersetzen 30 gefühlte Größen. 47
+  Fundstellen umgestellt; übrig bleiben zwei harte `1rem` (Body-Basis und
+  Suchfeld, beide durch die iOS-Zoom-Grenze gesetzt).
+- **Versalien** nur noch in einer Regel, für `.today__date`,
+  `.today__kicker` und `.today__lead` — je eine pro Abschnitt. Kategorie,
+  Badge, „Gesehen", `dl`-Labels, `sheet__cat` und `today__cat` sind
+  gemischt geschrieben.
+- **`--stein` `#6B6152` / `#A79C86`** als fünfte Kategoriefarbe für
+  `praktisch`. Im gerenderten DOM gemessen: 5,97:1 hell, 6,19:1 dunkel.
+  Alle Textfarben beider Schemata liegen über 4,5:1.
+- **Gold heißt Merkliste** (Stern, Tab-Zähler, Rahmen der empfangenen
+  Liste). Die Aufenthaltsdauer ist neutral, „Unter 1 h" ist seeblau.
+- **Verde heißt Jum** (Schalter, „Jum ok"). Der Gesehen-Haken ist
+  tintenfarben, die Marke „Gesehen" grau, „Noch nicht gesehen" seeblau,
+  die Faktencheck-Haken grau.
+- **Ziegel heißt Achtung** — „Offene Punkte" tragen jetzt dieselbe Farbe
+  wie „dafür ist es heute zu spät" statt Gold.
+- **„Noch offen" heißt „Noch nicht gesehen".**
+- **Die Zeilenhöhe blieb neutral.** Die größeren Stufen hatten jede Zeile
+  um 7 px wachsen lassen; zurückgeholt über die Innenabstände, engeren
+  Durchschuss der einzeiligen Notiz und die Markenstufe für Kategorie und
+  Badge. Netto 1–3 px weniger als v7.
+- **Zwei tote Regeln entfernt** (`.tag`, `.chip--dog`) und die zweite
+  Titelgröße ab 33 rem.
+
+Nicht angefasst, wie angekündigt: Layout, Informationsarchitektur,
+Filterlogik, Datenehrlichkeit, Jum-Dauerschalter, Offline-First und die
+iOS-Safari-Behandlung.
+
+### Schritte 2 bis 4 — offen
