@@ -101,6 +101,10 @@
 /* --- Basis --------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Klassenregeln mit display überstimmen sonst das display:none des Browsers,
+   und als hidden markierte Elemente bleiben sichtbar. */
+[hidden] { display: none !important; }
+
 html {
   -webkit-text-size-adjust: 100%;
   /* Anker- und Fokus-Sprünge nicht unter den Sticky-Header oder die
@@ -203,9 +207,12 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 }
 .search__input::-webkit-search-cancel-button { display: none; }
 .search__input::placeholder { color: var(--soft); opacity: 1; }
-.search__input:focus {
-  outline: none; border-color: var(--lake-ink);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lake) 22%, transparent);
+.search__input:focus { border-color: var(--lake-ink); }
+/* Kein outline:none — der Ring aus :focus-visible bleibt die Rückfallebene,
+   auch wenn color-mix() nicht unterstützt wird. */
+.search__input:focus-visible {
+  outline: 2px solid var(--lake-ink);
+  outline-offset: 2px;
 }
 .search__clear {
   position: absolute; right: .35rem; top: 50%; margin-top: -22px;

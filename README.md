@@ -97,6 +97,27 @@ GitHub Pages, Branch `main`, Ordner `/`. Kein Build.
 git add -A && git commit -m "…" && git push
 ```
 
+## Auf dem iPhone prüfen
+
+Die Entwicklungsumgebung hat kein iOS und kein Safari — getestet wird in
+Chromium. Genau dort fällt eine Fehlerklasse durch: Chromium unterdrückt
+kleine `touchmove`-Ereignisse, iOS Safari liefert sie aus. So ist der Fehler
+entstanden, bei dem sich das Detailfenster nur durch Wischen schließen ließ.
+
+Deshalb liegt `selbsttest.html` daneben. Auf dem iPhone öffnen:
+
+```
+https://<deine-pages-url>/selbsttest.html
+```
+
+Zweimal tippen, einmal wischen, „Ergebnis kopieren" — der Bericht enthält den
+gemessenen Fingerwackler, ob der Klick nach einem `preventDefault()` noch
+ankommt, die tatsächlichen Safe-Area-Werte, `100dvh`, den Zustand von Service
+Worker und `localStorage` sowie die geladenen Schriften. Das sind die Zahlen,
+die sich hier nicht ermitteln lassen.
+
+Die Seite gehört nicht zur App, ist aus ihr nicht verlinkt und stört nichts.
+
 ## Karte (offen)
 
 Vorgesehen ist ein Tab „Karte" mit Leaflet und OpenStreetMap-Tiles, Marker in
@@ -144,6 +165,7 @@ python3 scripts/make-icons.py
 
 ```
 index.html              Shell
+selbsttest.html         Diagnoseseite für echte Geräte (nicht Teil der App)
 style.css               Tokens, Light und Dark, Layout
 app.js                  Laden, Zustand, Filter, Sortierung, Sheet, Merkliste
 sw.js                   Service Worker: App-Shell, places.json, Google Fonts

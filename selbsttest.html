@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Peschiera kompakt — Selbsttest</title>
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="./style.css">
+<style>
+  .t-wrap { max-width: 32rem; margin-inline: auto; padding: 1rem 1rem 3rem; }
+  .t-lead { font-size: .9rem; color: var(--soft); margin-bottom: 1.2rem; }
+  .t-step {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card);
+    padding: .9rem 1rem; margin-bottom: .7rem; box-shadow: var(--shadow);
+  }
+  .t-step h2 { font-size: 1rem; margin-bottom: .25rem; }
+  .t-step p { font-size: .86rem; color: var(--soft); }
+  .t-target {
+    margin-top: .8rem; border: 2px dashed var(--lake); border-radius: 10px;
+    min-height: 88px; display: grid; place-items: center; gap: .3rem;
+    font-size: .9rem; color: var(--lake-ink); text-align: center; padding: .6rem;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .t-target b { font-size: 1.4rem; }
+  .t-x { width: 56px; height: 56px; border-radius: 50%; border: 1px solid var(--line);
+         background: var(--bg); font-size: 1.5rem; display: grid; place-items: center; }
+  .t-res { margin-top: .6rem; font-size: .85rem; font-weight: 700; }
+  .t-ok { color: var(--verde-ink); } .t-bad { color: var(--brick); } .t-wait { color: var(--soft); }
+  .t-out { width: 100%; min-height: 15rem; font-family: ui-monospace, Menlo, monospace;
+    font-size: .72rem; line-height: 1.45; padding: .7rem; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .t-actions { display: grid; gap: .5rem; margin-top: .7rem; }
+</style>
+</head>
+<body>
+<div class="t-wrap">
+  <h1 class="bar__title" style="margin-bottom:.3rem"><em>Selbsttest</em> auf diesem Gerät</h1>
+  <p class="t-lead">
+    Diese Seite prüft, wie sich die App auf <b>deinem</b> iPhone verhält — das kann ich
+    von meiner Seite aus nicht. Mach die zwei Schritte unten, dann unten auf
+    „Ergebnis kopieren“ und schick mir den Text.
+  </p>
+
+  <div class="t-step">
+    <h2>Schritt 1 — ganz normal auf das ✕ tippen</h2>
+    <p>So, wie du es in der App auch tun würdest. Nicht besonders vorsichtig zielen.</p>
+    <div class="t-target" id="tap-zone">
+      <div class="t-x" id="tap-x">&times;</div>
+      <span>hier tippen</span>
+    </div>
+    <p class="t-res t-wait" id="tap-res">noch nicht getippt</p>
+  </div>
+
+  <div class="t-step">
+    <h2>Schritt 2 — in diesem Feld nach unten wischen</h2>
+    <p>Eine normale Wischbewegung, so wie zum Schließen einer Karte.</p>
+    <div class="t-target" id="swipe-zone"><b>↓</b><span>hier nach unten wischen</span></div>
+    <p class="t-res t-wait" id="swipe-res">noch nicht gewischt</p>
+  </div>
+
+  <div class="t-step">
+    <h2>Ergebnis</h2>
+    <textarea class="t-out" id="out" readonly></textarea>
+    <div class="t-actions">
+      <button type="button" class="btn btn--primary btn--wide" id="copy">Ergebnis kopieren</button>
+      <a class="btn btn--wide" href="./index.html">Zurück zur App</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var taps = [], swipes = [], clickAfterMove = null, movesSeen = 0;
+
+  function $(id) { return document.getElementById(id); }
+  function r2(n) { return Math.round(n * 10) / 10; }
+
+  /* --- Schritt 1: Wie stark wackelt der Finger bei einem normalen Tap? ---
+     Wir ahmen die App nach: ab 12 px gilt es als Wischen. Zusätzlich messen
+     wir, ob nach einem preventDefault() auf touchmove noch ein Klick kommt. */
+  var z = $('tap-zone'), t0 = null, maxDy = 0, maxD = 0, prevented = false;
+
+  z.addEventListener('touchstart', function (e) {
+    var t = e.touches[0];
+    t0 = { x: t.clientX, y: t.clientY, at: Date.now() };
+    maxDy = 0; maxD = 0; prevented = false; clickAfterMove = null;
+  }, { passive: true });
+
+  z.addEventListener('touchmove', function (e) {
+    if (!t0) return;
+    movesSeen++;
+    var t = e.touches[0];
+    var dy = t.clientY - t0.y, dx = t.clientX - t0.x;
+    maxDy = Math.max(maxDy, Math.abs(dy));
+    maxD = Math.max(maxD, Math.sqrt(dx * dx + dy * dy));
+    /* Genau das machte die App früher — und genau das verschluckt den Klick. */
+    if (maxDy > 3 && e.cancelable) { e.preventDefault(); prevented = true; }
+  }, { passive: false });
+
+  z.addEventListener('touchend', function () {
+    if (!t0) return;
+    taps.push({ dy: r2(maxDy), d: r2(maxD), ms: Date.now() - t0.at, prevented: prevented });
+    t0 = null;
+    window.setTimeout(function () {
+      var last = taps[taps.length - 1];
+      if (last && clickAfterMove === null) clickAfterMove = false;
+      paint();
+    }, 350);
+  }, { passive: true });
+
+  $('tap-x').addEventListener('click', function () { clickAfterMove = true; paint(); });
+  z.addEventListener('click', function () { if (clickAfterMove === null) clickAfterMove = true; paint(); });
+
+  /* --- Schritt 2: Wischen --- */
+  var s = $('swipe-zone'), s0 = null;
+  s.addEventListener('touchstart', function (e) {
+    s0 = { y: e.touches[0].clientY, at: Date.now(), max: 0, moves: 0 };
+  }, { passive: true });
+  s.addEventListener('touchmove', function (e) {
+    if (!s0) return;
+    s0.moves++;
+    s0.max = Math.max(s0.max, e.touches[0].clientY - s0.y);
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
+  s.addEventListener('touchend', function () {
+    if (!s0) return;
+    swipes.push({ dy: r2(s0.max), ms: Date.now() - s0.at, moves: s0.moves });
+    s0 = null; paint();
+  }, { passive: true });
+
+  /* --- Umgebung --- */
+  function env() {
+    var d = document.createElement('div');
+    d.style.cssText = 'position:fixed;top:0;height:100dvh;padding:env(safe-area-inset-top)'
+      + ' 0 env(safe-area-inset-bottom) 0;visibility:hidden';
+    document.body.appendChild(d);
+    var cs = getComputedStyle(d);
+    var out = {
+      dvh: cs.height, safeTop: cs.paddingTop, safeBottom: cs.paddingBottom
+    };
+    d.remove();
+    return out;
+  }
+
+  function supports(prop, val) {
+    try { return CSS.supports(prop, val); } catch (e) { return false; }
+  }
+
+  function fontState() {
+    try {
+      var list = [];
+      document.fonts.forEach(function (f) { list.push(f.family + ':' + f.status); });
+      return list.length ? list.join(', ') : 'keine registriert';
+    } catch (e) { return 'nicht abfragbar'; }
+  }
+
+  function lsState() {
+    try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return 'nutzbar'; }
+    catch (e) { return 'GESPERRT (' + e.name + ')'; }
+  }
+
+  var swInfo = 'wird geprüft…';
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then(function (reg) {
+      swInfo = reg ? (navigator.serviceWorker.controller ? 'aktiv und steuert die Seite' : 'registriert, steuert noch nicht')
+                   : 'nicht registriert';
+      return caches.keys();
+    }).then(function (keys) {
+      swInfo += ' | Caches: ' + (keys && keys.length ? keys.join(', ') : 'keine');
+      paint();
+    }).catch(function () { swInfo = 'Fehler beim Abfragen'; paint(); });
+  } else { swInfo = 'wird nicht unterstützt'; }
+
+  function verdict() {
+    var lines = [];
+    if (taps.length) {
+      var worst = taps.reduce(function (a, b) { return b.dy > a.dy ? b : a; });
+      lines.push('Fingerwackler beim Tippen: max ' + worst.dy + ' px senkrecht, '
+        + worst.d + ' px gesamt (' + taps.length + ' Versuche)');
+      lines.push('  -> App-Schwelle 12 px: ' + (worst.dy >= 12
+        ? 'ZU NIEDRIG, Taps werden als Wischen gewertet'
+        : 'reicht aus'));
+      lines.push('  touchmove ausgelöst: ' + (movesSeen ? 'ja (' + movesSeen + ')' : 'nein'));
+      lines.push('  preventDefault gerufen: ' + (worst.prevented ? 'ja' : 'nein'));
+      lines.push('  Klick kam trotzdem an: ' + (clickAfterMove === null ? '?' : clickAfterMove ? 'JA' : 'NEIN — das ist der Fehler'));
+    } else {
+      lines.push('Schritt 1 noch nicht gemacht');
+    }
+    if (swipes.length) {
+      var sw = swipes[swipes.length - 1];
+      lines.push('Wischen: ' + sw.dy + ' px in ' + sw.ms + ' ms, ' + sw.moves + ' Zwischenschritte');
+      lines.push('  -> Schließschwelle 80 px: ' + (sw.dy > 80 ? 'erreicht' : 'NICHT erreicht'));
+    } else {
+      lines.push('Schritt 2 noch nicht gemacht');
+    }
+    return lines;
+  }
+
+  function paint() {
+    var e = env();
+    var txt = [
+      '=== Peschiera kompakt — Selbsttest ===',
+      new Date().toISOString(),
+      '',
+      '--- Messung ---'
+    ].concat(verdict()).concat([
+      '',
+      '--- Gerät ---',
+      'UA: ' + navigator.userAgent,
+      'Bildschirm: ' + window.innerWidth + 'x' + window.innerHeight
+        + ' @' + (window.devicePixelRatio || 1) + 'x',
+      'visualViewport: ' + (window.visualViewport
+        ? Math.round(window.visualViewport.width) + 'x' + Math.round(window.visualViewport.height) : 'keins'),
+      '100dvh ergibt: ' + e.dvh,
+      'Safe Area oben/unten: ' + e.safeTop + ' / ' + e.safeBottom,
+      'Vom Homescreen gestartet: ' + (navigator.standalone === true ? 'ja'
+        : window.matchMedia('(display-mode: standalone)').matches ? 'ja (display-mode)' : 'nein'),
+      'Dunkelmodus vom System: ' + (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'ja' : 'nein'),
+      'Bewegung reduzieren: ' + (window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'ja' : 'nein'),
+      '',
+      '--- Technik ---',
+      'Service Worker: ' + swInfo,
+      'localStorage: ' + lsState(),
+      'Gemerkte Orte gespeichert: ' + (function () {
+        try { return (JSON.parse(localStorage.getItem('pk.saved') || '[]')).length; }
+        catch (x) { return '?'; } })(),
+      'Schriften: ' + fontState(),
+      'CSS dvh: ' + supports('height', '100dvh'),
+      'CSS color-mix: ' + supports('color', 'color-mix(in srgb, red 50%, blue)'),
+      'CSS :has: ' + supports('selector(:has(a))'),
+      'CSS overscroll-behavior: ' + supports('overscroll-behavior', 'contain'),
+      'CSS touch-action: ' + supports('touch-action', 'none'),
+      'CSS scroll-padding: ' + supports('scroll-padding-top', '10px')
+    ]).join('\n');
+
+    $('out').value = txt;
+
+    var tr = $('tap-res');
+    if (!taps.length) { tr.className = 't-res t-wait'; tr.textContent = 'noch nicht getippt'; }
+    else {
+      var w = taps.reduce(function (a, b) { return b.dy > a.dy ? b : a; });
+      var good = clickAfterMove !== false;
+      tr.className = 't-res ' + (good ? 't-ok' : 't-bad');
+      tr.textContent = (good ? '✓' : '✗') + ' Wackler ' + w.dy + ' px · Klick '
+        + (clickAfterMove === false ? 'wurde verschluckt' : 'kam an')
+        + ' · ' + taps.length + ' Versuch(e)';
+    }
+
+    var sr = $('swipe-res');
+    if (!swipes.length) { sr.className = 't-res t-wait'; sr.textContent = 'noch nicht gewischt'; }
+    else {
+      var last = swipes[swipes.length - 1];
+      sr.className = 't-res ' + (last.dy > 80 ? 't-ok' : 't-bad');
+      sr.textContent = (last.dy > 80 ? '✓' : '✗') + ' ' + last.dy + ' px in ' + last.ms + ' ms';
+    }
+  }
+
+  $('copy').addEventListener('click', function () {
+    var el = $('out');
+    var done = function (ok) {
+      $('copy').textContent = ok ? 'Kopiert ✓' : 'Text oben markieren und kopieren';
+      window.setTimeout(function () { $('copy').textContent = 'Ergebnis kopieren'; }, 2500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(el.value).then(function () { done(true); }, function () { done(false); });
+    } else {
+      el.removeAttribute('readonly'); el.select(); el.setSelectionRange(0, 99999);
+      try { done(document.execCommand('copy')); } catch (e) { done(false); }
+      el.setAttribute('readonly', '');
+    }
+  });
+
+  paint();
+  window.addEventListener('resize', paint);
+})();
+</script>
+</body>
+</html>
