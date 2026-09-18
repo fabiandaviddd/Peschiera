@@ -111,6 +111,10 @@ dann die Kategorieregel für `essen` und `cafe`, erst danach die Außen-Tags
 wichtig: `wasser` an einem Restaurant heißt „liegt am See", nicht „man
 sitzt im Regen". Offen bleiben damit 17 Orte, fast alle Ausflüge.
 
+Die Kategorieregel ist eine Regel, keine Wahrheit: ein Lokal ohne Innenraum
+braucht ein ausdrückliches `"indoor": false`. Bisher ist das genau ein Fall,
+**7 Ponti** — die Bar liegt draußen an den Bastionen.
+
 Ein Ort mit „ungeprüft" oder „unbestätigt" in `hours` und die Badges
 „Zeiten prüfen" und „Erst anrufen" werden nie als erster Vorschlag gezeigt,
 sondern nach hinten sortiert und mit dem Hinweis „Zeiten ungeprüft, vorher
