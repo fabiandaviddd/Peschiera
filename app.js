@@ -802,6 +802,10 @@
     $('q').addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && $('q').value) { e.stopPropagation(); $('q').value = ''; S.q = ''; render(); }
     });
+    /* Tastatur offen -> Tableiste weg (siehe style.css). */
+    $('q').addEventListener('focus', function () { document.body.classList.add('is-typing'); });
+    $('q').addEventListener('blur', function () { document.body.classList.remove('is-typing'); });
+
     $('q-clear').addEventListener('click', function () {
       $('q').value = ''; S.q = ''; render(); $('q').focus();
     });

@@ -105,6 +105,18 @@
    und als hidden markierte Elemente bleiben sichtbar. */
 [hidden] { display: none !important; }
 
+/* iOS Safari: nimmt die Wartezeit auf einen möglichen Doppeltipp heraus und
+   unterdrückt das graue Aufblitzen — sonst fühlt sich jeder Tipp träge an. */
+button, a, input, label, .chip, .tab, .card__open, .star {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Das Sheet braucht die volle Kontrolle über Gesten, sein Inhalt scrollt. */
+.sheet { touch-action: none; }
+.sheet__body { touch-action: pan-y; }
+/* Langes Drücken auf eine Karte soll keine Textauswahl auslösen. */
+.card__open { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
 html {
   -webkit-text-size-adjust: 100%;
   /* Anker- und Fokus-Sprünge nicht unter den Sticky-Header oder die
@@ -453,8 +465,14 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .sheet__acts { display: grid; gap: .5rem; }
 
 /* --- Tableiste ---------------------------------------------------------- */
+/* Bei offener Tastatur hängt iOS fixierte Elemente an den sichtbaren
+   Bildausschnitt — die Tableiste klebt dann über der Tastatur und verdeckt
+   das erste Suchergebnis. Solange getippt wird, fährt sie weg. */
+body.is-typing .tabs { transform: translateY(110%); }
+
 .tabs {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
+  transition: transform 180ms var(--ease);
   background: var(--card);
   border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);

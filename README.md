@@ -97,6 +97,28 @@ GitHub Pages, Branch `main`, Ordner `/`. Kein Build.
 git add -A && git commit -m "…" && git push
 ```
 
+## Was für iOS Safari angepasst ist
+
+Safari verhält sich an mehreren Stellen anders als die Engine, in der hier
+getestet wird. Diese Punkte sind gezielt behandelt:
+
+| Eigenheit | Behandlung |
+|---|---|
+| Nach `preventDefault()` auf `touchmove` liefert Safari keinen Klick mehr | Berührungen, die auf einem Bedienelement beginnen, starten keine Wischgeste; Schwelle 12 px statt 6 px |
+| `overflow: hidden` hält den Hintergrund nicht fest | `body` wird bei offenem Sheet fixiert, Scrollposition gemerkt und wiederhergestellt |
+| Wartezeit auf einen möglichen Doppeltipp, graues Aufblitzen | `touch-action: manipulation` und `-webkit-tap-highlight-color: transparent` auf allen Bedienelementen |
+| Bei offener Tastatur kleben fixierte Elemente am sichtbaren Ausschnitt | Die Tableiste fährt weg, solange im Suchfeld getippt wird |
+| `100vh` rechnet die Adressleiste mit | `dvh` mit `vh` als Rückfallebene |
+| Langes Drücken öffnet die Textauswahl | `-webkit-touch-callout: none` auf der Kartenfläche |
+| Eingabefelder unter 16 px lösen Zoom aus | Suchfeld auf `1rem` |
+| Randbereiche bei randlosem Bildschirm | `viewport-fit=cover` plus `env(safe-area-inset-*)` in Kopf, Tableiste und Sheet |
+| `color-mix()` erst ab Safari 16.4 | Fokusring hängt nicht mehr daran |
+
+Nicht behandelbar von hier aus: Safari räumt bei Websites, die längere Zeit
+nicht benutzt werden, den Offline-Speicher und `localStorage` weg. Bei
+täglicher Nutzung im Urlaub kein Thema; nach Wochen Pause kann die Merkliste
+weg sein.
+
 ## Auf dem iPhone prüfen
 
 Die Entwicklungsumgebung hat kein iOS und kein Safari — getestet wird in
