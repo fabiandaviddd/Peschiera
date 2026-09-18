@@ -482,18 +482,20 @@
 
   function cardHtml(p) {
     var on = S.saved.indexOf(p.id) >= 0;
+    /* Der Name ist eine echte Überschrift (nicht im Knopf verschachtelt, das
+       wäre ungültig). Geöffnet wird über einen Knopf, der die Karte überdeckt. */
     return '<article class="card ' + accentClass(p.category) + '">'
-      + '<button type="button" class="card__open" data-open="' + esc(p.id) + '">'
-      + '<span class="card__name">' + esc(p.name) + '</span>'
-      + '<span class="card__meta">'
+      + '<h3 class="card__name">' + esc(p.name) + '</h3>'
+      + '<p class="card__meta">'
       + '<span class="card__cat">' + esc(catLabel(p.category)) + '</span>'
       + (has(p.badge) ? '<span class="card__badge">' + esc(p.badge) + '</span>' : '')
-      + '</span>'
-      + (has(p.note) ? '<span class="card__note">' + esc(p.note) + '</span>' : '')
+      + '</p>'
+      + (has(p.note) ? '<p class="card__note">' + esc(p.note) + '</p>' : '')
       + factsHtml(p)
-      + (p.tags.length ? '<span class="card__tags">' + p.tags.slice(0, 4).map(function (t) {
-          return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</span>' : '')
-      + '</button>'
+      + (p.tags.length ? '<p class="card__tags">' + p.tags.slice(0, 4).map(function (t) {
+          return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</p>' : '')
+      + '<button type="button" class="card__open" data-open="' + esc(p.id) + '"'
+      + ' aria-label="' + esc(p.name) + ' — Details"></button>'
       + '<button type="button" class="star" data-save="' + esc(p.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
       + '<span class="sr-only">' + (on ? 'Aus der Merkliste entfernen' : 'Merken') + '</span>'
       + ICON.star + '</button>'
@@ -564,6 +566,26 @@
   }
 
   var lastFocus = null;
+  var lockedAt = 0;
+
+  /* overflow:hidden allein hält iOS Safari nicht auf — der Hintergrund scrollt
+     trotzdem mit. Deshalb body fixieren und die Scrollposition merken.
+     Das paddingRight gleicht die wegfallende Scrollbar aus (kein Layout-Shift). */
+  function lockBody() {
+    lockedAt = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var sbw = window.innerWidth - document.documentElement.clientWidth;
+    if (sbw > 0) document.body.style.paddingRight = sbw + 'px';
+    document.body.style.top = (-lockedAt) + 'px';
+    document.body.classList.add('is-locked');
+  }
+
+  function unlockBody() {
+    document.body.classList.remove('is-locked');
+    document.body.style.top = '';
+    document.body.style.paddingRight = '';
+    window.scrollTo(0, lockedAt);
+  }
+
 
   function openSheet(id) {
     var p = null;
@@ -577,10 +599,7 @@
     sheet.className = 'sheet ' + accentClass(p.category);
     $('sheet-body').innerHTML = sheetHtml(p);
 
-    /* Kein Layout-Shift: Breite der wegfallenden Scrollbar ausgleichen */
-    var sbw = window.innerWidth - document.documentElement.clientWidth;
-    if (sbw > 0) document.body.style.paddingRight = sbw + 'px';
-    document.body.classList.add('is-locked');
+    lockBody();
 
     $('scrim').hidden = false;
     sheet.hidden = false;
@@ -606,8 +625,7 @@
     window.setTimeout(function () {
       sheet.hidden = true;
       $('scrim').hidden = true;
-      document.body.classList.remove('is-locked');
-      document.body.style.paddingRight = '';
+      unlockBody();
     }, 260);
 
     var id = S.openId;
@@ -695,8 +713,15 @@
   /* ---------------------------------------------------------- Swipe / Drag */
 
   var drag = null;
+  var DRAG_SLOP = 12;      // px, bevor aus einem Tap ein Wischen wird
 
-  function dragStart(y, fromGrip) {
+  var CONTROLS = 'button, a, input, select, textarea, label, [role="button"]';
+
+  function dragStart(y, fromGrip, target) {
+    /* Beginnt die Berührung auf einem Bedienelement, wird nicht gewischt.
+       Sonst würde das preventDefault() in dragMove() den Klick unterdrücken —
+       iOS Safari liefert danach gar keinen Klick mehr, und das ✕ wirkte tot. */
+    if (!fromGrip && target && target.closest && target.closest(CONTROLS)) return;
     if (!fromGrip && $('sheet-body').scrollTop > 0) return;
     drag = { y0: y, dy: 0, live: false, grip: fromGrip };
   }
@@ -706,7 +731,7 @@
     var dy = y - drag.y0;
     if (dy <= 0) { if (drag.live) { drag.dy = 0; $('sheet').style.transform = ''; } return; }
     if (!drag.live) {
-      if (dy < 6) return;
+      if (dy < DRAG_SLOP) return;
       if (!drag.grip && $('sheet-body').scrollTop > 0) { drag = null; return; }
       drag.live = true;
       $('sheet').classList.add('is-drag');
@@ -831,7 +856,9 @@
     $('list').addEventListener('click', function (e) {
       var save = e.target.closest('[data-save]');
       if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); return; }
-      var open = e.target.closest('[data-open]');
+      var card = e.target.closest('.card');
+      if (!card) return;
+      var open = card.querySelector('[data-open]');
       if (open) openSheet(open.getAttribute('data-open'));
     });
 
@@ -852,7 +879,7 @@
     var sheet = $('sheet');
     sheet.addEventListener('touchstart', function (e) {
       if (e.touches.length !== 1) return;
-      dragStart(e.touches[0].clientY, $('grip').contains(e.target));
+      dragStart(e.touches[0].clientY, $('grip').contains(e.target), e.target);
     }, { passive: true });
     sheet.addEventListener('touchmove', function (e) {
       if (e.touches.length !== 1) return;
@@ -863,7 +890,7 @@
 
     $('grip').addEventListener('pointerdown', function (e) {
       if (e.pointerType === 'touch') return;
-      dragStart(e.clientY, true);
+      dragStart(e.clientY, true, e.target);
       try { $('grip').setPointerCapture(e.pointerId); } catch (err) { /* egal */ }
     });
     $('grip').addEventListener('pointermove', function (e) {

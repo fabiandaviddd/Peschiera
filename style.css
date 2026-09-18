@@ -121,7 +121,13 @@ body {
   /* Platz für die Tableiste unten */
   padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
 }
-body.is-locked { overflow: hidden; }
+/* Sheet offen: Seite festhalten. position:fixed statt nur overflow:hidden,
+   weil iOS Safari sonst den Hintergrund weiterscrollt. top setzt app.js. */
+body.is-locked {
+  position: fixed;
+  left: 0; right: 0; width: 100%;
+  overflow: hidden;
+}
 
 h1, h2, h3 { margin: 0; font-family: var(--font-head); font-weight: 600; line-height: 1.2; }
 p { margin: 0; }
@@ -279,13 +285,16 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   box-shadow: var(--shadow);
 }
 
+/* Deckt die ganze Karte ab, damit jeder Tap öffnet. Liegt unter dem Stern. */
 .card__open {
-  grid-column: 1; grid-row: 1 / span 4;
-  text-align: left; cursor: pointer;
-  display: grid; gap: .3rem; align-content: start;
+  position: absolute; inset: 0; z-index: 0;
+  border-radius: var(--r-card);
+  cursor: pointer; background: none; padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
-.card__open::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-card); }
+
+.card > h3, .card > p, .card > .facts { grid-column: 1; margin: 0; }
+.card > * + * { margin-top: .3rem; }
 
 .card__name { font-size: 1.06rem; letter-spacing: -.01em; }
 .card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .45rem; }

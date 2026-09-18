@@ -10,8 +10,9 @@
    ========================================================================== */
 'use strict';
 
-var CACHE = 'peschiera-v1';
-var FONTS = 'peschiera-fonts-v1';
+var CACHE = 'peschiera-v2';
+var FONTS = 'peschiera-fonts-v2';
+var TIMEOUT = 2500;   // ms, danach greift der Cache
 
 var SHELL = [
   './',
@@ -77,24 +78,55 @@ self.addEventListener('fetch', function (e) {
 
   if (url.origin !== self.location.origin) return;
 
-  /* Eigene Dateien: Cache sofort ausliefern, im Hintergrund erneuern.
-     Die App startet damit auch offline, und ein neuer Datenstand landet
-     beim nächsten Aufruf. */
+  /* Bilder und Icons ändern sich praktisch nie: erst Cache. */
+  if (req.destination === 'image') {
+    e.respondWith(
+      caches.open(CACHE).then(function (c) {
+        return c.match(req, { ignoreSearch: true }).then(function (hit) {
+          return hit || fetch(req).then(function (res) {
+            if (res && res.ok && res.type === 'basic') c.put(req, res.clone());
+            return res;
+          });
+        });
+      }).catch(function () { return fetch(req); })
+    );
+    return;
+  }
+
+  /* Seite, Skript, Stil und Daten: erst Netz, nach TIMEOUT der Cache.
+     Zuvor galt hier "erst Cache" — dann sah man nach einem Deploy noch den
+     alten Stand. Ohne Netz schlägt fetch sofort fehl, offline bleibt also
+     schnell; nur ein zähes Netz wartet bis TIMEOUT. */
   e.respondWith(
     caches.open(CACHE).then(function (c) {
       return c.match(req, { ignoreSearch: true }).then(function (hit) {
-        var fresh = fetch(req).then(function (res) {
+        var settled = false;
+
+        var net = fetch(req).then(function (res) {
+          settled = true;
           if (res && res.ok && res.type === 'basic') c.put(req, res.clone());
           return res;
-        }).catch(function () { return null; });
+        }).catch(function () {
+          settled = true;
+          return null;
+        });
 
-        if (hit) { e.waitUntil(fresh); return hit; }
+        var raced = hit
+          ? Promise.race([
+              net,
+              new Promise(function (resolve) {
+                setTimeout(function () { if (!settled) resolve(null); }, TIMEOUT);
+              })
+            ])
+          : net;
 
-        return fresh.then(function (res) {
+        return raced.then(function (res) {
           if (res) return res;
-          /* Navigation ohne Netz und ohne Treffer: App-Shell ausliefern */
+          if (hit) { e.waitUntil(net); return hit; }
           if (req.mode === 'navigate') {
-            return c.match('./index.html') || c.match('./');
+            return c.match('./index.html').then(function (shell) {
+              return shell || c.match('./');
+            });
           }
           return new Response('', { status: 504, statusText: 'offline' });
         });
