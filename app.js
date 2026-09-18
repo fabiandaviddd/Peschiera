@@ -1542,6 +1542,10 @@
      Sheet zu schliessen — auf Android und in der iOS-PWA ein echter
      Ausstiegspunkt. popstate schliesst, closeSheet() raeumt den Eintrag ab. */
   var sheetPushed = false;
+  /* Das Ausblenden laeuft 260 ms nach. Ohne diese beiden bleibt ein alter
+     Timer stehen und blendet ein inzwischen neu geoeffnetes Sheet wieder aus. */
+  var sheetTimer = null;
+  var sheetClosing = false;
 
   function pushSheetState() {
     if (sheetPushed) return;
@@ -1557,6 +1561,11 @@
 
   function showSheet(html, cls) {
     var sheet = $('sheet');
+    /* Schliesst gerade eins und wird sofort das naechste geoeffnet, darf der
+       noch laufende Timer das neue nicht mitnehmen. */
+    if (sheetTimer !== null) { window.clearTimeout(sheetTimer); sheetTimer = null; }
+    sheetClosing = false;
+
     lastFocus = document.activeElement;
     pushSheetState();
 
@@ -1600,7 +1609,14 @@
 
   function closeSheet(fromPop) {
     var sheet = $('sheet');
-    if (sheet.hidden) return;
+    /* popSheetState() ruft history.back(), das popstate ausloest — und zwar
+       waehrend das Sheet noch sichtbar ist. Ohne diese Sperre laeuft der
+       ganze Schliessvorgang ein zweites Mal. */
+    if (sheet.hidden || sheetClosing) {
+      if (fromPop === true) sheetPushed = false;
+      return;
+    }
+    sheetClosing = true;
     /* Kam der Aufruf aus popstate, ist der Eintrag schon weg. Auf === true
        pruefen: onTap reicht sein Event als erstes Argument durch, und das
        waere truthy — der Eintrag bliebe stehen und die Zurueck-Geste tot. */
@@ -1610,7 +1626,9 @@
     sheet.style.transform = '';
     $('scrim').classList.remove('is-on');
 
-    window.setTimeout(function () {
+    sheetTimer = window.setTimeout(function () {
+      sheetTimer = null;
+      sheetClosing = false;
       sheet.hidden = true;
       $('scrim').hidden = true;
       unlockBody();

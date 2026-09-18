@@ -227,7 +227,7 @@ body.is-compact .bar__top {
    ein Schalter sagt "immer", und genau das ist gemeint. */
 .switch {
   display: inline-flex; align-items: center; gap: .4rem;
-  min-height: 32px; padding: 0 .1rem;
+  min-height: 44px; margin-block: -6px; padding: 0 .1rem;
   font-size: var(--t-meta); font-weight: 700; color: var(--soft);
   cursor: pointer;
 }
@@ -847,7 +847,7 @@ body.is-typing .tabs { transform: translateY(110%); }
   font-size: var(--t-body); color: var(--soft);
   border-bottom: 1px solid var(--line);
 }
-.today__weather .chip { height: 34px; }
+.today__weather .chip { min-height: 44px; margin-block: -4px; }
 
 .today__kicker { display: flex; align-items: baseline; gap: .5rem;
   color: var(--brick-ink); margin-top: 1.1rem; }
