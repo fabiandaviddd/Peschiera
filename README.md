@@ -12,8 +12,8 @@ GitHub Pages liefert das Repo unverändert aus.
 | | |
 |---|---|
 | **PWA** | `manifest.webmanifest` + `sw.js`. App-Shell und `places.json` liegen im Cache, nach einmaligem Laden läuft alles offline — Merkliste inklusive. Auf dem iPhone-Homescreen installierbar, mit Icon und Startbild. |
-| **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. |
-| **Heute** | Startansicht statt Liste: Datum, Reisetag, Tagesabschnitt aus der Geräteuhr, ein Vorschlag mit Begründung aus den Daten, zwei Alternativen, ein Knopf für den nächsten. Weiß sie nichts Passendes, sagt sie das und verweist auf die Liste. Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert. Ab 45 Minuten vor Ende eines Abschnitts zeigt sie den nächsten („Gleich: Abend"). |
+| **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. Das Feld steht auch auf „Heute" — sonst ist von der Startansicht aus nicht zu sehen, dass hinter dem einen Vorschlag 101 Orte liegen. Hineingreifen wechselt in die Liste. |
+| **Heute** | Startansicht statt Liste: Datum, Reisetag, Tagesabschnitt aus der Geräteuhr, ein Vorschlag mit Begründung aus den Daten, zwei Alternativen, ein Knopf für den nächsten. Weiß sie nichts Passendes, sagt sie das und verweist auf die Liste. Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert; die Antwort hält einen Besuch lang (`sessionStorage`, `pk.wet`), damit man sie am Regentag nicht bei jedem Öffnen neu gibt. Ab 45 Minuten vor Ende eines Abschnitts zeigt sie den nächsten („Gleich: Abend"). |
 | **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". Die Zählzeile sagt immer, wie viele Orte er gerade ausblendet. |
 | **Filter** | Chip-Leiste, beliebig kombinierbar: Kategorie, „Zu Fuß" (`walk_min ≤ 25`), „Noch offen", „Unter 1 h" (`time_min ≤ 60`). Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. Am rechten Rand zeigt ein Verlauf, dass die Reihe weitergeht. |
 | **Tags** | Über achtzig Stück — zu viele für eine Chip-Reihe. Sie liegen hinter dem Knopf „Tags" im selben Sheet, das auch den Ort zeigt, nach Häufigkeit sortiert und mit laufender Trefferzahl. |
@@ -23,8 +23,8 @@ GitHub Pages liefert das Repo unverändert aus.
 | **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch offen" blendet sie aus. Eigener Speicher, unabhängig vom Merken. |
 | **Teilen** | Im Tab „Gemerkt": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. |
 | **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind es rund 102 px je Zeile statt 228. |
-| **Detailansicht** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. |
-| **Info** | „Gut zu wissen" (die 9 Hinweise aus `merken`), „Offene Punkte" (die 8 aus `open_questions`, mit Telefonnummer als Link) und der Faktencheck. |
+| **Detailansicht** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. Solange es offen ist, liegt der Rest der Seite still: `inert` plus `aria-hidden`, dazu ein Tab-Ring im Sheet als Rückfallebene für Engines ohne `inert`. Ohne das führt `aria-modal` nur in die Irre — der Tabulator lief vorher hinter dem Sheet weiter durch die Liste. |
+| **Info** | „Gut zu wissen" (die 17 Hinweise aus `merken`), „Offene Punkte" (die 18 aus `open_questions`, mit Telefonnummer als Link) und der Faktencheck (13 Korrekturen). |
 | **Dark Mode** | Über `prefers-color-scheme`, mit manuellem Override. Der Knopf oben rechts schaltet automatisch → hell → dunkel. |
 
 Keine Cookies, kein Tracking, keine externen Requests außer Google Fonts.
@@ -100,9 +100,15 @@ Steht `moment` im JSON, gilt es. Sonst wird in dieser Reihenfolge hergeleitet:
    `ausflug` in jedem hellen Abschnitt, `praktisch` gar nicht — eine
    Apotheke ist kein Tagesvorschlag.
 
-Stand 18.09.2026 greifen die Stufen 1 bis 4 bei 63 der 101 Orte; die
-übrigen 38 laufen über den Rückfall und gewinnen durch ein gepflegtes
-`moment`. Bei `indoor` sind 44 Orte ungeklärt.
+Stand 18.09.2026 greifen die Stufen 1 bis 4 bei 50 der 101 Orte; 38 laufen
+über den Rückfall und gewinnen durch ein gepflegtes `moment`, die restlichen
+13 sind `praktisch` und werden nie vorgeschlagen. Ein `moment` im JSON steht
+bisher bei keinem Ort — es ist der Hebel, mit dem sich „Heute" am schnellsten
+verbessern lässt. Bei `indoor` sind 44 Orte ungeklärt: 10 gelten als drinnen,
+47 als draußen, beides über die Tags hergeleitet.
+
+Diese Zahlen stehen nicht von Hand hier, sie kommen aus
+`node scripts/test-logic.mjs` (siehe „Prüfen").
 
 Ein Ort mit „ungeprüft" oder „unbestätigt" in `hours` und die Badges
 „Zeiten prüfen" und „Erst anrufen" werden nie als erster Vorschlag gezeigt,
@@ -121,7 +127,11 @@ Text in `open_questions[]` wird eine enthaltene Telefonnummer automatisch
 anklickbar.
 
 Nach einer Änderung an einer Datei **`CACHE` in `sw.js` hochzählen** und
-`VERSION` in `app.js` mitziehen — beide müssen zusammenpassen.
+`VERSION` in `app.js` mitziehen — beide müssen zusammenpassen. Vergisst man
+das, fällt es nicht mehr still durch: `node scripts/test-logic.mjs` vergleicht
+beide Stellen, und die App fragt den Service Worker beim Start nach seinem
+Cache-Namen. Weichen sie ab, steht das als Warnung im Footer statt in keiner
+Konsole.
 
 Die App aktualisiert sich danach selbst: übernimmt eine neue Fassung die
 Steuerung, lädt die Seite einmal neu. Beim Zurückholen in den Vordergrund wird
@@ -132,10 +142,36 @@ Welche Fassung tatsächlich läuft, steht im Footer der App und im Bericht von
 `selbsttest.html`. Das beantwortet die Frage „alter Stand im Offline-Speicher
 oder echter Fehler?" eindeutig.
 
-## Lokal testen
+## Prüfen
+
+Was Freitext liest, liegt bei neuen Daten still falsch: Öffnungszeiten,
+Termine im Badge, der Reisezeitraum im Untertitel. Kein Fehler in der Konsole,
+nur schlechtere Vorschläge. Dafür gibt es einen Prüfstand ohne Browser und
+ohne Build:
 
 ```bash
-cd ~/Sites/peschiera-kompakt
+node scripts/test-logic.mjs
+```
+
+Er prüft `hoursWindow`, `momentsOf`, `momentNow`, `runsToday`, `tripDay`,
+`unverified`, `closingSoon`, `fitsLeft`, `indoorOf` und die Formatierer gegen
+die Schreibweisen, die in den Daten wirklich vorkommen — und dazu
+`places.json` selbst: eindeutige `id`s, bekannte Kategorien, `dog` nur
+`true`/`false`/`null`, `moment` nur aus den vier Abschnitten, Zahlenfelder als
+Zahlen, jeder Kategorie-Akzent mit passender `.acc-`Regel in `style.css`,
+jede Datei aus `SHELL` vorhanden und `CACHE` wie `FONTS` gleich `VERSION`. Am
+Ende stehen die Zahlen, die auch in dieser README vorkommen — abgeschrieben
+veralten sie, gerechnet nicht.
+
+`app.js` bleibt dafür eine Datei ohne Build: am Ende reicht sie ihre reinen
+Helfer an `module.exports` weiter, was es im Browser nicht gibt. Dort passiert
+an der Stelle nichts.
+
+## Lokal testen
+
+Im Projektordner:
+
+```bash
 python3 -m http.server 8000     # http://localhost:8000
 ```
 
@@ -239,8 +275,9 @@ Vorgesehen ist ein Tab „Karte" mit Leaflet und OpenStreetMap-Tiles, Marker in
 den Kategoriefarben, Hundefilter live auf den Markern und Marker-Tap öffnet das
 bestehende Sheet. Dafür fehlen noch zwei Dinge:
 
-**1. Koordinaten.** In `places.json` ist `geo` überall `null`. Zur Laufzeit wird
-nie geocodiert — die Werte werden einmalig nachgetragen. Zwei Wege:
+**1. Koordinaten.** Stand 18.09.2026 tragen 78 der 101 Orte ein `geo`, bei 23
+steht noch `null`. Zur Laufzeit wird nie geocodiert — die Werte werden
+einmalig nachgetragen. Zwei Wege:
 
 **Ohne Terminal:** `koordinaten.html` im Browser öffnen, auf *Starten* tippen,
 warten, *Datei herunterladen* — die geladene `places.json` ersetzt die alte.
@@ -257,8 +294,9 @@ node scripts/add-coords.mjs           # schreibt geo in places.json
 Es hält Nominatims Limit von einer Anfrage pro Sekunde ein, schickt einen
 eigenen User-Agent, probiert pro Ort mehrere Schreibweisen (Adresse → Adresse
 ohne Hausnummer → Name plus Ort) und überspringt alles, wo `geo` schon steht.
-Läuft also beliebig oft. 54 Orte brauchen ein paar Minuten. Was es nicht
-findet, listet es am Ende auf — das von Hand aus Google Maps nachtragen.
+Läuft also beliebig oft. Für die verbleibenden 23 Orte ist es eine halbe
+Minute. Was es nicht findet, listet es am Ende auf — das von Hand aus Google
+Maps nachtragen.
 
 **2. Leaflet lokal.** Kein CDN zur Laufzeit, die Dateien gehören ins Repo:
 
@@ -295,6 +333,7 @@ sw.js                   Service Worker: App-Shell, places.json, Google Fonts
 manifest.webmanifest
 data/places.json        Alle Inhalte
 icons/                  App-Icons und iOS-Startbilder
+scripts/test-logic.mjs  Prüfstand für die Freitext-Logik und die Daten (node)
 scripts/add-coords.mjs  einmaliges Geocoding für die Karte
 scripts/make-icons.py   Icon-Generator
 ```
