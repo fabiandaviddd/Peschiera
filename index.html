@@ -50,7 +50,7 @@
   <header class="bar">
     <div class="wrap">
       <div class="bar__row">
-        <div style="flex:1 1 auto; min-width:0">
+        <div class="bar__main">
           <h1 class="bar__title"><em>Peschiera</em> kompakt</h1>
           <p class="bar__sub">
             <button type="button" class="switch" id="jum-btn" role="switch" aria-checked="false">
@@ -60,9 +60,9 @@
             <span class="bar__hint" id="jum-n"></span>
           </p>
         </div>
+        <!-- Inhalt setzt applyTheme() beim Start neu, samt Symbol und Ziel. -->
         <button type="button" class="icon-btn" id="theme-btn" aria-live="polite">
-          <span class="sr-only" id="theme-label">Farbschema</span>
-          <svg id="theme-icon" viewBox="0 0 24 24" aria-hidden="true"></svg>
+          <span class="sr-only">Farbschema umschalten</span>
         </button>
       </div>
 
@@ -128,7 +128,7 @@
   </main>
 
   <nav class="tabs" aria-label="Ansicht">
-    <div class="tabs__inner" id="tabs" role="tablist"></div>
+    <div class="tabs__inner" id="tabs"></div>
   </nav>
 </div>
 

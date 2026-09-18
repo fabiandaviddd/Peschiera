@@ -204,6 +204,8 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 }
 
 .bar__row { display: flex; align-items: flex-start; gap: .75rem; padding: .55rem 0 .4rem; }
+/* min-width:0 ist nötig, damit der lange Titel im Flex-Kind kürzen darf. */
+.bar__main { flex: 1 1 auto; min-width: 0; }
 
 .bar__title { font-size: var(--t-title); letter-spacing: -.015em; }
 .bar__title em { font-style: normal; color: var(--lake-ink); }
@@ -299,12 +301,6 @@ button { font: inherit; color: inherit; background: none; border: 0; }
      Verlauf wäre unsichtbar. Deshalb deckt er am Rand vollständig ab. */
   background: linear-gradient(to right, transparent, var(--bg) 62%, var(--bg));
 }
-.chiprow--wrap {
-  flex-wrap: wrap; align-items: flex-start;
-  margin-inline: 0; padding-inline: 0;
-  /* Begrenzt, damit der Sticky-Header nie den halben Bildschirm frisst */
-  max-height: 7.5rem; overflow-y: auto; overscroll-behavior: contain;
-}
 
 .chip {
   flex: 0 0 auto;
@@ -326,8 +322,6 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .chip[aria-pressed="true"] .chip__n { opacity: .85; }
 .chip--walk[aria-pressed="true"] { background: var(--lake); border-color: var(--lake); }
 .chip--tag[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
-
-.chip--ghost { color: var(--soft); background: transparent; border-style: dashed; }
 
 /* Zeile mit Trefferzahl und Sortierung */
 .meta {
@@ -402,9 +396,10 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .card__note { font-size: var(--t-body); line-height: 1.4; color: var(--soft);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.facts { display: flex; flex-wrap: wrap; gap: .1rem .6rem; font-size: var(--t-meta); color: var(--soft); }
+.facts { display: flex; flex-wrap: wrap; gap: .1rem .52rem; font-size: var(--t-meta); color: var(--soft); }
 .fact { display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; }
 .fact--rating { color: var(--ink); font-weight: 500; }
+.fact__n { margin-left: .18rem; font-size: var(--t-micro); font-weight: 400; color: var(--soft); }
 .fact--dog { color: var(--verde-ink); font-weight: 500; }
 .fact--nodog { color: var(--soft); }
 .fact svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9;
@@ -473,9 +468,9 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   cursor: pointer; text-decoration: none;
   transition: background var(--t) var(--ease), border-color var(--t) var(--ease);
 }
-.btn--primary { background: var(--lake); border-color: var(--lake); color: #fff; }
-:root[data-theme="dark"] .btn--primary,
-.btn--primary { color: var(--card); }
+/* --card ist hell wie Papier und dunkel wie die Karte — auf dem Seeblau des
+   Knopfes liest sich beides. Ein eigener Wert je Schema ist nicht nötig. */
+.btn--primary { background: var(--lake); border-color: var(--lake); color: var(--card); }
 .btn--wide { width: 100%; }
 .btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9;
   stroke-linecap: round; stroke-linejoin: round; }
@@ -623,7 +618,10 @@ body.is-typing .tabs { transform: translateY(110%); }
 }
 .tab svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7;
   stroke-linecap: round; stroke-linejoin: round; }
-.tab[aria-selected="true"] { color: var(--lake-ink); }
+.tab[aria-current="page"] { color: var(--lake-ink); }
+/* Ohne top/left/right/bottom bleibt die Marke an ihrer Stelle im Fluss stehen
+   und wird nur verschoben. Wer hier einen Versatz ergänzt, braucht zuerst
+   position:relative auf .tab — sonst bezieht er sich auf die Tableiste. */
 .tab__n {
   position: absolute; transform: translate(1.15rem, -.15rem);
   font-size: var(--t-micro); font-weight: 700; line-height: 1;
@@ -634,6 +632,8 @@ body.is-typing .tabs { transform: translateY(110%); }
 /* --- Fuß ---------------------------------------------------------------- */
 .foot { padding: 1.6rem 0 .4rem; font-size: var(--t-meta); color: var(--soft); text-align: center; }
 .foot p + p { margin-top: .3rem; }
+/* Fassung im Offline-Speicher passt nicht zur App — sichtbar, nicht laut. */
+.foot__warn { display: block; margin-top: .35rem; color: var(--brick-ink); font-weight: 700; }
 
 /* --- Ladezustand / Fehler ---------------------------------------------- */
 .boot {
@@ -738,7 +738,7 @@ body.is-typing .tabs { transform: translateY(110%); }
 
 /* --- Druck -------------------------------------------------------------- */
 @media print {
-  .bar, .tabs, .filters, .sheet, .scrim, .star { display: none !important; }
+  .bar, .tabs, .filters, .sheet, .scrim, .star, .seen, .sharebar, .inbox { display: none !important; }
   body { padding-bottom: 0; }
   .card { break-inside: avoid; box-shadow: none; }
 }
