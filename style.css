@@ -622,7 +622,65 @@ body.is-compact .bar__top {
 .sheet__cat { font-size: var(--t-micro); font-weight: 700;
   color: var(--accent-ink, var(--soft)); }
 .sheet__name { font-size: var(--t-display); letter-spacing: -.02em; padding-right: 3rem; margin: .1rem 0 .5rem; }
-.sheet__note { font-size: var(--t-body); margin-bottom: .9rem; }
+.sheet__note { font-size: var(--t-body); margin-bottom: 1.1rem; }
+.sheet__rate { display: flex; align-items: center; gap: .25rem;
+  font-size: var(--t-meta); font-weight: 500; color: var(--ink);
+  font-variant-numeric: tabular-nums; margin-bottom: .9rem; }
+.sheet__rate svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
+.sheet__rate-n { font-weight: 400; color: var(--soft); }
+
+/* Weg, Dauer und Oeffnung als Kacheln. Bis v10 standen sie als Zeilen in
+   einer Definitionsliste mit 6,2rem breiter Label-Spalte — das Gewicht lag
+   auf dem Label, nicht auf dem Wert. Jetzt umgekehrt. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: .45rem; margin-bottom: .7rem; }
+.tile {
+  display: grid; gap: .1rem; justify-items: center; text-align: center;
+  padding: .55rem .35rem .6rem;
+  background: var(--wash); border-radius: 10px;
+}
+.tile__v { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
+  color: var(--ink); font-variant-numeric: tabular-nums; }
+.tile__l { font-size: var(--t-micro); font-weight: 700; color: var(--soft); }
+
+/* Die Hundregel bekommt eine eigene Flaeche statt einer Zeile im Kleingedruckten:
+   bei 58 von 101 Orten ist sie ungeklaert, das ist die haeufigste Antwort. */
+.dogrow {
+  display: flex; align-items: center; gap: .45rem;
+  padding: .55rem .7rem; border-radius: 10px; margin-bottom: 1.1rem;
+  font-size: var(--t-body); font-weight: 500;
+  border: 1px solid transparent;
+}
+.dogrow svg { width: 17px; height: 17px; flex: 0 0 auto; fill: none; stroke: currentColor;
+  stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.dogrow--yes { color: var(--verde-ink); border-color: currentColor; }
+.dogrow--no { color: var(--soft); background: var(--wash); }
+.dogrow--no span { text-decoration: line-through; }
+/* Ungeklaert traegt Ziegel — dieselbe Achtungsfarbe wie "Zeiten ungeprueft". */
+.dogrow--unknown { color: var(--brick-ink); border-color: currentColor; border-style: dashed; }
+
+/* Ein Primaer, darunter die Nebenhandlungen als Icon-Reihe. Bis v10 waren es
+   vier gleich breite Pillen, rund 200 px, drei davon in gleicher Optik. */
+.actrow { display: flex; gap: .45rem; }
+.act {
+  flex: 1 1 0; min-width: 0;
+  display: grid; justify-items: center; gap: .15rem;
+  min-height: 56px; padding: .5rem .25rem;
+  border: 1px solid var(--line); border-radius: var(--r-card);
+  background: var(--card); color: var(--soft);
+  font-size: var(--t-micro); font-weight: 700;
+  cursor: pointer; text-decoration: none;
+  transition: color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.act svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; }
+.act span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act[aria-pressed="true"] { color: var(--gold-ink); border-color: currentColor; }
+.act[aria-pressed="true"] svg { fill: currentColor; }
+/* Gesehen ist eine Ablage, keine Merkliste — also kein Gold, und gefuellt
+   wird der Haken nicht. */
+.act[data-seen][aria-pressed="true"] { color: var(--ink); }
+.act[data-seen][aria-pressed="true"] svg { fill: none; stroke-width: 2.3; }
 
 .dl { display: grid; grid-template-columns: 6.2rem 1fr; gap: .45rem .8rem; margin: 0 0 1rem; }
 .dl dt { font-size: var(--t-micro); font-weight: 700;
@@ -638,7 +696,7 @@ body.is-compact .bar__top {
 .sheet__conn b { display: block; font-size: var(--t-micro); font-weight: 700;
   color: var(--accent-ink, var(--soft)); margin-bottom: .15rem; }
 
-.sheet__acts { display: grid; gap: .5rem; }
+.sheet__acts { display: grid; gap: .5rem; margin-bottom: 1.3rem; }
 
 /* Gruppenkoepfe im Filter-Sheet. Die Zeile darunter traegt, was ein Filter
    still ausblendet — dasselbe Versprechen, das die Zaehlzeile beim

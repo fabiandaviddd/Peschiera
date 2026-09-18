@@ -749,4 +749,39 @@ Abweichungen vom Vorschlag oben, bewusst:
   Die Stufen sind eine Logikänderung; hier ging es um den Ort der Filter,
   nicht um ihre Semantik. Der Hinweis auf die 53 Orte ist schon da.
 
-### Schritte 3 und 4 — offen
+### Schritt 3 — teilweise umgesetzt in `v11`
+
+Umgesetzt ist alles außer der Badge-Umstellung; die wartet auf die
+Einteilung der 43 Texte.
+
+- **Drei Faktenkacheln** oben im Sheet: Weg, Aufenthalt, Öffnung. Sie
+  ersetzen die Definitionsliste mit ihrer 6,2rem breiten Label-Spalte, die
+  das Gewicht auf das Label statt auf den Wert legte.
+- **Die Öffnungs-Kachel ist bewusst streng.** `hoursWindow()` liest zur Not
+  auch ein Zeitfenster und nimmt davon das erste — als Kachel stünde dann
+  „bis 14:00" über einem Restaurant, das abends bis 22 Uhr offen hat. Die
+  Kachel zeigt deshalb nur ein ausgeschriebenes „bis" oder „ab" (22 der 54
+  Angaben); alles andere steht im vollen Wortlaut darunter. Die Zeile
+  darunter entfällt, wenn sie nichts sagt, was die Kachel nicht schon zeigt.
+- **Die Hundzeile** mit drei Zuständen und eigener Fläche. „Nicht geklärt"
+  trägt Ziegel, dieselbe Achtungsfarbe wie „Zeiten ungeprüft", und eine
+  gestrichelte Kante.
+- **Ein Primär plus Icon-Reihe** statt vierer gleich breiter Pillen.
+- **Tippbare Tags** unter „Mehr dieser Art". Sie ersetzen die bisherige
+  Auswahl, statt sie zu erweitern, und räumen den Suchbegriff mit ab —
+  sonst stünde über dem Ergebnis „1 von 101", weil die alte Suche noch
+  mitfiltert, und niemand sähe warum.
+- **`history.pushState`**: die Systemzurück-Geste schließt das Sheet,
+  statt die App zu verlassen. `closeSheet(fromPop)` prüft auf `=== true`,
+  weil `onTap` sein Event als erstes Argument durchreicht — als truthy
+  wäre der Verlaufseintrag stehengeblieben und die Geste tot.
+
+**Offen:** die Zuordnungstabelle für die Badges. Beim Aufstellen hat sich
+gezeigt, dass die Einteilung aus Abschnitt 3.4 an drei Stellen zu grob war:
+sieben Badges verdoppeln einen Tag, der ohnehin gesetzt ist; drei der elf
+Hund-Badges tragen Information, die `dog` nicht hat („Burg ohne Hund" bei
+`dog: true`, Leinenpflicht, Hund gratis); und fünf weitere sind gar keine
+Badges, sondern Öffnungs-, Anfahrts- oder Dauerangaben. Nach Bereinigung
+blieben 20 Texte auf 30 Orten statt 43 auf 54.
+
+### Schritt 4 — offen

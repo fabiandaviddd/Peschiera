@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v10 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v11 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -1317,9 +1317,27 @@
   /* Gemeinsamer Unterbau fuer Ort und Filter: Body-Fixierung, Scrim, Fokus,
      Wischen nach unten und die iOS-Eigenheiten stecken hier — und nur hier.
      Ein zweites Sheet daneben wuerde die Haertung ein zweites Mal brauchen. */
+  /* Ohne Verlaufseintrag verlaesst die Zurueck-Geste die App, statt das
+     Sheet zu schliessen — auf Android und in der iOS-PWA ein echter
+     Ausstiegspunkt. popstate schliesst, closeSheet() raeumt den Eintrag ab. */
+  var sheetPushed = false;
+
+  function pushSheetState() {
+    if (sheetPushed) return;
+    try { history.pushState({ pkSheet: true }, ''); sheetPushed = true; }
+    catch (e) { sheetPushed = false; }
+  }
+
+  function popSheetState() {
+    if (!sheetPushed) return;
+    sheetPushed = false;
+    try { history.back(); } catch (e) { /* egal */ }
+  }
+
   function showSheet(html, cls) {
     var sheet = $('sheet');
     lastFocus = document.activeElement;
+    pushSheetState();
 
     sheet.className = 'sheet' + (cls ? ' ' + cls : '');
     $('sheet-body').innerHTML = html;
@@ -1359,9 +1377,13 @@
     renderCount();          // die Trefferzahl steht sonst erst nach dem ersten Tipp da
   }
 
-  function closeSheet() {
+  function closeSheet(fromPop) {
     var sheet = $('sheet');
     if (sheet.hidden) return;
+    /* Kam der Aufruf aus popstate, ist der Eintrag schon weg. Auf === true
+       pruefen: onTap reicht sein Event als erstes Argument durch, und das
+       waere truthy — der Eintrag bliebe stehen und die Zurueck-Geste tot. */
+    if (fromPop === true) sheetPushed = false; else popSheetState();
 
     sheet.classList.remove('is-on', 'is-drag');
     sheet.style.transform = '';
@@ -1393,10 +1415,79 @@
     return '<dt>' + esc(label) + '</dt><dd' + (soft ? ' class="soft"' : '') + '>' + value + '</dd>';
   }
 
+  /* Kachel Wert/Label. Weg, Dauer und Oeffnung sind die drei Fragen, die man
+     vor Ort stellt — sie standen bis v10 als Zeilen in einer Definitionsliste
+     mit 6,2rem breiter Label-Spalte, also mit dem Gewicht auf dem Label statt
+     auf dem Wert. */
+  function tile(value, label, cls) {
+    return '<div class="tile' + (cls ? ' ' + cls : '') + '">'
+      + '<span class="tile__v">' + value + '</span>'
+      + '<span class="tile__l">' + esc(label) + '</span></div>';
+  }
+
+  /* Kurzform fuer die Kachel — bewusst strenger als hoursWindow(). Der liest
+     zur Not auch ein Zeitfenster ("12:30–14 und 19:30–22") und nimmt davon
+     das erste; als Kachel stuende dann "bis 14:00" ueber einem Restaurant,
+     das abends bis 22 Uhr offen hat. Die Kachel zeigt deshalb nur ein
+     ausgeschriebenes "bis" oder "ab"; alles andere steht im vollen Wortlaut
+     darunter. */
+  function hoursShort(h) {
+    if (!has(h)) return null;
+    var t = String(h), m;
+    m = t.match(/bis\s*(?:ca\.\s*)?(\d{1,2})[:.](\d{2})/i);
+    if (m) return 'bis ' + hhmm((+m[1]) * 60 + (+m[2]));
+    m = t.match(/(?:^|[\s·,])(?:ab|\u00f6ffnet)\s*(\d{1,2})[:.](\d{2})/i);
+    if (m) return 'ab ' + hhmm((+m[1]) * 60 + (+m[2]));
+    return null;
+  }
+
+  /* Sagt der volle Wortlaut mehr als die Kachel? "oeffnet 9:30" sagt nichts,
+     was "ab 9:30" nicht schon zeigt — "taeglich 18–23, Ruhetag Mittwoch"
+     dagegen schon. Geprueft wird, ob ausser der einen Zeitangabe noch etwas
+     uebrig bleibt. */
+  function hoursAddsMore(h) {
+    if (!has(h)) return false;
+    if (!hoursShort(h)) return true;          // nichts lesbar -> voller Text zaehlt
+    var rest = String(h)
+      .replace(/^ge\u00f6ffnet\s+/i, '')
+      .replace(/(?:^|[\s·,])(?:ab|\u00f6ffnet|bis)\s*(?:ca\.\s*)?\d{1,2}[:.]\d{2}/gi, '')
+      .replace(/[\s.,;·–-]+/g, '');
+    return rest.length > 0;
+  }
+
+  function tilesHtml(p) {
+    var t = [];
+    if (has(p.walk_min))      t.push(tile(p.walk_min + ' Min', 'zu Fuß'));
+    else if (has(p.bike_min)) t.push(tile(p.bike_min + ' Min', 'mit dem Rad'));
+    else if (has(p.distance_km)) t.push(tile(esc(km(p.distance_km)), 'entfernt'));
+
+    if (has(p.time_min) || has(p.time_label)) {
+      t.push(tile(esc(has(p.time_min) ? dur(p.time_min) : p.time_label), 'Aufenthalt'));
+    }
+    if (has(p.hours)) {
+      /* Auf der Kachel steht nur, was sich sicher lesen laesst; der volle
+         Wortlaut steht darunter, sofern er mehr sagt. Nie wird daraus
+         "hat offen" abgeleitet. */
+      var kurz = hoursShort(p.hours);
+      if (kurz) t.push(tile(esc(kurz), 'Öffnung'));
+    }
+    return t.length ? '<div class="tiles">' + t.join('') + '</div>' : '';
+  }
+
+  /* Bei 58 von 101 Orten ist die Hundregel ungeklaert — das ist die haeufigste
+     Antwort und darf kein kleingedrucktes "nicht geklaert" in einer Liste
+     sein. Drei Zustaende, jeder mit eigener Farbe und eigenem Satz. */
+  function dogHtml(p) {
+    var state = p.dog === true ? 'yes' : p.dog === false ? 'no' : 'unknown';
+    var text = { yes: 'Jum darf mit', no: 'Ohne Jum',
+                 unknown: 'Nicht geklärt — vorher fragen' }[state];
+    return '<p class="dogrow dogrow--' + state + '">' + ICON.dog
+      + '<span>' + esc(text) + '</span></p>';
+  }
+
   function sheetHtml(p) {
     var on = S.saved.indexOf(p.id) >= 0;
     var wasSeen = S.seen.indexOf(p.id) >= 0;
-    var dog = p.dog === true ? 'erlaubt' : p.dog === false ? 'nicht erlaubt' : 'nicht geklärt';
     var tel = has(p.phone) ? telHref(p.phone) : null;
 
     var dist = [];
@@ -1407,40 +1498,53 @@
     var h = '<p class="sheet__cat">' + esc(catLabel(p.category))
       + (has(p.badge) ? ' · ' + esc(p.badge) : '') + '</p>'
       + '<h2 class="sheet__name" id="sheet-name">' + esc(p.name) + '</h2>'
-      + (has(p.note) ? '<p class="sheet__note">' + esc(p.note) + '</p>' : '')
-      + '<dl class="dl">'
       + (has(p.rating)
-          ? row('Bewertung', nf1.format(p.rating) + ' ★'
-              + (has(p.reviews) ? ' · ' + nf0.format(p.reviews) + ' Bewertungen' : ''))
+          ? '<p class="sheet__rate">' + ICON.rating + nf1.format(p.rating)
+            + (has(p.reviews) ? '<span class="sheet__rate-n">· ' + nf0.format(p.reviews)
+                + ' Bewertungen</span>' : '') + '</p>'
           : '')
-      + (has(p.time_label) || has(p.time_min)
-          ? row('Aufenthalt', esc(has(p.time_label) ? p.time_label : dur(p.time_min)))
-          : '')
-      + (has(p.hours) ? row('Öffnung', esc(p.hours)) : '')
-      + (dist.length ? row('Entfernung', esc(dist.join(' · '))) : '')
+      + tilesHtml(p)
+      + dogHtml(p)
+      + (has(p.note) ? '<p class="sheet__note">' + esc(p.note) + '</p>' : '');
+
+    /* Ein Primaer statt vierer gleich breiter Pillen; der Rest als Icon-Reihe
+       darunter. Die Frage "wie weit, in welche Richtung" ist die einzige, die
+       aus der App hinausfuehrt. */
+    h += '<div class="sheet__acts">'
+      + '<a class="btn btn--wide btn--primary" href="' + esc(mapsHref(p))
+      + '" target="_blank" rel="noopener noreferrer">' + ICON.pin + 'Route in Karten</a>'
+      + '<div class="actrow">'
+      + '<button type="button" class="act" data-save="' + esc(p.id) + '" aria-pressed="'
+      + (on ? 'true' : 'false') + '">' + ICON.star
+      + '<span>' + (on ? 'Gemerkt' : 'Merken') + '</span></button>'
+      + '<button type="button" class="act" data-seen="' + esc(p.id) + '" aria-pressed="'
+      + (wasSeen ? 'true' : 'false') + '">' + ICON.checkRound
+      + '<span>' + 'Gesehen' + '</span></button>'
+      + (tel ? '<a class="act" href="tel:' + esc(tel) + '">' + ICON.phone
+          + '<span>Anrufen</span></a>' : '')
+      + '</div></div>';
+
+    /* Adresse, Anfahrt und Tags werden gelesen, nachdem entschieden ist. */
+    h += '<dl class="dl">'
+      + (hoursAddsMore(p.hours) ? row('Öffnung', esc(p.hours)) : '')
+      + (dist.length > 1 ? row('Entfernung', esc(dist.join(' · '))) : '')
       + (has(p.address) ? row('Adresse', esc(p.address)) : '')
       + (tel ? row('Telefon', '<a href="tel:' + esc(tel) + '">' + esc(p.phone) + '</a>') : '')
-      + row('Hund', esc(dog), p.dog == null)
-      + (p.tags.length ? row('Tags', esc(p.tags.join(' · '))) : '')
       + '</dl>';
 
     if (has(p.connection)) {
       h += '<p class="sheet__conn"><b>Anfahrt</b>' + esc(p.connection) + '</p>';
     }
 
-    h += '<div class="sheet__acts">';
-    if (tel) {
-      h += '<a class="btn btn--wide" href="tel:' + esc(tel) + '">' + ICON.phone + 'Anrufen</a>';
+    /* Tippbare Tags: bis v10 toter Text. Das ist der natuerlichste Weg von
+       "das gefaellt mir" zu "mehr davon". */
+    if (p.tags.length) {
+      h += '<p class="fgroup__h">Mehr dieser Art</p><div class="tagpick">'
+        + p.tags.map(function (t) {
+            return '<button type="button" class="chip chip--tag" data-tagjump="' + esc(t) + '">'
+              + esc(t) + '</button>';
+          }).join('') + '</div>';
     }
-    h += '<a class="btn btn--wide btn--primary" href="' + esc(mapsHref(p))
-      + '" target="_blank" rel="noopener noreferrer">' + ICON.pin + 'In Google Maps öffnen</a>'
-      + '<button type="button" class="btn btn--wide" data-save="' + esc(p.id) + '" aria-pressed="'
-      + (on ? 'true' : 'false') + '">' + ICON.star
-      + (on ? 'Gemerkt — entfernen' : 'Merken') + '</button>'
-      + '<button type="button" class="btn btn--wide" data-seen="' + esc(p.id) + '" aria-pressed="'
-      + (wasSeen ? 'true' : 'false') + '">' + ICON.checkRound
-      + (wasSeen ? 'Gesehen — zurücknehmen' : 'Als gesehen markieren') + '</button>'
-      + '</div>';
 
     return h;
   }
@@ -1459,6 +1563,9 @@
       if (sr) sr.textContent = now ? 'Als noch nicht gesehen markieren' : 'Als gesehen markieren';
       if (btns[i].classList.contains('btn')) {
         btns[i].innerHTML = ICON.checkRound + (now ? 'Gesehen — zurücknehmen' : 'Als gesehen markieren');
+      } else if (btns[i].classList.contains('act')) {
+        /* Der Text bleibt, den Zustand traegt aria-pressed samt Farbe. */
+        btns[i].innerHTML = ICON.checkRound + '<span>Gesehen</span>';
       }
     }
 
@@ -1500,6 +1607,8 @@
       if (sr) sr.textContent = on ? 'Aus der Merkliste entfernen' : 'Merken';
       if (btns[i].classList.contains('btn')) {
         btns[i].innerHTML = ICON.star + (on ? 'Gemerkt — entfernen' : 'Merken');
+      } else if (btns[i].classList.contains('act')) {
+        btns[i].innerHTML = ICON.star + '<span>' + (on ? 'Gemerkt' : 'Merken') + '</span>';
       }
     }
 
@@ -1840,6 +1949,25 @@
 
       /* Filter-Sheet: die Liste dahinter zieht sofort nach, das Sheet bleibt
          offen. Die Zahl am Tag-Knopf zeigt, wie viele Tags aktiv sind. */
+      /* Tag aus dem Detail-Sheet: setzt den Filter, schliesst und zeigt die
+         Liste. Ersetzt die bisherige Auswahl, statt sie zu erweitern — wer
+         auf "fisch" tippt, will Fisch sehen, nicht Fisch dazu. Der Suchbegriff
+         geht mit weg: sonst steht ueber dem Ergebnis "1 von 101", weil die
+         alte Suche noch mitfiltert, und niemand sieht warum. */
+      var jump = e.target.closest('[data-tagjump]');
+      if (jump) {
+        e.preventDefault();
+        S.tags = [jump.getAttribute('data-tagjump')];
+        S.cats = [];
+        S.q = '';
+        $('q').value = '';
+        closeSheet();
+        /* setView kehrt sofort um, wenn die Liste schon offen ist — dann
+           scrollt niemand nach oben, und der Treffer steht irgendwo. */
+        if (S.view === 'orte') { render(); window.scrollTo(0, 0); }
+        else setView('orte');
+        return;
+      }
       var cat = e.target.closest('[data-cat]');
       if (cat) {
         e.preventDefault();
@@ -1890,8 +2018,12 @@
       if (open) openSheet(open.getAttribute('data-open'));
     });
 
-    onTap($('scrim'), closeSheet);
-    onTap($('sheet-close'), closeSheet);
+    onTap($('scrim'), function () { closeSheet(); });
+    onTap($('sheet-close'), function () { closeSheet(); });
+
+    window.addEventListener('popstate', function () {
+      if (!$('sheet').hidden) closeSheet(true);
+    });
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !$('sheet').hidden) { closeSheet(); return; }
