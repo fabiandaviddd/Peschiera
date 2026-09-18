@@ -302,6 +302,19 @@ Das ist ein Abgleich auf Zuruf, keine laufende Synchronisierung: wer später
 etwas markiert, muss neu teilen. Für echte Synchronisierung bräuchte es einen
 Dienst dazwischen — siehe unten.
 
+## Prüfstand
+
+```bash
+node scripts/browser/run.mjs     # 173 Prüfungen im Browser, startet den Server selbst
+node scripts/test-logic.mjs      # Logik ohne Browser
+```
+
+Die Browser-Suiten prüfen Verhalten, nicht Aussehen — vor allem die
+Eigenheiten von iOS Safari, die sich in Chromium nicht zeigen. Was dort
+abgesichert ist und warum, steht in `docs/UEBERGABE-ios-und-tests.md`.
+Layoutänderungen dürfen die Suiten brechen; dann die Selektoren nachziehen,
+aber keine Zusicherung streichen, die eine iOS-Eigenheit absichert.
+
 ## Auf dem iPhone prüfen
 
 Die Entwicklungsumgebung hat kein iOS und kein Safari — getestet wird in
