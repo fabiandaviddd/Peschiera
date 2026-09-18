@@ -160,6 +160,16 @@
     catch (e) { return 'GESPERRT (' + e.name + ')'; }
   }
 
+  /* Welche Fassung der App liegt auf diesem Geraet wirklich? Beantwortet die
+     Frage "alte Version im Offline-Speicher oder echter Fehler?" eindeutig. */
+  var appVer = 'wird geprüft…';
+  fetch('./app.js', { cache: 'no-cache' }).then(function (r) { return r.text(); })
+    .then(function (t) {
+      var m = /var VERSION = '([^']+)'/.exec(t);
+      appVer = m ? m[1] : 'keine Versionsangabe gefunden';
+      paint();
+    }).catch(function () { appVer = 'app.js nicht lesbar'; paint(); });
+
   var swInfo = 'wird geprüft…';
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistration().then(function (reg) {
@@ -220,6 +230,7 @@
       'Bewegung reduzieren: ' + (window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'ja' : 'nein'),
       '',
       '--- Technik ---',
+      'App-Version auf diesem Gerät: ' + appVer,
       'Service Worker: ' + swInfo,
       'localStorage: ' + lsState(),
       'Gemerkte Orte gespeichert: ' + (function () {

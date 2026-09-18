@@ -7,6 +7,7 @@
 (function () {
   'use strict';
 
+  var VERSION = 'v3 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -52,6 +53,28 @@
   /* ---------------------------------------------------------------- Helfer */
 
   function $(id) { return document.getElementById(id); }
+
+  /* Manche Engines liefern nach einer Beruehrung keinen Klick mehr, wenn eine
+     Geste dazwischenkommt. Dieser Helfer hoert deshalb auf beides und entprellt
+     selbst: touchend zuerst, ein danach folgender Klick wird verworfen. Der
+     Finger muss innerhalb des Elements loslassen. */
+  function onTap(node, fn) {
+    var last = 0;
+    var fire = function (e) {
+      if (Date.now() - last < 700) return;
+      last = Date.now();
+      fn(e);
+    };
+    node.addEventListener('click', fire);
+    node.addEventListener('touchend', function (e) {
+      if (!e.changedTouches || e.changedTouches.length !== 1) return;
+      var t = e.changedTouches[0];
+      var r = node.getBoundingClientRect();
+      if (t.clientX < r.left || t.clientX > r.right ||
+          t.clientY < r.top  || t.clientY > r.bottom) return;
+      fire(e);
+    }, { passive: true });
+  }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -963,7 +986,27 @@
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
     try {
-      navigator.serviceWorker.register('./sw.js').catch(function () { /* nicht kritisch */ });
+      /* Uebernimmt eine neue Fassung die Steuerung, laedt die Seite einmal neu.
+         Ohne das sah man nach einem Deploy noch den alten Stand und musste von
+         Hand zweimal neu laden. Bei der Erstinstallation waere ein Reload
+         unnoetig, deshalb die Abfrage auf hadController. */
+      var hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (!hadController) return;
+        try {
+          if (sessionStorage.getItem('pk.reloaded')) return;
+          sessionStorage.setItem('pk.reloaded', '1');
+        } catch (e) { /* ohne sessionStorage einmal mehr neu laden ist ok */ }
+        location.reload();
+      });
+
+      navigator.serviceWorker.register('./sw.js').then(function (reg) {
+        var check = function () { try { reg.update(); } catch (e) {} };
+        check();
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) check();
+        });
+      }).catch(function () { /* nicht kritisch */ });
     } catch (e) { /* nicht kritisch */ }
   }
 
@@ -980,7 +1023,8 @@
     var cached = 'serviceWorker' in navigator && navigator.serviceWorker.controller;
     el.textContent = standTxt + (off
       ? 'Offline — angezeigt werden die gespeicherten Daten.'
-      : cached ? 'Offline verfügbar.' : '');
+      : cached ? 'Offline verfügbar.' : '')
+      + '  ·  App ' + VERSION;
   }
 
   /* ---------------------------------------------------------------- Events */
@@ -1078,8 +1122,8 @@
 
     $('empty-reset').addEventListener('click', resetFilters);
 
-    $('scrim').addEventListener('click', closeSheet);
-    $('sheet-close').addEventListener('click', closeSheet);
+    onTap($('scrim'), closeSheet);
+    onTap($('sheet-close'), closeSheet);
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !$('sheet').hidden) closeSheet();

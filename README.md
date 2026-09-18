@@ -74,8 +74,17 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
 Fehlende Felder sind unkritisch: leere Werte werden weggelassen statt mit
 Platzhaltern gefüllt, `null` wird nie als 0 einsortiert.
 
-Nach einer Änderung an einer Datei **`CACHE` in `sw.js` hochzählen**, sonst
-liefert der Service Worker bei Bestandsnutzern noch den alten Stand aus.
+Nach einer Änderung an einer Datei **`CACHE` in `sw.js` hochzählen** und
+`VERSION` in `app.js` mitziehen — beide müssen zusammenpassen.
+
+Die App aktualisiert sich danach selbst: übernimmt eine neue Fassung die
+Steuerung, lädt die Seite einmal neu. Beim Zurückholen in den Vordergrund wird
+zusätzlich nach Updates gesehen. Zweimal von Hand neu laden ist nicht mehr
+nötig.
+
+Welche Fassung tatsächlich läuft, steht im Footer der App und im Bericht von
+`selbsttest.html`. Das beantwortet die Frage „alter Stand im Offline-Speicher
+oder echter Fehler?" eindeutig.
 
 ## Lokal testen
 
