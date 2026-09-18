@@ -22,7 +22,7 @@ GitHub Pages liefert das Repo unverändert aus.
 | **Merkliste** | Stern auf jeder Karte, eigener Tab „Gemerkt" mit Zähler. Persistenz über `localStorage`, jeder Zugriff in try/catch. |
 | **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch offen" blendet sie aus. Eigener Speicher, unabhängig vom Merken. |
 | **Teilen** | Im Tab „Gemerkt": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. |
-| **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind es rund 102 px je Zeile statt 228. |
+| **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail, Luftlinie nur im Detail. Die Zahl der Bewertungen bleibt neben der Note — „4,9" aus 71 Stimmen ist nicht dasselbe wie „4,9" aus 1087. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind es 102 px je Zeile statt 228; Zeilen mit vollständigen Angaben brauchen 123. Steht „Mit Jum" an, entfällt die Marke „Jum ok" an jeder Zeile — sie gilt dann für alle. |
 | **Detailansicht** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. |
 | **Info** | „Gut zu wissen" (die 9 Hinweise aus `merken`), „Offene Punkte" (die 8 aus `open_questions`, mit Telefonnummer als Link) und der Faktencheck. |
 | **Dark Mode** | Über `prefers-color-scheme`, mit manuellem Override. Der Knopf oben rechts schaltet automatisch → hell → dunkel. |
@@ -76,7 +76,7 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
 | `walk_min` / `bike_min` / `distance_km` | ab dem Zeltplatz. `null`, wenn nicht sinnvoll messbar. |
 | `time_min` | empfohlene Aufenthaltsdauer in Minuten, **ohne** An- und Abreise. Basis für den Filter „Unter 1 h" und für die Frage in „Heute", ob sich etwas vor dem Abend noch ausgeht. |
 | `moment` | optionale Liste aus `frueh`, `mittag`, `nachmittag`, `abend`. Steuert „Heute" und **schlägt die Herleitung immer**. Fehlt das Feld, wird hergeleitet (siehe unten). |
-| `indoor` | `true` = man sitzt im Trockenen, `false` = fällt bei Regen aus, fehlend = ungeklärt. Bei „nass" schlägt „Heute" nur `true` vor und rät nie. |
+| `indoor` | `true` = man sitzt im Trockenen, `false` = fällt bei Regen aus, fehlend = ungeklärt. Bei „nass" schlägt „Heute" nur `true` vor und rät nie. Für `essen` und `cafe` gilt `true` als Regel (ein Lokal hat einen Innenraum) — reine Terrasse, Schiff oder Bastion brauchen deshalb ein ausdrückliches `"indoor": false`. |
 | `time_label` | Textfassung, oft mit kurzer und langer Variante. Steht im Detail; die Karte zeigt die aus `time_min` abgeleitete Kurzform. |
 | `rating` / `reviews` | Google-Stand, Datum steht in `meta.stand` und im Footer |
 | `connection` | optional, erscheint im Sheet als „Anfahrt" |
@@ -102,7 +102,14 @@ Steht `moment` im JSON, gilt es. Sonst wird in dieser Reihenfolge hergeleitet:
 
 Stand 18.09.2026 greifen die Stufen 1 bis 4 bei 63 der 101 Orte; die
 übrigen 38 laufen über den Rückfall und gewinnen durch ein gepflegtes
-`moment`. Bei `indoor` sind 44 Orte ungeklärt.
+`moment`.
+
+`indoor` läuft in derselben Reihenfolge: ausdrücklicher Wert, Badge
+„Regentag", die Tags `museum`, `kirche`, `supermarkt`, `notfall`, `regen`,
+dann die Kategorieregel für `essen` und `cafe`, erst danach die Außen-Tags
+(`strand`, `natur`, `rad`, `markt` und Verwandte). Die Reihenfolge ist
+wichtig: `wasser` an einem Restaurant heißt „liegt am See", nicht „man
+sitzt im Regen". Offen bleiben damit 17 Orte, fast alle Ausflüge.
 
 Ein Ort mit „ungeprüft" oder „unbestätigt" in `hours` und die Badges
 „Zeiten prüfen" und „Erst anrufen" werden nie als erster Vorschlag gezeigt,
