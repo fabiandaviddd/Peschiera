@@ -343,21 +343,46 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .tag { font-size: .7rem; color: var(--soft); background: var(--wash);
   border-radius: var(--r-pill); padding: .1rem .48rem; }
 
-/* Merken-Stern */
-.star {
-  grid-column: 2; grid-row: 1;
+/* Merken-Stern und Gesehen-Haken */
+.card__marks {
+  grid-column: 2; grid-row: 1 / span 2;
   position: relative; z-index: 1;
-  width: 44px; height: 44px; margin: -.35rem -.35rem 0 0;
+  display: grid; align-content: start;
+  margin: -.35rem -.35rem 0 0;
+}
+
+.star, .seen {
+  width: 44px; height: 44px;
   display: grid; place-items: center;
   border-radius: var(--r-pill); color: var(--soft); cursor: pointer;
   transition: color var(--t) var(--ease), transform var(--t) var(--ease);
-  -webkit-tap-highlight-color: transparent;
 }
-.star svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7;
-  stroke-linecap: round; stroke-linejoin: round; }
+.star svg, .seen svg { width: 21px; height: 21px; fill: none; stroke: currentColor;
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.star:active, .seen:active { transform: scale(.9); }
+
 .star[aria-pressed="true"] { color: var(--gold-ink); }
 .star[aria-pressed="true"] svg { fill: currentColor; }
-.star:active { transform: scale(.9); }
+
+.seen[aria-pressed="true"] { color: var(--verde-ink); }
+.seen[aria-pressed="true"] svg { stroke-width: 2.2; }
+
+/* Gesehen: erkennbar, aber weiter gut lesbar */
+.card--seen { border-left-color: var(--line); }
+.card--seen .card__name { color: var(--soft); }
+.card--seen .card__note, .card--seen .facts, .card--seen .card__tags { opacity: .72; }
+
+.card__seen {
+  display: inline-flex; align-items: center; gap: .22rem;
+  font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--verde-ink);
+}
+.card__seen svg { width: 12px; height: 12px; fill: none; stroke: currentColor;
+  stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.chip--unseen[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); }
+.chip svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
 
 /* --- Leerzustände ------------------------------------------------------- */
 .empty { text-align: center; padding: 2.6rem 1rem; color: var(--soft); }
@@ -380,6 +405,24 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .btn--wide { width: 100%; }
 .btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9;
   stroke-linecap: round; stroke-linejoin: round; }
+
+/* --- Teilen und Empfangen ----------------------------------------------- */
+.sharebar {
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card);
+  padding: .7rem .85rem; margin-bottom: .7rem; box-shadow: var(--shadow);
+}
+.sharebar__t { font-size: .84rem; color: var(--soft); }
+.sharebar .btn { min-height: 40px; padding: 0 .9rem; font-size: .88rem; flex: 0 0 auto; }
+
+.inbox {
+  background: var(--card); border: 1px solid var(--gold); border-left: 3px solid var(--gold);
+  border-radius: var(--r-card); padding: .95rem 1rem 1rem; margin-bottom: .8rem;
+  box-shadow: var(--shadow-lift);
+}
+.inbox__t { font-size: 1.05rem; margin-bottom: .2rem; }
+.inbox__x { font-size: .87rem; color: var(--soft); margin-bottom: .8rem; }
+.inbox__acts { display: grid; gap: .45rem; }
 
 /* --- Info-Ansicht ------------------------------------------------------- */
 .section { margin-bottom: 1.6rem; }

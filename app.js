@@ -9,6 +9,7 @@
 
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
+  var LS_SEEN  = 'pk.seen';
   var LS_THEME = 'pk.theme';
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
   var TAGS_SHOWN = 12;        // sichtbare Tag-Chips, Rest hinter "mehr"
@@ -25,9 +26,11 @@
     dog: false,
     walk: false,
     tags: [],
+    unseen: false,
     sort: 'distance',
     tagsOpen: false,
     saved: [],
+    seen: [],
     theme: 'auto',
     openId: null
   };
@@ -96,6 +99,9 @@
 
   var ICON = {
     star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.9l6-.8z"/></svg>',
+    check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.8 12.6l4.6 4.6 9.8-10"/></svg>',
+    checkRound: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M8.2 12.3l2.6 2.6 5-5.4"/></svg>',
+    share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.4V3.8M8.4 7.4L12 3.8l3.6 3.6"/><path d="M6 11.4H4.6v8.8h14.8v-8.8H18"/></svg>',
     rating: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.9l6-.8z"/></svg>',
     walk: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4.2" r="1.8"/><path d="M11 21l1.4-5.4-2.6-2.2.9-4.6 3.1-1.1 2.1 3.4 2.6 1"/><path d="M12.4 15.6L9 21"/><path d="M7.6 11.4L5 12.6"/></svg>',
     bike: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.6" cy="17" r="3.2"/><circle cx="18.4" cy="17" r="3.2"/><path d="M8.8 17h5l2.6-7.4h2.2M8 9.6h5.6l2.4 7.4"/><circle cx="14.6" cy="4.6" r="1.4"/></svg>',
@@ -185,6 +191,7 @@
     var ids = {};
     D.places.forEach(function (p) { ids[p.id] = true; });
     S.saved = (lsGet(LS_SAVED, []) || []).filter(function (id) { return ids[id]; });
+    S.seen  = (lsGet(LS_SEEN,  []) || []).filter(function (id) { return ids[id]; });
 
     S.theme = lsGet(LS_THEME, 'auto');
     if (['auto', 'light', 'dark'].indexOf(S.theme) < 0) S.theme = 'auto';
@@ -205,6 +212,7 @@
 
     registerSW();
     updateOfflineNote();
+    showInbox();
   }
 
   /* ----------------------------------------------------------------- Theme */
@@ -291,7 +299,9 @@
       '<button type="button" class="chip chip--dog" id="chip-dog" aria-pressed="false">'
       + ICON.dog + 'Hund erlaubt<span class="chip__n">' + dogs + '</span></button>'
       + '<button type="button" class="chip chip--walk" id="chip-walk" aria-pressed="false">'
-      + ICON.walk + 'Zu Fuß<span class="chip__n">' + walks + '</span></button>';
+      + ICON.walk + 'Zu Fuß<span class="chip__n">' + walks + '</span></button>'
+      + '<button type="button" class="chip chip--unseen" id="chip-unseen" aria-pressed="false">'
+      + ICON.checkRound + 'Noch offen<span class="chip__n" id="chip-unseen-n"></span></button>';
   }
 
   function allTags() {
@@ -337,6 +347,8 @@
     }
     $('chip-dog').setAttribute('aria-pressed', S.dog ? 'true' : 'false');
     $('chip-walk').setAttribute('aria-pressed', S.walk ? 'true' : 'false');
+    $('chip-unseen').setAttribute('aria-pressed', S.unseen ? 'true' : 'false');
+    $('chip-unseen-n').textContent = String(D.places.length - S.seen.length);
     var tags = $('tag-row').querySelectorAll('[data-tag]');
     for (var j = 0; j < tags.length; j++) {
       tags[j].setAttribute('aria-pressed', S.tags.indexOf(tags[j].getAttribute('data-tag')) >= 0 ? 'true' : 'false');
@@ -354,11 +366,11 @@
   }
 
   function anyFilter() {
-    return !!S.q || S.cats.length > 0 || S.dog || S.walk || S.tags.length > 0;
+    return !!S.q || S.cats.length > 0 || S.dog || S.walk || S.unseen || S.tags.length > 0;
   }
 
   function resetFilters() {
-    S.q = ''; S.cats = []; S.dog = false; S.walk = false; S.tags = [];
+    S.q = ''; S.cats = []; S.dog = false; S.walk = false; S.unseen = false; S.tags = [];
     $('q').value = '';
     render();
   }
@@ -376,6 +388,7 @@
       if (S.cats.length && S.cats.indexOf(p.category) < 0) return false;
       if (S.dog && p.dog !== true) return false;
       if (S.walk && !(has(p.walk_min) && p.walk_min <= WALK_MAX)) return false;
+      if (S.unseen && S.seen.indexOf(p.id) >= 0) return false;
       if (S.tags.length) {
         var hit = false;
         for (var i = 0; i < S.tags.length; i++) if (p.tags.indexOf(S.tags[i]) >= 0) { hit = true; break; }
@@ -416,6 +429,7 @@
     $('filters').hidden = S.view === 'info';
     $('search-wrap').hidden = S.view === 'info';
     $('meta-row').hidden = S.view === 'info';
+    renderShareBar();
     measureBar();
 
     if (S.view === 'info') {
@@ -433,9 +447,7 @@
     var items = selected();
     var total = S.view === 'gemerkt' ? S.saved.length : D.places.length;
 
-    $('count').textContent = anyFilter()
-      ? items.length + ' von ' + total + (total === 1 ? ' Ort' : ' Orten')
-      : total + (total === 1 ? ' Ort' : ' Orte');
+    renderCount(items.length, total);
 
     if (!items.length) {
       $('list').hidden = true;
@@ -456,6 +468,18 @@
     $('empty').hidden = true;
     $('list').hidden = false;
     $('list').innerHTML = items.map(cardHtml).join('');
+  }
+
+  var lastCount = { shown: 0, total: 0 };
+
+  function renderCount(shown, total) {
+    if (shown === undefined) { shown = lastCount.shown; total = lastCount.total; }
+    lastCount = { shown: shown, total: total };
+    var seenHere = S.seen.length;
+    $('count').textContent = (anyFilter()
+      ? shown + ' von ' + total + (total === 1 ? ' Ort' : ' Orten')
+      : total + (total === 1 ? ' Ort' : ' Orte'))
+      + (seenHere ? ' · ' + seenHere + ' gesehen' : '');
   }
 
   function factsHtml(p) {
@@ -482,13 +506,15 @@
 
   function cardHtml(p) {
     var on = S.saved.indexOf(p.id) >= 0;
+    var wasSeen = S.seen.indexOf(p.id) >= 0;
     /* Der Name ist eine echte Überschrift (nicht im Knopf verschachtelt, das
        wäre ungültig). Geöffnet wird über einen Knopf, der die Karte überdeckt. */
-    return '<article class="card ' + accentClass(p.category) + '">'
+    return '<article class="card ' + accentClass(p.category) + (wasSeen ? ' card--seen' : '') + '">'
       + '<h3 class="card__name">' + esc(p.name) + '</h3>'
       + '<p class="card__meta">'
       + '<span class="card__cat">' + esc(catLabel(p.category)) + '</span>'
       + (has(p.badge) ? '<span class="card__badge">' + esc(p.badge) + '</span>' : '')
+      + (wasSeen ? '<span class="card__seen">' + ICON.check + 'gesehen</span>' : '')
       + '</p>'
       + (has(p.note) ? '<p class="card__note">' + esc(p.note) + '</p>' : '')
       + factsHtml(p)
@@ -496,9 +522,14 @@
           return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</p>' : '')
       + '<button type="button" class="card__open" data-open="' + esc(p.id) + '"'
       + ' aria-label="' + esc(p.name) + ' — Details"></button>'
+      + '<span class="card__marks">'
       + '<button type="button" class="star" data-save="' + esc(p.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
       + '<span class="sr-only">' + (on ? 'Aus der Merkliste entfernen' : 'Merken') + '</span>'
       + ICON.star + '</button>'
+      + '<button type="button" class="seen" data-seen="' + esc(p.id) + '" aria-pressed="' + (wasSeen ? 'true' : 'false') + '">'
+      + '<span class="sr-only">' + (wasSeen ? 'Als noch nicht gesehen markieren' : 'Als gesehen markieren') + '</span>'
+      + ICON.checkRound + '</button>'
+      + '</span>'
       + '</article>';
   }
 
@@ -643,6 +674,7 @@
 
   function sheetHtml(p) {
     var on = S.saved.indexOf(p.id) >= 0;
+    var wasSeen = S.seen.indexOf(p.id) >= 0;
     var dog = p.dog === true ? 'erlaubt' : p.dog === false ? 'nicht erlaubt' : 'nicht geklärt';
     var tel = has(p.phone) ? telHref(p.phone) : null;
 
@@ -681,6 +713,9 @@
       + '<button type="button" class="btn btn--wide" data-save="' + esc(p.id) + '" aria-pressed="'
       + (on ? 'true' : 'false') + '">' + ICON.star
       + (on ? 'Gemerkt — entfernen' : 'Merken') + '</button>'
+      + '<button type="button" class="btn btn--wide" data-seen="' + esc(p.id) + '" aria-pressed="'
+      + (wasSeen ? 'true' : 'false') + '">' + ICON.checkRound
+      + (wasSeen ? 'Gesehen — zurücknehmen' : 'Als gesehen markieren') + '</button>'
       + '</div>';
 
     return h;
@@ -688,10 +723,49 @@
 
   /* ------------------------------------------------------------- Merkliste */
 
+  function toggleSeen(id) {
+    toggleIn(S.seen, id);
+    lsSet(LS_SEEN, S.seen);
+
+    var now = S.seen.indexOf(id) >= 0;
+    var btns = document.querySelectorAll('[data-seen="' + id.replace(/"/g, '\\"') + '"]');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-pressed', now ? 'true' : 'false');
+      var sr = btns[i].querySelector('.sr-only');
+      if (sr) sr.textContent = now ? 'Als noch nicht gesehen markieren' : 'Als gesehen markieren';
+      if (btns[i].classList.contains('btn')) {
+        btns[i].innerHTML = ICON.checkRound + (now ? 'Gesehen — zurücknehmen' : 'Als gesehen markieren');
+      }
+    }
+
+    /* Karte direkt nachziehen statt die ganze Liste neu zu bauen — sonst
+       springt die Ansicht und der Fokus geht verloren. */
+    var mark = document.querySelector('.card [data-seen="' + id.replace(/"/g, '\\"') + '"]');
+    var art = mark ? mark.closest('.card') : null;
+    if (art) {
+      art.classList.toggle('card--seen', now);
+      var meta = art.querySelector('.card__meta');
+      var badge = art.querySelector('.card__seen');
+      if (now && meta && !badge) {
+        badge = document.createElement('span');
+        badge.className = 'card__seen';
+        badge.innerHTML = ICON.check + 'gesehen';
+        meta.appendChild(badge);
+      } else if (!now && badge) {
+        badge.remove();
+      }
+    }
+
+    /* Im Filter "Noch offen" verschwindet der Eintrag sofort */
+    if (S.unseen && now) { closeSheet(); render(); }
+    else { syncChips(); renderCount(); renderShareBar(); }
+  }
+
   function toggleSave(id) {
     toggleIn(S.saved, id);
     lsSet(LS_SAVED, S.saved);
     syncTabs();
+    renderShareBar();
 
     /* Sichtbare Schalter aktualisieren, ohne die Liste neu zu bauen */
     var on = S.saved.indexOf(id) >= 0;
@@ -755,6 +829,132 @@
 
   function wide() {
     return window.matchMedia && window.matchMedia('(min-width: 33rem)').matches;
+  }
+
+  /* ------------------------------------------------------------ Teilen */
+
+  /* Die Listen stecken nur im Browser — ein Server existiert nicht. Zum
+     Abgleich zwischen zwei Geräten wandern sie deshalb durch die Adresse
+     selbst: {v,m,g} als base64url hinter #liste=. Keine Konten, nichts
+     verlässt das Gerät außer über den Link, den man selbst verschickt. */
+
+  function b64url(str) {
+    return btoa(unescape(encodeURIComponent(str)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function unb64url(str) {
+    var s2 = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (s2.length % 4) s2 += '=';
+    return decodeURIComponent(escape(atob(s2)));
+  }
+
+  function shareLink() {
+    var payload = { v: 1, m: S.saved.slice(), g: S.seen.slice() };
+    var base = location.origin + location.pathname;
+    return base + '#liste=' + b64url(JSON.stringify(payload));
+  }
+
+  function readIncoming() {
+    var m = /[#&]liste=([A-Za-z0-9\-_]+)/.exec(location.hash || '');
+    if (!m) return null;
+    try {
+      var data = JSON.parse(unb64url(m[1]));
+      if (!data || data.v !== 1) return null;
+      var known = {};
+      D.places.forEach(function (p) { known[p.id] = true; });
+      var keep = function (arr) {
+        return (Array.isArray(arr) ? arr : []).filter(function (id) { return known[id]; });
+      };
+      return { m: keep(data.m), g: keep(data.g),
+               dropped: ((data.m || []).length + (data.g || []).length)
+                        - (keep(data.m).length + keep(data.g).length) };
+    } catch (e) { return null; }
+  }
+
+  function clearHash() {
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e) { location.hash = ''; }
+  }
+
+  var incoming = null;
+
+  function showInbox() {
+    incoming = readIncoming();
+    if (!incoming) return;
+    if (!incoming.m.length && !incoming.g.length) { clearHash(); return; }
+
+    var parts = [];
+    if (incoming.m.length) parts.push(incoming.m.length + ' gemerkte');
+    if (incoming.g.length) parts.push(incoming.g.length + ' gesehene');
+    $('inbox-x').textContent = 'Jemand hat dir ' + parts.join(' und ') + ' '
+      + (incoming.m.length + incoming.g.length === 1 ? 'Ort' : 'Orte') + ' geschickt.'
+      + (incoming.dropped ? ' ' + incoming.dropped + ' Einträge sind hier unbekannt und bleiben außen vor.' : '')
+      + ' Zusammenführen behält deine eigenen Markierungen.';
+    $('inbox').hidden = false;
+    setView('orte');
+    window.scrollTo(0, 0);
+  }
+
+  function applyIncoming(mode) {
+    if (!incoming) return;
+    if (mode === 'replace') {
+      S.saved = incoming.m.slice();
+      S.seen = incoming.g.slice();
+    } else {
+      incoming.m.forEach(function (id) { if (S.saved.indexOf(id) < 0) S.saved.push(id); });
+      incoming.g.forEach(function (id) { if (S.seen.indexOf(id) < 0) S.seen.push(id); });
+    }
+    lsSet(LS_SAVED, S.saved);
+    lsSet(LS_SEEN, S.seen);
+    dismissInbox();
+    syncTabs();
+    render();
+  }
+
+  function dismissInbox() {
+    incoming = null;
+    $('inbox').hidden = true;
+    clearHash();
+  }
+
+  function renderShareBar() {
+    var bar = $('sharebar');
+    if (S.view !== 'gemerkt') { bar.hidden = true; return; }
+    bar.hidden = false;
+    var n = S.saved.length, g = S.seen.length;
+    $('sharebar-t').textContent = n || g
+      ? n + ' gemerkt · ' + g + ' gesehen'
+      : 'Noch nichts markiert';
+    var btn = $('share-btn');
+    btn.hidden = !(n || g);
+    btn.innerHTML = ICON.share + 'Teilen';
+  }
+
+  function doShare() {
+    var url = shareLink();
+    var txt = 'Meine Liste aus Peschiera kompakt';
+    var fallback = function () {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () { flash('Link kopiert'); },
+                                               function () { prompt('Link kopieren:', url); });
+      } else {
+        window.prompt('Link kopieren:', url);
+      }
+    };
+    if (navigator.share) {
+      navigator.share({ title: 'Peschiera kompakt', text: txt, url: url })
+        .catch(function (err) { if (!err || err.name !== 'AbortError') fallback(); });
+    } else {
+      fallback();
+    }
+  }
+
+  function flash(msg) {
+    var b = $('share-btn');
+    var keep = b.innerHTML;
+    b.textContent = msg;
+    window.setTimeout(function () { b.innerHTML = keep; }, 2000);
   }
 
   /* --------------------------------------------------------- Offline / SW */
@@ -822,6 +1022,7 @@
       if (!b) return;
       if (b.id === 'chip-dog') S.dog = !S.dog;
       if (b.id === 'chip-walk') S.walk = !S.walk;
+      if (b.id === 'chip-unseen') S.unseen = !S.unseen;
       render();
     });
 
@@ -860,6 +1061,8 @@
     $('list').addEventListener('click', function (e) {
       var save = e.target.closest('[data-save]');
       if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); return; }
+      var seen = e.target.closest('[data-seen]');
+      if (seen) { e.preventDefault(); toggleSeen(seen.getAttribute('data-seen')); return; }
       var card = e.target.closest('.card');
       if (!card) return;
       var open = card.querySelector('[data-open]');
@@ -868,7 +1071,9 @@
 
     $('sheet-body').addEventListener('click', function (e) {
       var save = e.target.closest('[data-save]');
-      if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); }
+      if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); return; }
+      var seen = e.target.closest('[data-seen]');
+      if (seen) { e.preventDefault(); toggleSeen(seen.getAttribute('data-seen')); }
     });
 
     $('empty-reset').addEventListener('click', resetFilters);
@@ -909,6 +1114,17 @@
     window.addEventListener('resize', function () {
       if (!drag && $('sheet').style.transform) $('sheet').style.transform = '';
     });
+
+    $('share-btn').addEventListener('click', doShare);
+
+    /* Ein Link auf dieselbe Adresse ändert nur den Anker — die Seite lädt
+       dann nicht neu, und start() läuft nicht noch einmal. Ohne das hier
+       passiert nichts, wenn die App beim Antippen des Links schon offen ist. */
+    window.addEventListener('hashchange', showInbox);
+
+    $('inbox-merge').addEventListener('click', function () { applyIncoming('merge'); });
+    $('inbox-replace').addEventListener('click', function () { applyIncoming('replace'); });
+    $('inbox-cancel').addEventListener('click', dismissInbox);
 
     window.addEventListener('online', updateOfflineNote);
     window.addEventListener('offline', updateOfflineNote);

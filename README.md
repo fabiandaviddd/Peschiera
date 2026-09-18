@@ -16,6 +16,8 @@ GitHub Pages liefert das Repo unverändert aus.
 | **Filter** | Chip-Leiste, beliebig kombinierbar: Kategorie, „Hund erlaubt" (`dog: true`), „Zu Fuß" (`walk_min ≤ 25`), Tags. Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. |
 | **Sortierung** | Entfernung (Standard) oder Bewertung. Orte ohne Wert stehen hinten, nicht vorne. |
 | **Merkliste** | Stern auf jeder Karte, eigener Tab „Gemerkt" mit Zähler. Persistenz über `localStorage`, jeder Zugriff in try/catch. |
+| **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch offen" blendet sie aus. Eigener Speicher, unabhängig vom Merken. |
+| **Teilen** | Im Tab „Gemerkt": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. |
 | **Detailansicht** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. |
 | **Info** | „Gut zu wissen" (die 9 Hinweise aus `merken`), „Offene Punkte" (die 8 aus `open_questions`, mit Telefonnummer als Link) und der Faktencheck. |
 | **Dark Mode** | Über `prefers-color-scheme`, mit manuellem Override. Der Knopf oben rechts schaltet automatisch → hell → dunkel. |
@@ -119,6 +121,31 @@ nicht benutzt werden, den Offline-Speicher und `localStorage` weg. Bei
 täglicher Nutzung im Urlaub kein Thema; nach Wochen Pause kann die Merkliste
 weg sein.
 
+## Listen zwischen zwei Geräten abgleichen
+
+Es gibt keinen Server — die Markierungen liegen nur im jeweiligen Browser.
+Der Abgleich läuft deshalb über den Link selbst: im Tab „Gemerkt" auf
+**Teilen**, dann per iMessage, AirDrop oder sonstwie verschicken. Wo die
+Teilen-Funktion des Systems fehlt, landet der Link in der Zwischenablage.
+
+Der Link trägt Merkliste und Gesehenes als `#liste=<base64url>` mit, rund
+120 Zeichen bei einer Handvoll Orte. Nichts verlässt das Gerät, außer über
+diesen Link.
+
+Beim Öffnen fragt die Gegenseite nach:
+
+- **Zusammenführen** — eigene Markierungen bleiben, fremde kommen dazu
+- **Meine ersetzen** — übernimmt die fremde Liste vollständig
+- **Verwerfen** — ändert nichts
+
+Danach wird der Anker aus der Adresse entfernt, ein Neuladen fragt also nicht
+erneut. Orte, die es in `places.json` nicht (mehr) gibt, werden übersprungen
+und im Hinweis mitgezählt. Ein beschädigter Link wird ignoriert.
+
+Das ist ein Abgleich auf Zuruf, keine laufende Synchronisierung: wer später
+etwas markiert, muss neu teilen. Für echte Synchronisierung bräuchte es einen
+Dienst dazwischen — siehe unten.
+
 ## Auf dem iPhone prüfen
 
 Die Entwicklungsumgebung hat kein iOS und kein Safari — getestet wird in
@@ -139,6 +166,15 @@ Worker und `localStorage` sowie die geladenen Schriften. Das sind die Zahlen,
 die sich hier nicht ermitteln lassen.
 
 Die Seite gehört nicht zur App, ist aus ihr nicht verlinkt und stört nichts.
+
+## Später angedacht
+
+- **Laufende Synchronisierung** statt Teilen auf Zuruf. Bräuchte einen Dienst
+  dazwischen (etwa Supabase) und damit ein Backend — entgegen dem bisherigen
+  Grundsatz, und es muss bei schlechtem Netz trotzdem offline funktionieren.
+- **Tagesrouten**: Orte einem Datum zuordnen, eigener Reiter, Sortierung nach
+  kürzester Runde ab dem Zeltplatz. Setzt die Koordinaten voraus (siehe unten),
+  weil sich sonst keine Entfernungen zwischen zwei Orten rechnen lassen.
 
 ## Karte (offen)
 

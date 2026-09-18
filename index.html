@@ -81,6 +81,21 @@
 
   <main class="main" id="main">
     <div class="wrap">
+      <div class="inbox" id="inbox" hidden role="region" aria-labelledby="inbox-t">
+        <h2 class="inbox__t" id="inbox-t">Liste erhalten</h2>
+        <p class="inbox__x" id="inbox-x"></p>
+        <div class="inbox__acts">
+          <button type="button" class="btn btn--primary btn--wide" id="inbox-merge">Zusammenführen</button>
+          <button type="button" class="btn btn--wide" id="inbox-replace">Meine ersetzen</button>
+          <button type="button" class="btn btn--wide" id="inbox-cancel">Verwerfen</button>
+        </div>
+      </div>
+
+      <div class="sharebar" id="sharebar" hidden>
+        <p class="sharebar__t" id="sharebar-t"></p>
+        <button type="button" class="btn" id="share-btn"></button>
+      </div>
+
       <div class="meta" id="meta-row">
         <p id="count" role="status" aria-live="polite"></p>
         <div class="sort" id="sort" role="group" aria-label="Sortierung">
