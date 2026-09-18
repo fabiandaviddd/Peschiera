@@ -21,7 +21,43 @@ const root = join(here, '..');
 const require = createRequire(import.meta.url);
 
 const pk = require(join(root, 'app.js'));
-const data = JSON.parse(readFileSync(join(root, 'data', 'places.json'), 'utf8'));
+const placesRaw = readFileSync(join(root, 'data', 'places.json'), 'utf8');
+const data = JSON.parse(placesRaw);
+
+/* Ein doppelter Schluessel in einem Objekt ist fuer JSON.parse unsichtbar —
+   der letzte gewinnt still. Genau das ist beim Zusammenfuehren zweier Zweige
+   passiert, die beide ein moment eingefuegt hatten: lido39 trug danach zwei,
+   die Datei las sich sauber, und ein Abschnitt war weg. Deshalb wird der
+   Rohtext gescannt, nicht das geparste Ergebnis. */
+function duplicateKeys(text) {
+  const found = [];
+  const stack = [];
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === '"') {
+      let j = i + 1, key = '';
+      while (j < text.length) {
+        if (text[j] === '\\') { key += text[j + 1]; j += 2; continue; }
+        if (text[j] === '"') break;
+        key += text[j]; j++;
+      }
+      let k = j + 1;
+      while (k < text.length && /\s/.test(text[k])) k++;
+      if (text[k] === ':' && stack.length) {
+        const seen = stack[stack.length - 1];
+        if (seen.has(key)) found.push(key);
+        seen.add(key);
+      }
+      i = j + 1;
+      continue;
+    }
+    if (ch === '{') stack.push(new Set());
+    else if (ch === '}') stack.pop();
+    i++;
+  }
+  return found;
+}
 
 let pass = 0;
 const fails = [];
@@ -256,6 +292,7 @@ ok('dog nur true, false oder null', badDog, []);
 ok('moment nur aus den vier Abschnitten', badMoment, []);
 ok('moment in Tagesreihenfolge', badMomentOrder, []);
 ok('jeder Ort trägt ein moment', noMoment, []);
+ok('kein Schlüssel zweimal im selben Objekt', duplicateKeys(placesRaw), []);
 ok('Zahlenfelder sind Zahlen oder null', badTime, []);
 ok('geo hat lat und lon als Zahl', badGeo, []);
 truthy('jeder Ort hat einen Namen', data.places.every((p) => p.name && p.name.trim()));

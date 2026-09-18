@@ -24,7 +24,8 @@ GitHub Pages liefert das Repo unverändert aus.
 | **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch nicht gesehen" blendet sie aus. Der Chip hieß bis v7 „Noch offen" und wurde neben Fakten wie „öffnet 9:30" als Öffnungszeit gelesen. Eigener Speicher, unabhängig vom Merken. |
 | **Teilen** | Im Tab „Gemerkt": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. |
 | **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail, Luftlinie nur im Detail. **Alle Zeilen sind 97 px hoch** — vorher waren es je nach Datenlage 97, 100 oder 123, und das Auge fand beim Scrollen kein Raster. Die Bewertung steht rechtsbündig auf der Namenszeile und wird damit zu einer Spalte, die man scannen kann; die Zahl der Bewertungen sitzt in einer eigenen, fest breiten Spalte, damit „(1.478)" die Note nicht weiter nach links schiebt als „(806)". Sie bleibt dabei — „4,9" aus 71 Stimmen ist nicht dasselbe wie „4,9" aus 1087. Die Faktenreihe hat feste Slots in fester Reihenfolge (Weg, Dauer, Hund, Öffnung); nur die Öffnung darf kürzen, weil sie als einzige Freitext ist. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind 6 Zeilen sichtbar statt 4, beim Scrollen 8. Steht „Mit Jum" an, entfällt die Marke „Jum ok" an jeder Zeile — sie gilt dann für alle. |
-| **Detailansicht** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. Solange es offen ist, liegt der Rest der Seite still: `inert` plus `aria-hidden`, dazu ein Tab-Ring im Sheet als Rückfallebene für Engines ohne `inert`. Ohne das führt `aria-modal` nur in die Irre — der Tabulator lief vorher hinter dem Sheet weiter durch die Liste. |
+| **Detailansicht (neu)** | Bottom Sheet, oben drei Kacheln — Weg, Aufenthalt, Öffnung: die drei Fragen, die man vor Ort stellt. Die Öffnungs-Kachel zeigt nur ein ausgeschriebenes „bis 22:30" oder „ab 9:30" (22 der 54 Angaben); wo die Zeiten mehrdeutig sind („Mi–Sa 12:30–14 und 19:30–22"), bleibt sie leer und der volle Wortlaut steht darunter — eine Kachel „bis 14:00" über einem Restaurant, das abends bis 22 Uhr offen hat, wäre falsch. Darunter die Hundregel als eigene Fläche mit drei Zuständen: grün „Jum darf mit", grau-durchgestrichen „Ohne Jum", ockerfarben-gestrichelt „Nicht geklärt — vorher fragen"; letzteres trifft auf 58 der 101 Orte zu und ist damit die häufigste Antwort. Eine Primäraktion („Route in Karten") statt vierer gleich breiter Pillen, darunter Merken, Gesehen und Anrufen als Icon-Reihe. Die Tags am Ende sind antippbar und setzen den Filter — der Weg von „das gefällt mir" zu „mehr davon". Die Systemzurück-Geste schließt das Sheet, statt die App zu verlassen. |
+| **Detailansicht (Rest)** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. Solange es offen ist, liegt der Rest der Seite still: `inert` plus `aria-hidden`, dazu ein Tab-Ring im Sheet als Rückfallebene für Engines ohne `inert`. Ohne das führt `aria-modal` nur in die Irre — der Tabulator lief vorher hinter dem Sheet weiter durch die Liste. |
 | **Info** | „Gut zu wissen" (die 17 Hinweise aus `merken`), „Offene Punkte" (die 18 aus `open_questions`, mit Telefonnummer als Link) und der Faktencheck (13 Korrekturen). |
 | **Dark Mode** | Über `prefers-color-scheme`, mit manuellem Override. Der Knopf oben rechts schaltet automatisch → hell → dunkel. |
 | **Farbe und Schrift** | Fünf Kategoriefarben, je eine pro Kategorie (`praktisch` hat seit v8 ein eigenes, entsättigtes Stein statt des Seeblaus der Ausflüge). Gold heißt Merkliste, Verde heißt Jum, Ziegel heißt Achtung, Seeblau heißt „hier ist etwas an". Sechs Schriftgrößen als Tokens (`--t-display` bis `--t-micro`); Versalien gibt es nur noch an drei Stellen, alle in „Heute". Alle Textfarben ≥ 4,5:1 in hell und dunkel, im gerenderten DOM gemessen. |
@@ -77,7 +78,8 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
 |---|---|
 | `id` | eindeutig, wird für die Merkliste gespeichert — nicht nachträglich ändern |
 | `category` | eine der `id`s aus `categories` am Dateianfang |
-| `badge` | optionale Kuratierungsnotiz („Der Abend", „Für Jum", „Regentag") |
+| `badge` | optionale Notiz, eine pro Ort. Die Klasse steckt nicht im Text, sondern in `badgeKind()` in `app.js`, und sie bestimmt Marke und Farbe in der Liste: **Termin** (Datumsmuster `Tag.Monat.`, gefüllter Punkt, Ziegel), **Ungeprüft** („Zeiten prüfen", „Erst anrufen", Warndreieck, gestrichelt), **Tageszeit** (alles aus `BADGE_MOMENT`, Uhr, grau — Zusammenhang, keine Empfehlung), **Einschränkung** („Ohne Auto nicht machbar", „Buchen", „Ohne Termin", durchgestrichener Kreis), **Kuratiert** (alles übrige, Raute, Kategoriefarbe). Dazu die drei **Hundregeln** („Burg ohne Hund", „Hund an der Leine ok", „Hund gratis"): sie erscheinen nicht in der Liste, sondern als Zusatz in der Hundzeile des Sheets. Stand 18.09.2026 sind es 27 Texte auf 31 Orten. |
+| | **Was kein Badge sein sollte:** was schon als Tag gesetzt ist (`aussicht`, `foto`, `schatten`, `wein`, `livemusik`, `cocktails`, `regen`), was `dog` schon sagt, was in `hours` gehört („Montags", „Immer offen"), was in `connection` gehört, und was `time_min` schon trägt. 23 solcher Badges sind am 18.09. entfernt worden. |
 | `dog` | `true` = erlaubt, `false` = verboten, `null` = ungeklärt. Nur `true` erscheint im Hundefilter. |
 | `walk_min` / `bike_min` / `distance_km` | ab dem Zeltplatz. `null`, wenn nicht sinnvoll messbar. |
 | `time_min` | empfohlene Aufenthaltsdauer in Minuten, **ohne** An- und Abreise. Basis für den Filter „Unter 1 h" und für die Frage in „Heute", ob sich etwas vor dem Abend noch ausgeht. |
@@ -95,7 +97,7 @@ Platzhaltern gefüllt, `null` wird nie als 0 einsortiert.
 
 Steht `moment` im JSON, gilt es. Sonst wird in dieser Reihenfolge hergeleitet:
 
-1. `badge` — „Der Abend", „Früh morgens", „Nur mittags", „Sonnenuntergang",
+1. `badge`, sofern er in `BADGE_MOMENT` steht — „Der Abend", „Früh morgens", „Nur mittags", „Sonnenuntergang",
    „Livemusik" und Verwandte sind eindeutig.
 2. `hours`, soweit lesbar: Schluss ab 21:00 heißt Abend, Öffnung bis 8:30
    heißt Morgen, Öffnung ab 17:00 heißt ebenfalls Abend, ein Fenster über
@@ -120,8 +122,10 @@ Eingeordnet wurde nach diesen Grundsätzen, nicht nach Kategorie:
   an jedem Öffnungstag gilt. „Il Giardino delle Esperidi" hat werktags nur
   abends geöffnet und Sa/So auch mittags — es steht deshalb nur unter `abend`.
 - **Draußen-Ziele bekommen kein `abend`.** Ein Uferweg um 22 Uhr ist kein
-  Vorschlag. Ausnahme, wo es ausdrücklich dasteht: „Abendlicht",
-  „Sonnenuntergang", „Livemusik".
+  Vorschlag. Ausnahme, wo es ausdrücklich dasteht — die Badges „Abendlicht"
+  und „Sonnenuntergang", oder ein Tag wie `livemusik` und `cocktails`. („Livemusik"
+  war bis v11 selbst ein Badge; der Badge-Kanon hat ihn zum Tag gemacht, die
+  Einordnung bleibt dieselbe.)
 - **Wandern und Rad meiden die Mittagshitze**, also `frueh` und `nachmittag`.
 - **Tagesausflüge ab etwa 4,5 h nur `frueh`.** Ob sich etwas heute noch
   ausgeht, entscheidet danach `fitsLeft`, nicht diese Liste.
