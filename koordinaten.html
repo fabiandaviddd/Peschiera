@@ -34,6 +34,8 @@
   <p class="k__lead">
     Diese Seite fragt für jeden Ort nach, wo er auf der Landkarte liegt. Danach lädst du
     eine Datei herunter und schickst sie mir. Ohne das gibt es keine Karte und keine Tagesrouten.
+    <br><small style="opacity:.75">Prüfende Fassung · 18.09.2026 — wenn hier kein Datum steht,
+    liefert der Server noch die alte Seite aus.</small>
   </p>
 
   <div class="k__box">
@@ -304,6 +306,43 @@
     return next();
   }
 
+  /* Ein frueherer Lauf kann Treffer gespeichert haben, die den heutigen Regeln
+     nicht standhalten — etwa die drei nachweislich falschen Punkte. Beim Laden
+     aussortieren, sonst landen sie ungeprueft wieder in der Datei. */
+  function pruefeGemerktes() {
+    var raus = [];
+    var base = data.meta && data.meta.base_geo;
+
+    data.places.forEach(function (p) {
+      var g = found[p.id];
+      if (!g) return;
+
+      /* Punkte, die inzwischen in der Datei stehen, braucht der Speicher nicht */
+      if (p.geo) { delete found[p.id]; return; }
+
+      /* Der Ergebnistext des Dienstes ist nicht mitgespeichert, die Ortsregel
+         laesst sich also nicht nachholen. Die Entfernungsregel schon — und die
+         faengt genau die Punkte, die zu weit weg liegen. */
+      if (base && typeof p.distance_km === 'number' && p.distance_km > 0) {
+        var luft = km(base, g);
+        var grenze = p.distance_km * 1.15 + 0.5;
+        if (luft > grenze) {
+          delete found[p.id];
+          raus.push(p.name + ' — ' + luft.toFixed(1) + ' km Luftlinie bei '
+                    + p.distance_km + ' km Strasse');
+        }
+      }
+    });
+
+    /* Immer sichern: damit wird zugleich das alte Speicherformat migriert. */
+    save();
+
+    if (raus.length) {
+      log('Aus einem frueheren Lauf verworfen:');
+      raus.forEach(function (r) { log('   ' + r, 's'); });
+    }
+  }
+
   function download() {
     var out = JSON.parse(JSON.stringify(data));
     out.places.forEach(function (p) { if (!p.geo && found[p.id]) p.geo = found[p.id]; });
@@ -328,7 +367,12 @@
   });
 
   fetch(DATA, { cache: 'no-cache' }).then(function (r) { return r.json(); })
-    .then(function (d) { data = d; buildTowns(); paint(); })
+    .then(function (d) {
+      data = d;
+      buildTowns();
+      pruefeGemerktes();
+      paint();
+    })
     .catch(function () {
       $('count').textContent = 'Fehler';
       $('sub').textContent = 'data/places.json nicht gefunden — läuft diese Seite im Projektordner?';
