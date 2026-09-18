@@ -7,12 +7,13 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v7 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v8 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
   var LS_THEME = 'pk.theme';
   var LS_JUM   = 'pk.jum';
+  var SS_WET   = 'pk.wet';    // Wetter gilt fuer diesen Besuch, nicht fuer immer
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
   var SHORT_MAX = 60;         // Schwelle für den Filter "Unter 1 h"
 
@@ -42,17 +43,25 @@
 
   /* --------------------------------------------------------------- Speicher */
 
-  function lsGet(key, fallback) {
+  /* Der Speicher wird über seinen Namen angesprochen, nicht über eine
+     Referenz: schon window.localStorage selbst wirft in manchen
+     Privatsphäre-Einstellungen, und dann muss der try das mitfangen. */
+  function stGet(store, key, fallback) {
     try {
-      var raw = localStorage.getItem(key);
+      var raw = window[store].getItem(key);
       return raw === null ? fallback : JSON.parse(raw);
     } catch (e) { return fallback; }
   }
 
-  function lsSet(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); }
+  function stSet(store, key, value) {
+    try { window[store].setItem(key, JSON.stringify(value)); }
     catch (e) { /* Private Mode o.ä. — gilt dann nur für diese Sitzung */ }
   }
+
+  function lsGet(key, fallback) { return stGet('localStorage', key, fallback); }
+  function lsSet(key, value) { stSet('localStorage', key, value); }
+  function ssGet(key, fallback) { return stGet('sessionStorage', key, fallback); }
+  function ssSet(key, value) { stSet('sessionStorage', key, value); }
 
   /* ---------------------------------------------------------------- Helfer */
 
@@ -237,6 +246,11 @@
 
     S.jum = lsGet(LS_JUM, false) === true;
 
+    /* Das Wetter haelt einen Besuch lang: an einem Regentag sonst jedes
+       Oeffnen der App neu anzutippen. Dauerhaft waere falsch — morgen ist
+       anderes Wetter, und sessionStorage vergisst von selbst. */
+    S.wet = ssGet(SS_WET, false) === true;
+
     /* Der Reisezeitraum stand bisher als zweite Zeile im Kopf. Dort steht
        jetzt der Jum-Schalter; die Angabe wandert in den Fuss, wo schon der
        Datenstand steht. */
@@ -255,6 +269,7 @@
 
     registerSW();
     updateOfflineNote();
+    checkCacheVersion();
     showInbox();
   }
 
@@ -265,12 +280,16 @@
     if (S.theme === 'auto') root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', S.theme);
 
+    /* Das Symbol zeigt den Zustand — was ein Tipp bewirkt, sagte es nicht.
+       Bei drei Stufen ist das zu wenig, also steht das Ziel dabei. */
     var label = { auto: 'Farbschema: automatisch', light: 'Farbschema: hell', dark: 'Farbschema: dunkel' }[S.theme];
+    var next = { auto: 'hell', light: 'dunkel', dark: 'automatisch' }[S.theme];
     var icon = { auto: ICON.auto, light: ICON.sun, dark: ICON.moon }[S.theme];
     var btn = $('theme-btn');
     if (btn) {
-      btn.innerHTML = '<span class="sr-only">' + esc(label) + ' — umschalten</span>' + icon;
-      btn.setAttribute('title', label);
+      var full = label + ' — umschalten auf ' + next;
+      btn.innerHTML = '<span class="sr-only">' + esc(full) + '</span>' + icon;
+      btn.setAttribute('title', full);
     }
 
     /* theme-color an das wirksame Schema anpassen */
@@ -317,10 +336,14 @@
     { id: 'info', label: 'Info', icon: ICON.info }
   ];
 
+  /* Kein role="tab": dazu gehoerten tabpanel und aria-controls, und Panels
+     gibt es hier nicht — die Leiste wechselt die ganze Ansicht. Ein
+     Screenreader bekaeme sonst eine Struktur angekuendigt, die es nicht gibt.
+     Es ist eine Navigation, also sagt aria-current, wo man steht. */
   function buildTabs() {
     $('tabs').innerHTML = TABS.map(function (t) {
-      return '<button type="button" class="tab" role="tab" data-tab="' + t.id + '"'
-        + ' aria-selected="' + (S.view === t.id ? 'true' : 'false') + '">'
+      return '<button type="button" class="tab" data-tab="' + t.id + '"'
+        + (S.view === t.id ? ' aria-current="page"' : '') + '>'
         + t.icon
         + '<span>' + esc(t.label) + '</span>'
         + (t.id === 'gemerkt' ? '<span class="tab__n" id="tab-n" hidden></span>' : '')
@@ -332,15 +355,28 @@
   function syncTabs() {
     var btns = $('tabs').querySelectorAll('.tab');
     for (var i = 0; i < btns.length; i++) {
-      btns[i].setAttribute('aria-selected', btns[i].getAttribute('data-tab') === S.view ? 'true' : 'false');
+      if (btns[i].getAttribute('data-tab') === S.view) btns[i].setAttribute('aria-current', 'page');
+      else btns[i].removeAttribute('aria-current');
     }
     var n = $('tab-n');
-    if (n) { n.textContent = String(S.saved.length); n.hidden = S.saved.length === 0; }
+    if (n) {
+      n.textContent = String(S.saved.length);
+      n.hidden = S.saved.length === 0;
+      /* Die Zahl allein ist ohne den Reiter darunter nicht zu deuten. */
+      n.setAttribute('aria-label', S.saved.length + ' gemerkt');
+    }
   }
 
   function setView(v) {
     if (v === S.view) return;
-    if (v === 'heute') S.pick = 0;
+    if (v === 'heute') {
+      S.pick = 0;
+      /* "Heute" sucht nicht. Das Feld bleibt dort sichtbar, damit man den
+         Bestand ueberhaupt bemerkt — dann darf darin aber kein Text stehen,
+         der gar nicht wirkt. */
+      S.q = '';
+      $('q').value = '';
+    }
     S.view = v;
     syncTabs();
     render();
@@ -515,7 +551,10 @@
     syncChips();
     var bare = S.view === 'info' || S.view === 'heute';
     $('filters').hidden = bare;
-    $('search-wrap').hidden = bare;
+    /* Auf "Heute" bleibt das Suchfeld stehen. Ohne es ist von der Startansicht
+       aus nicht zu sehen, dass hinter dem einen Vorschlag ein ganzer Bestand
+       liegt — der Weg dorthin stand bisher nur unten am Ende der Seite. */
+    $('search-wrap').hidden = S.view === 'info';
     $('meta-row').hidden = bare;
     renderShareBar();
     measureBar();
@@ -585,8 +624,6 @@
       + (S.jum ? ' · mit Jum' : '')
       + (unclear ? ' · ' + unclear + ' ohne Jum ausgeblendet' : '')
       + (seenHere ? ' · ' + seenHere + ' gesehen' : '');
-
-    if (!$('count')) return;
 
     var live = $('filter-count');
     if (live) {
@@ -882,7 +919,7 @@
       + '<button type="button" class="btn btn--primary" data-open="' + esc(p.id) + '">Ansehen</button>'
       + '<button type="button" class="btn" data-save="' + esc(p.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
       + ICON.star + (on ? 'Gemerkt' : 'Merken') + '</button>'
-      + '<button type="button" class="btn" id="today-next">' + ICON.shuffle + 'Anderer</button>'
+      + '<button type="button" class="btn" id="today-next">' + ICON.shuffle + 'Anderer Vorschlag</button>'
       + '</div>';
   }
 
@@ -893,6 +930,14 @@
       + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min' : '')
       + (p.dog === true ? ' · Jum ok' : '') + '</span>'
       + '</button>';
+  }
+
+  function setWet(v) {
+    if (S.wet === v) return;
+    S.wet = v;
+    S.pick = 0;
+    ssSet(SS_WET, v);
+    render();
   }
 
   function todayHtml() {
@@ -1075,6 +1120,48 @@
   }
 
 
+  /* aria-modal="true" allein sagt es nur, es macht es nicht: ohne das Folgende
+     wandert der Tabulator hinter dem Sheet weiter durch die Liste, und ein
+     Screenreader liest sie mit. Sheet und Scrim liegen als Geschwister neben
+     #app, also genuegt es, alles davor stillzulegen. inert kann Safari erst ab
+     15.5, deshalb steht aria-hidden daneben und der Tab-Ring unten noch dazu —
+     eine der drei Ebenen greift in jedem Fall. */
+  var inertParts = null;
+
+  function setInert(on) {
+    if (!inertParts) {
+      inertParts = [$('app'), document.querySelector('.skip')].filter(Boolean);
+    }
+    inertParts.forEach(function (el) {
+      if (on) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); }
+      else { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+    });
+  }
+
+  var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]),'
+                + ' select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  /* Rueckfallebene fuer Engines ohne inert: am Ende des Sheets wieder vorn
+     anfangen, statt in die Seite dahinter zu springen. */
+  function trapTab(e) {
+    if (e.key !== 'Tab') return;
+    var sheet = $('sheet');
+    if (sheet.hidden) return;
+    var list = Array.prototype.filter.call(sheet.querySelectorAll(FOCUSABLE), function (el) {
+      return el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement;
+    });
+    if (!list.length) return;
+    var first = list[0], last = list[list.length - 1];
+    var inside = sheet.contains(document.activeElement);
+    if (e.shiftKey && (!inside || document.activeElement === first)) {
+      e.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!e.shiftKey && (!inside || document.activeElement === last)) {
+      e.preventDefault();
+      first.focus({ preventScroll: true });
+    }
+  }
+
   /* Gemeinsamer Unterbau fuer Ort und Filter: Body-Fixierung, Scrim, Fokus,
      Wischen nach unten und die iOS-Eigenheiten stecken hier — und nur hier.
      Ein zweites Sheet daneben wuerde die Haertung ein zweites Mal brauchen. */
@@ -1097,6 +1184,9 @@
       sheet.classList.add('is-on');
     });
 
+    /* Erst stilllegen, dann den Fokus setzen: inert nimmt dem alten Element
+       den Fokus von selbst, und er darf nicht im Nichts landen. */
+    setInert(true);
     $('sheet-close').focus({ preventScroll: true });
   }
 
@@ -1135,6 +1225,10 @@
     var wasFilter = S.filterOpen;
     S.openId = null;
     S.filterOpen = false;
+
+    /* Vor dem Zurückgeben des Fokus: in ein inertes Element hinein kann er
+       nicht, der Aufruf würde still ins Leere laufen. */
+    setInert(false);
 
     var back = id ? document.querySelector('[data-open="' + id.replace(/"/g, '\\"') + '"]') : null;
     if (wasFilter) back = $('chip-tags');
@@ -1254,7 +1348,6 @@
       if (sr) sr.textContent = on ? 'Aus der Merkliste entfernen' : 'Merken';
       if (btns[i].classList.contains('btn')) {
         btns[i].innerHTML = ICON.star + (on ? 'Gemerkt — entfernen' : 'Merken');
-        btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
       }
     }
 
@@ -1456,7 +1549,10 @@
       });
 
       navigator.serviceWorker.register('./sw.js').then(function (reg) {
-        var check = function () { try { reg.update(); } catch (e) {} };
+        var check = function () {
+          try { reg.update(); } catch (e) {}
+          checkCacheVersion();
+        };
         check();
         document.addEventListener('visibilitychange', function () {
           if (!document.hidden) check();
@@ -1464,6 +1560,9 @@
       }).catch(function () { /* nicht kritisch */ });
     } catch (e) { /* nicht kritisch */ }
   }
+
+  /* Nicht null, sobald der Worker einen anderen Stand meldet als diese Datei. */
+  var swMismatch = null;
 
   function updateOfflineNote() {
     var el = $('foot-offline');
@@ -1476,10 +1575,36 @@
     }
     var off = !navigator.onLine;
     var cached = 'serviceWorker' in navigator && navigator.serviceWorker.controller;
-    el.textContent = standTxt + (off
+    el.innerHTML = esc(standTxt + (off
       ? 'Offline — angezeigt werden die gespeicherten Daten.'
       : cached ? 'Offline verfügbar.' : '')
-      + '  ·  App ' + VERSION;
+      + '  ·  App ' + VERSION)
+      + (swMismatch
+          ? '<span class="foot__warn">Offline-Speicher steht auf ' + esc(swMismatch.sw)
+            + ', die App auf ' + esc(swMismatch.app)
+            + '. Beim Bauen wurde ein Sprung vergessen — einmal neu laden, dann stimmt es wieder.</span>'
+          : '');
+  }
+
+  /* Fragt den Worker nach seinem Cache-Namen und vergleicht nur die Marke
+     davor: 'peschiera-v8' gegen 'v8 · 2026-09-18' ist gleich, das Datum
+     dahinter zaehlt nicht mit. */
+  function checkCacheVersion() {
+    if (!('serviceWorker' in navigator) || !window.MessageChannel) return;
+    var ctrl = navigator.serviceWorker.controller;
+    if (!ctrl) return;
+    try {
+      var ch = new MessageChannel();
+      ch.port1.onmessage = function (ev) {
+        var cache = ev.data && ev.data.cache;
+        if (!cache) return;
+        var sw = String(cache).replace(/^peschiera-/, '');
+        var app = String(VERSION).split(/[\s·]/)[0];
+        swMismatch = sw === app ? null : { sw: sw, app: app };
+        updateOfflineNote();
+      };
+      ctrl.postMessage({ q: 'version' }, [ch.port2]);
+    } catch (e) { /* ohne Antwort bleibt es beim bisherigen Text */ }
   }
 
   /* ---------------------------------------------------------------- Events */
@@ -1497,13 +1622,18 @@
 
     $('q').addEventListener('input', function () {
       S.q = $('q').value.trim();
+      if (S.view === 'heute' && S.q) { setView('orte'); return; }   // setView rendert selbst
       render();
     });
     $('q').addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && $('q').value) { e.stopPropagation(); $('q').value = ''; S.q = ''; render(); }
     });
     /* Tastatur offen -> Tableiste weg (siehe style.css). */
-    $('q').addEventListener('focus', function () { document.body.classList.add('is-typing'); });
+    $('q').addEventListener('focus', function () {
+      document.body.classList.add('is-typing');
+      /* Wer auf "Heute" ins Suchfeld greift, will in den Bestand. */
+      if (S.view === 'heute') setView('orte');
+    });
     $('q').addEventListener('blur', function () { document.body.classList.remove('is-typing'); });
 
     $('q-clear').addEventListener('click', function () {
@@ -1585,8 +1715,8 @@
     $('today').addEventListener('click', function (e) {
       if (e.target.closest('#today-all')) { setView('orte'); return; }
       if (e.target.closest('#today-next')) { S.pick += 1; render(); return; }
-      if (e.target.closest('#wx-dry')) { if (S.wet) { S.wet = false; S.pick = 0; render(); } return; }
-      if (e.target.closest('#wx-wet')) { if (!S.wet) { S.wet = true; S.pick = 0; render(); } return; }
+      if (e.target.closest('#wx-dry')) { setWet(false); return; }
+      if (e.target.closest('#wx-wet')) { setWet(true); return; }
       var save = e.target.closest('[data-save]');
       if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); render(); return; }
       var open = e.target.closest('[data-open]');
@@ -1597,7 +1727,8 @@
     onTap($('sheet-close'), closeSheet);
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !$('sheet').hidden) closeSheet();
+      if (e.key === 'Escape' && !$('sheet').hidden) { closeSheet(); return; }
+      trapTab(e);
     });
 
     var sheet = $('sheet');
@@ -1650,6 +1781,27 @@
     } else {
       window.addEventListener('resize', measureBar);
     }
+  }
+
+  /* ------------------------------------------------------------- Pruefstand */
+
+  /* Die Helfer in "Heute" lesen Freitext: Öffnungszeiten, Termine im Badge,
+     den Reisezeitraum im Untertitel. Genau diese Sorte Code liegt bei einem
+     neuen Datensatz still falsch, ohne Fehlermeldung. scripts/test-logic.mjs
+     laedt diese Datei mit node und prueft sie — dafuer muss es sie erreichen.
+     Im Browser gibt es kein `module`, dort passiert hier also nichts. */
+  if (typeof module === 'object' && module && module.exports) {
+    module.exports = {
+      hoursWindow: hoursWindow, momentsOf: momentsOf, momentNow: momentNow,
+      runsToday: runsToday, tripDay: tripDay, unverified: unverified,
+      closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,
+      dur: dur, km: km, norm: norm, haystack: haystack,
+      byDistance: byDistance, byRating: byRating,
+      MOMENTS: MOMENTS, WALK_MAX: WALK_MAX, SHORT_MAX: SHORT_MAX,
+      /* tripDay liest den Untertitel aus den geladenen Daten. */
+      useMeta: function (meta) { D = { meta: meta || {} }; }
+    };
+    return;                     // im Pruefstand nicht booten
   }
 
   /* ------------------------------------------------------------------ Boot */

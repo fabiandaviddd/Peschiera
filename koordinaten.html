@@ -33,7 +33,8 @@
   <h1>Koordinaten holen</h1>
   <p class="k__lead">
     Diese Seite fragt für jeden Ort nach, wo er auf der Landkarte liegt. Danach lädst du
-    eine Datei herunter und schickst sie mir. Ohne das gibt es keine Karte und keine Tagesrouten.
+    eine Datei herunter, die <code>data/places.json</code> im Projekt ersetzt. Ohne das
+    gibt es keine Karte und keine Tagesrouten.
     <br><small style="opacity:.75">Prüfende Fassung · 18.09.2026 — wenn hier kein Datum steht,
     liefert der Server noch die alte Seite aus.</small>
   </p>
@@ -41,7 +42,7 @@
   <div class="k__box">
     <div class="k__step"><span>1</span><span>Auf <b>Starten</b> tippen und die Seite offen lassen.</span></div>
     <div class="k__step"><span>2</span><span>Warten. Es dauert etwa <b id="eta">8 Minuten</b> — ein Ort pro Sekunde, das verlangt der Dienst so.</span></div>
-    <div class="k__step"><span>3</span><span>Am Ende auf <b>Datei herunterladen</b> tippen und mir die Datei schicken.</span></div>
+    <div class="k__step"><span>3</span><span>Am Ende auf <b>Datei herunterladen</b> tippen und die Datei ins Projekt übernehmen.</span></div>
   </div>
 
   <div class="k__box">
@@ -259,7 +260,7 @@
         log('fertig — jetzt die Datei herunterladen', 'b');
         if (ids.length) {
           log('');
-          log(ids.length + ' Orte ohne Koordinate — bitte mir diese Liste schicken:');
+          log(ids.length + ' Orte ohne Koordinate — von Hand aus Google Maps nachtragen:');
           ids.forEach(function (id) {
             var pl = null;
             for (var k = 0; k < data.places.length; k++) if (data.places[k].id === id) pl = data.places[k];

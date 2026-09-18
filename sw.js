@@ -10,8 +10,8 @@
    ========================================================================== */
 'use strict';
 
-var CACHE = 'peschiera-v7';
-var FONTS = 'peschiera-fonts-v7';
+var CACHE = 'peschiera-v8';
+var FONTS = 'peschiera-fonts-v8';
 var TIMEOUT = 2500;   // ms, danach greift der Cache
 
 var SHELL = [
@@ -47,6 +47,17 @@ self.addEventListener('activate', function (e) {
       }));
     }).then(function () { return self.clients.claim(); })
   );
+});
+
+/* CACHE hier und VERSION in app.js muessen zusammenpassen — bisher stand das
+   nur in der README, und ein vergessener Sprung fiel niemandem auf: die App
+   lief still auf altem Stand weiter. Auf Nachfrage nennt der Worker deshalb
+   seinen Cache, und die App vergleicht ihn mit ihrer eigenen Fassung. */
+self.addEventListener('message', function (e) {
+  if (!e.data || e.data.q !== 'version') return;
+  var reply = { cache: CACHE };
+  if (e.ports && e.ports[0]) e.ports[0].postMessage(reply);
+  else if (e.source && e.source.postMessage) e.source.postMessage(reply);
 });
 
 function isFont(url) {
