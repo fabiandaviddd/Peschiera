@@ -816,6 +816,31 @@ body.is-typing .tabs { transform: translateY(110%); }
 }
 .today__clock { font-family: var(--font-body); font-size: var(--t-body); font-weight: 400; color: var(--soft); }
 
+/* Die Vier-Abschnitte-Leiste. Bis v13 zeigte "Heute" nur, was die Uhr sagte;
+   den ganzen Tag sah man nicht und vorausblaettern ging gar nicht. */
+.segbar {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: .3rem;
+  margin-top: .7rem;
+}
+.seg {
+  min-height: 40px; padding: .35rem .2rem;
+  font-size: var(--t-meta); font-weight: 500; color: var(--soft);
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; cursor: pointer;
+  transition: color var(--t) var(--ease), background var(--t) var(--ease),
+              border-color var(--t) var(--ease);
+}
+/* Vorbei heisst gedaempft, aber erreichbar — nicht gesperrt. Die Daempfung
+   laeuft ueber den Rahmen, nicht ueber die Textdeckkraft: opacity .55 haette
+   den Kontrast auf 2,48:1 gedrueckt, und das an einem Bedienelement. */
+.seg--past { background: transparent; border-style: dashed; }
+/* Der Abschnitt, in dem man gerade steckt, traegt eine Unterkante. */
+.seg--now { border-bottom-width: 2px; border-bottom-color: var(--soft); }
+.seg[aria-pressed="true"] {
+  color: var(--card); background: var(--ink); border-color: var(--ink);
+  border-style: solid;
+}
+
 .today__weather {
   display: flex; align-items: center; gap: .45rem;
   padding: .7rem 0 .9rem;
@@ -824,7 +849,26 @@ body.is-typing .tabs { transform: translateY(110%); }
 }
 .today__weather .chip { height: 34px; }
 
-.today__kicker { color: var(--brick-ink); margin-top: 1.1rem; }
+.today__kicker { display: flex; align-items: baseline; gap: .5rem;
+  color: var(--brick-ink); margin-top: 1.1rem; }
+/* "3 / 12" — beantwortet "habe ich schon alles gesehen?". */
+.today__pos { margin-left: auto; color: var(--soft); font-variant-numeric: tabular-nums; }
+.today__n { margin-left: .4rem; color: var(--soft); font-weight: 400;
+  font-variant-numeric: tabular-nums; }
+
+/* Vor und zurueck im Vorschlagsstapel. */
+.today__nav { display: flex; gap: .5rem; margin-top: .5rem; }
+.today__nav .btn { flex: 1 1 auto; }
+.today__nav .btn:first-child { flex: 0 0 auto; width: 3.2rem; padding: 0; }
+.today__nav .btn[disabled] { opacity: .35; cursor: default; }
+.today__nav svg { width: 18px; height: 18px; stroke-width: 2; }
+
+.today__more {
+  display: block; width: 100%; min-height: 44px;
+  font-size: var(--t-meta); font-weight: 500; color: var(--lake-ink);
+  cursor: pointer; text-align: left;
+  border-bottom: 1px solid var(--line);
+}
 .today__cat {
   display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap;
   font-size: var(--t-micro); font-weight: 700;
@@ -867,6 +911,65 @@ body.is-typing .tabs { transform: translateY(110%); }
   border-top: 1px solid var(--line); padding-top: 1rem;
 }
 .today__all svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: var(--soft);
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* --- Plan --------------------------------------------------------------- */
+/* Aus "Gemerkt" wird ein Plan: Reihenfolge statt Sortierung, Zeitbudget statt
+   Trefferzahl. time_min liegt bei allen 101 Orten vor und wurde bis v13 nur
+   fuer einen Filter benutzt. */
+.plan__sum {
+  font-size: var(--t-meta); color: var(--soft);
+  padding: .1rem 0 .7rem; font-variant-numeric: tabular-nums;
+}
+.plan { display: grid; margin-inline: -1rem; border-top: 1px solid var(--line); }
+
+.planrow {
+  display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) 2.6rem;
+  align-items: center;
+  min-height: 4.4rem; padding: .5rem .85rem .5rem .45rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--accent, var(--line));
+}
+.planrow--seen .planrow__name { color: var(--soft); }
+.planrow--seen .planrow__m { opacity: .72; }
+
+.planrow__n {
+  justify-self: center;
+  font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
+  color: var(--soft); font-variant-numeric: tabular-nums;
+}
+.planrow__open {
+  display: grid; gap: .1rem; text-align: left; min-width: 0;
+  cursor: pointer; padding: .2rem 0;
+}
+.planrow__name { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.planrow__m { font-size: var(--t-meta); color: var(--soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Pfeile statt Ziehen: eine Wischgeste laesst sich von hier aus nicht auf
+   echtem iOS pruefen, und bei einer Handvoll Stationen sind zwei Knoepfe
+   ohnehin treffsicherer als ein Griff. */
+.planrow__move { display: grid; gap: .1rem; }
+.pmove {
+  width: 2.4rem; height: 2.1rem;
+  display: grid; place-items: center;
+  color: var(--soft); cursor: pointer; border-radius: 7px;
+}
+.pmove svg { width: 17px; height: 17px; fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pmove[disabled] { opacity: .25; cursor: default; }
+
+/* Nur wo geo bei beiden Stationen steht — bei 23 von 101 fehlt es, dort
+   bleibt die Zeile weg statt zu raten. */
+.plan__far {
+  display: flex; align-items: center; gap: .35rem;
+  padding: .4rem .85rem .45rem 2.65rem;
+  font-size: var(--t-meta); color: var(--brick-ink);
+  background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.plan__far svg { width: 14px; height: 14px; flex: 0 0 auto; fill: none; stroke: currentColor;
   stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* --- Ab 33rem: etwas mehr Luft, Spalte bleibt bei 32rem ---------------- */

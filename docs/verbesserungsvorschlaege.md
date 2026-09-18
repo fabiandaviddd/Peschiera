@@ -4,7 +4,7 @@ Bestandsaufnahme einer vierten Hand am selben Repo. Alle Zahlen sind aus
 `data/places.json` gerechnet, nicht geschätzt; die Rechenwege stehen jeweils
 dabei. Die Befunde beschreiben den Stand `v13`.
 
-**Vorschlag 1 und 2 sind in `v14` umgesetzt** — siehe „Umsetzungsstand" unten.
+**Vorschlag 1 und 2 sind in `v15` umgesetzt** — siehe „Umsetzungsstand" unten.
 Die Vorschläge 3 bis 8 stehen weiter offen und sind absichtlich so
 beschrieben, dass sie jede Hand einzeln aufgreifen kann.
 
@@ -338,19 +338,19 @@ mitzuziehen.
 
 ## Umsetzungsstand
 
-### Vorschlag 1 — umgesetzt in `v14`
+### Vorschlag 1 — umgesetzt in `v15`
 
 `.github/workflows/pruefstand.yml`: `node scripts/test-logic.mjs` bei jedem
 Push und jedem Pull Request. Kein `npm install`, keine Abhängigkeiten.
 
-### Vorschlag 2 — umgesetzt in `v14`
+### Vorschlag 2 — umgesetzt in `v15`
 
-| | v13 | v14 |
+| | v14 | v15 |
 |---|---|---|
 | Orte mit lesbarem Ruhetag in `hours` | 14 — von nichts gelesen | 14 — gelesen |
 | Palazzina Storica, Mittwochmittag | Platz 2 von 41 | ans Ende sortiert, nicht mehr unter den drei gezeigten |
 | S'Aligusta, Dienstagmittag | Platz 3 von 41 | ans Ende sortiert |
-| Prüfungen im Prüfstand | 94 | 117 |
+| Prüfungen im Prüfstand | 94 | 121 |
 
 Gebaut wurde:
 
@@ -378,10 +378,29 @@ Nicht gebaut: der optionale Filterchip „heute geöffnet". Er berührt die
 Filterleiste, und die ist frisch umgebaut — der Gewinn rechtfertigt die
 Kollision nicht.
 
-Geprüft: 117 Prüfungen im Prüfstand, dazu Chromium auf 390×844 mit gestellter
+### Ein Fehler, den erst der Merge erzeugt hat
+
+Schritt 4 des Redesigns (`v14`, Tagesblatt und Plan) und dieser Zweig sind
+gleichzeitig entstanden und im selben Bereich gelandet. Beide für sich waren
+in Ordnung; zusammen nicht.
+
+`smallHtml(p)` hat hier ein zweites Argument bekommen, das Bezugsdatum.
+`v14` ruft die Funktion an zwei neuen Stellen als `.map(smallHtml)` auf — und
+`Array#map` reicht als zweites Argument den **Index** durch. Bei Index 0 ging
+das gut, weil 0 falsch ist und auf „heute" zurückfiel. Bei Index 1 warf
+`closedToday` einen `TypeError` und nahm die ganze Heute-Ansicht mit. Der Weg
+dorthin ist keiner der seltenen: Regen, Jum an, mindestens zwei Orte im
+Trockenen.
+
+Behoben an beiden Enden — die zwei Aufrufstellen reichen das Datum jetzt
+ausdrücklich durch, und `closedToday` nimmt nur noch ein echtes `Date` an und
+fällt bei allem anderen auf heute zurück. Dazu vier Prüfungen, die genau das
+festhalten.
+
+Geprüft: 121 Prüfungen im Prüfstand, dazu Chromium auf 390×844 mit gestellter
 Uhr auf Mittwoch 12:30, Mittwoch 19:30 und Dienstag 12:30 — die
 Gegenrichtung zählt mit, S'Aligusta verschwindet dienstags und steht
-mittwochs wieder da.
+mittwochs wieder da. Der Regen-Leerzustand mit Jum ist eigens nachgestellt.
 
 ---
 

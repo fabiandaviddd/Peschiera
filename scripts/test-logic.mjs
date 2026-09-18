@@ -138,6 +138,17 @@ ok('Ruhetag Mittwoch, am Dienstag',
    pk.closedToday({ hours: 'täglich 18–23, Ruhetag Mittwoch' }, dienstag), false);
 ok('ohne Angabe nie geschlossen', pk.closedToday({ hours: 'geöffnet bis 22:30' }, mittwoch), false);
 ok('ohne hours nie geschlossen', pk.closedToday({ hours: null }, mittwoch), false);
+/* Array#map reicht den Index als zweites Argument durch, und .map(smallHtml)
+   ist im Haus die uebliche Schreibweise. Vor dem Haerten warf closedToday bei
+   Index 1 einen TypeError und nahm die ganze Heute-Ansicht mit — aufgetaucht
+   ist das erst, als der Ruhetag-Zweig und der Tagesblatt-Zweig
+   zusammenkamen. Keiner der beiden hatte den Fehler allein. */
+const ruhetagMi = { hours: 'täglich 18–23, Ruhetag Mittwoch' };
+ok('ein durchgereichter Index stuerzt nicht ab', pk.closedToday(ruhetagMi, 1), false);
+ok('Index 0 ebenso', pk.closedToday(ruhetagMi, 0), pk.closedToday(ruhetagMi));
+ok('ein ungueltiges Datum faellt auf heute zurueck',
+   pk.closedToday(ruhetagMi, new Date('kein Datum')), pk.closedToday(ruhetagMi));
+ok('ein String ist kein Datum', pk.closedToday(ruhetagMi, '2026-09-16'), pk.closedToday(ruhetagMi));
 
 /* ----------------------------------------------------------- Tagesabschnitt */
 group('momentsOf — was im JSON steht, gilt');
