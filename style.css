@@ -474,6 +474,9 @@ body.is-compact .bar__top {
    bei .today__late und .dogrow--unknown. Der Slot ist der der Oeffnung, nicht
    ein zusaetzlicher: die Zeile bleibt 97 px hoch. */
 .fact--closed { color: var(--brick-ink); font-weight: 500; }
+/* Gemessen ab dem Geraetestandort. Seeblau heisst im Haus "hier ist etwas
+   an" — und genau das ist es: ein Bezugspunkt, den man selbst gesetzt hat. */
+.fact--here { color: var(--lake-ink); font-weight: 500; }
 .fact svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9;
   stroke-linecap: round; stroke-linejoin: round; }
 .fact--rating svg { fill: currentColor; stroke: none; }
@@ -665,6 +668,7 @@ body.is-compact .bar__top {
 .tile__l { font-size: var(--t-micro); font-weight: 700; color: var(--soft); }
 /* Die Kachel sagt an einem Ruhetag nicht "bis 22:30", sondern was ist. */
 .tile--closed .tile__v { color: var(--brick-ink); }
+.chip--here:disabled { opacity: .6; }
 
 /* Die Hundregel bekommt eine eigene Flaeche statt einer Zeile im Kleingedruckten:
    bei 58 von 101 Orten ist sie ungeklaert, das ist die haeufigste Antwort. */

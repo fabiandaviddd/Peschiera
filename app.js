@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v15 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v16 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -37,6 +37,11 @@
     pick: 0,                // welcher Vorschlag gerade dran ist
     mid: null,              // gewaehlter Tagesabschnitt; null = aus der Uhr
     moreOpen: false,        // "Sonst noch" ausgeklappt
+    /* Der Geraetestandort. Bewusst nirgends gespeichert: eine Position ist
+       nach dem naechsten Spaziergang falsch, und eine falsche Entfernung ist
+       schlechter als gar keine. Wer ihn wieder will, tippt wieder. */
+    here: null,             // {lat, lon, at} oder null
+    hereState: 'off',       // off | wait | on | denied | failed
     saved: [],
     seen: [],
     theme: 'auto',
@@ -476,6 +481,9 @@
   /* Der Kopf zeigt nur, was an ist — jeder Chip traegt sein eigenes Kreuz. */
   function activeChipsHtml() {
     var out = [];
+    /* Der Standort zaehlt nicht als Filter — er blendet nichts aus. Sichtbar
+       muss er trotzdem sein, sonst wundert man sich ueber die Reihenfolge. */
+    if (S.here) out.push(offChip('here', 'von hier', 'wieder ab dem Zeltplatz messen'));
     S.cats.forEach(function (c) {
       out.push(offChip('cat:' + c, catLabel(c)));
     });
@@ -484,10 +492,12 @@
     return out.join('');
   }
 
-  function offChip(token, label) {
+  /* Der Zusatz ist vorgegeben "Filter entfernen" — der Standort ist aber
+     keiner, und vorgelesen waere das schlicht falsch. */
+  function offChip(token, label, sr) {
     return '<button type="button" class="chip chip--off" data-off="' + esc(token) + '">'
       + esc(label) + '<span class="chip__x" aria-hidden="true">&times;</span>'
-      + '<span class="sr-only">— Filter entfernen</span></button>';
+      + '<span class="sr-only">— ' + esc(sr || 'Filter entfernen') + '</span></button>';
   }
 
   function syncFilterBar() {
@@ -500,10 +510,13 @@
     $('active-filters').innerHTML = activeChipsHtml();
 
     var byRating = S.sort === 'rating';
-    $('sort-btn').innerHTML = ICON.sort + (byRating ? 'Bewertung' : 'Entfernung');
+    /* Mit Standort heisst "Entfernung" etwas anderes als sonst — dann sagt
+       der Knopf das auch. */
+    var distLbl = S.here ? 'Von hier' : 'Entfernung';
+    $('sort-btn').innerHTML = ICON.sort + (byRating ? 'Bewertung' : distLbl);
     $('sort-btn').setAttribute('aria-label', 'Sortiert nach '
-      + (byRating ? 'Bewertung' : 'Entfernung') + ' — umschalten auf '
-      + (byRating ? 'Entfernung' : 'Bewertung'));
+      + (byRating ? 'Bewertung' : (S.here ? 'Entfernung von hier' : 'Entfernung ab dem Zeltplatz'))
+      + ' — umschalten auf ' + (byRating ? distLbl : 'Bewertung'));
   }
 
   function offFilter(token) {
@@ -512,6 +525,7 @@
     else if (token === 'walk') S.walk = false;
     else if (token === 'short') S.short = false;
     else if (token === 'unseen') S.unseen = false;
+    else if (token === 'here') { S.here = null; S.hereState = 'off'; }
   }
 
   function allTags() {
@@ -551,6 +565,13 @@
       + '<p class="fgroup__x">' + noWalk + ' von ' + D.places.length
       + ' Orten haben keine Gehzeit hinterlegt und fallen aus „Zu Fuß“ heraus.</p>';
 
+    /* Der Standort filtert nichts, er verschiebt den Bezugspunkt. Er steht
+       trotzdem hier: das Sheet ist die eine Stelle, an der alles liegt, was
+       die Liste aendert. */
+    h += '<p class="fgroup__h">Standort</p><div class="tagpick">'
+      + hereChipHtml()
+      + '</div><p class="fgroup__x" id="here-note">' + esc(hereNote()) + '</p>';
+
     h += '<p class="fgroup__h">Zustand</p><div class="tagpick">'
       + FLAGS.filter(function (f) { return f.key === 'unseen'; }).map(flagChipHtml).join('')
       + '</div>';
@@ -569,6 +590,15 @@
       + '<button type="button" class="btn btn--wide" id="filter-clear">Zurücksetzen</button>'
       + '<button type="button" class="btn btn--wide btn--primary" id="filter-done"></button>'
       + '</div>';
+  }
+
+  function hereChipHtml() {
+    var wait = S.hereState === 'wait';
+    return '<button type="button" class="chip chip--here" id="here-btn"'
+      + ' aria-pressed="' + (S.here ? 'true' : 'false') + '"'
+      + (wait ? ' disabled' : '') + '>'
+      + ICON.pin + (wait ? 'Standort…' : S.here ? 'Von hier aus' : 'Von hier aus messen')
+      + '</button>';
   }
 
   function flagChipHtml(f) {
@@ -653,6 +683,12 @@
     for (var t = 0; t < tags.length; t++) {
       tags[t].setAttribute('aria-pressed', S.tags.indexOf(tags[t].getAttribute('data-tag')) >= 0 ? 'true' : 'false');
     }
+    /* Der Standortknopf und sein Hinweis wechseln ihren Text mit dem Zustand
+       — und der kommt aus einer Rueckmeldung, die Sekunden spaeter eintrifft. */
+    var hb = $('here-btn');
+    if (hb) hb.outerHTML = hereChipHtml();
+    var hn = $('here-note');
+    if (hn) hn.textContent = hereNote();
     $('q-clear').hidden = !S.q;
   }
 
@@ -663,7 +699,9 @@
 
   function anyFilter() {
     /* S.jum fehlt hier bewusst: eine Dauereinstellung wird nicht
-       mitzurueckgesetzt, sonst waere Jum nach jedem Reset wieder weg. */
+       mitzurueckgesetzt, sonst waere Jum nach jedem Reset wieder weg.
+       S.here fehlt aus dem zweiten Grund: er blendet keinen Ort aus, und
+       "101 von 101 Orten" waere eine Zeile ohne Aussage. */
     return !!S.q || S.cats.length > 0 || S.walk || S.unseen || S.short || S.tags.length > 0;
   }
 
@@ -713,6 +751,13 @@
 
   /* Ohne Wert einsortiert ans Ende — nicht als 0 behandeln. */
   function byDistance(a, b) {
+    /* Mit Standort misst "Entfernung" ab hier statt ab dem Zeltplatz. Orte
+       ohne geo fallen dabei ans Ende — nicht als 0 nach vorn, wie ueberall. */
+    if (S.here) {
+      var ha = hereKm(a), hb = hereKm(b);
+      var ua = ha === null ? Infinity : ha, ub = hb === null ? Infinity : hb;
+      if (ua !== ub) return ua - ub;
+    }
     var x = has(a.distance_km) ? a.distance_km : Infinity;
     var y = has(b.distance_km) ? b.distance_km : Infinity;
     if (x !== y) return x - y;
@@ -830,6 +875,10 @@
       : total + (total === 1 ? ' Ort' : ' Orte'))
       + (S.jum ? ' · mit Jum' : ' · ' + dogCount() + ' mit Hund')
       + (unclear ? ' · ' + unclear + ' ohne Jum ausgeblendet' : '')
+      /* Der Standort verschiebt den Bezugspunkt still. Also steht hier, dass
+         ab hier gemessen wird und wie viele Orte dabei nicht mitkoennen. */
+      + (S.here ? ' · ab hier gemessen' : '')
+      + (S.here && noGeoCount() ? ' · ' + noGeoCount() + ' ohne Koordinaten hinten' : '')
       + (seenHere ? ' · ' + seenHere + ' gesehen' : '');
 
     var live = $('filter-count');
@@ -849,7 +898,14 @@
      ist raus, sie steht rechts auf der Namenszeile. */
   function factsHtml(p) {
     var f = [];
-    if (has(p.walk_min)) {
+    /* Mit Standort steht im Weg-Slot die Luftlinie ab hier. "18 Min zu Fuss"
+       gilt ab dem Zeltplatz und waere in Sirmione schlicht falsch. Derselbe
+       Slot, dieselbe Zeilenhoehe. Orte ohne geo behalten ihre Angabe ab dem
+       Zeltplatz — die Zaehlzeile sagt, wie viele das sind. */
+    var hk = hereKm(p);
+    if (hk !== null) {
+      f.push('<span class="fact fact--here">' + ICON.pin + esc(km(hk)) + ' von hier</span>');
+    } else if (has(p.walk_min)) {
       f.push('<span class="fact">' + ICON.walk + p.walk_min + ' Min</span>');
     } else if (has(p.bike_min)) {
       f.push('<span class="fact">' + ICON.bike + p.bike_min + ' Min</span>');
@@ -1678,7 +1734,9 @@
 
   function tilesHtml(p) {
     var t = [];
-    if (has(p.walk_min))      t.push(tile(p.walk_min + ' Min', 'zu Fuß'));
+    var hk = hereKm(p);
+    if (hk !== null)          t.push(tile(esc(km(hk)), 'von hier'));
+    else if (has(p.walk_min)) t.push(tile(p.walk_min + ' Min', 'zu Fuß'));
     else if (has(p.bike_min)) t.push(tile(p.bike_min + ' Min', 'mit dem Rad'));
     else if (has(p.distance_km)) t.push(tile(esc(km(p.distance_km)), 'entfernt'));
 
@@ -1760,7 +1818,9 @@
     /* Adresse, Anfahrt und Tags werden gelesen, nachdem entschieden ist. */
     h += '<dl class="dl">'
       + (hoursAddsMore(p.hours) ? row('Öffnung', esc(p.hours)) : '')
-      + (dist.length > 1 ? row('Entfernung', esc(dist.join(' · '))) : '')
+      + (hereKm(p) !== null && dist.length
+          ? row('Ab dem Zeltplatz', esc(dist.join(' · ')))
+          : dist.length > 1 ? row('Entfernung', esc(dist.join(' · '))) : '')
       + (has(p.address) ? row('Adresse', esc(p.address)) : '')
       + (tel ? row('Telefon', '<a href="tel:' + esc(tel) + '">' + esc(p.phone) + '</a>') : '')
       + '</dl>';
@@ -2003,17 +2063,91 @@
     render();
   }
 
-  /* Luftlinie in km. Nur fuer die Warnung zwischen zwei Stationen — wo geo
-     fehlt (23 von 101), bleibt die Zeile weg statt zu raten. */
-  function airKm(a, b) {
-    if (!a || !a.geo || !b || !b.geo) return null;
+  /* Luftlinie in km zwischen zwei Punkten {lat, lon}. Fehlt einer, kommt
+     null zurueck — geraten wird nicht. */
+  function airKmPoint(a, b) {
+    if (!a || !b) return null;
+    if (typeof a.lat !== 'number' || typeof a.lon !== 'number') return null;
+    if (typeof b.lat !== 'number' || typeof b.lon !== 'number') return null;
     var R = 6371, rad = Math.PI / 180;
-    var dLat = (b.geo.lat - a.geo.lat) * rad;
-    var dLon = (b.geo.lon - a.geo.lon) * rad;
+    var dLat = (b.lat - a.lat) * rad;
+    var dLon = (b.lon - a.lon) * rad;
     var x = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-      + Math.cos(a.geo.lat * rad) * Math.cos(b.geo.lat * rad)
+      + Math.cos(a.lat * rad) * Math.cos(b.lat * rad)
       * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  }
+
+  /* Zwischen zwei Orten — die Warnung im Plan. Wo geo fehlt (23 von 101),
+     bleibt die Zeile weg statt zu raten. */
+  function airKm(a, b) {
+    return airKmPoint(a && a.geo, b && b.geo);
+  }
+
+  /* Vom Geraetestandort zu einem Ort. Ohne Standort oder ohne geo: null.
+     Aus der Luftlinie wird nie eine Gehzeit — der Weg ums Becken herum ist
+     nicht die Strecke darueber, und diese App raet nicht. */
+  function hereKm(p) {
+    return S.here ? airKmPoint(S.here, p && p.geo) : null;
+  }
+
+  /* Der Standort kommt vom Geraet, nicht von einem Dienst: er funktioniert
+     im Flugmodus, verlaesst das Geraet nicht und braucht kein Konto — derselbe
+     Grundsatz, mit dem das Wetter gefragt statt abgerufen wird. Gefragt wird
+     erst auf Tippen, nie beim Start. */
+  function toggleHere() {
+    if (S.here || S.hereState === 'wait') {
+      S.here = null;
+      S.hereState = 'off';
+      render();
+      return;
+    }
+    if (!navigator.geolocation) { S.hereState = 'failed'; render(); return; }
+    S.hereState = 'wait';
+    render();
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      S.here = { lat: pos.coords.latitude, lon: pos.coords.longitude, at: Date.now() };
+      S.hereState = 'on';
+      render();
+    }, function (err) {
+      S.here = null;
+      /* 1 ist PERMISSION_DENIED. Der Unterschied zaehlt: das eine laesst sich
+         in den Einstellungen aendern, das andere nicht. */
+      S.hereState = (err && err.code === 1) ? 'denied' : 'failed';
+      render();
+    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+  }
+
+  function hereAt() {
+    if (!S.here) return '';
+    var d = new Date(S.here.at);
+    return hhmm(d.getHours() * 60 + d.getMinutes());
+  }
+
+  function noGeoCount() {
+    return D.places.filter(function (p) { return !p.geo; }).length;
+  }
+
+  /* Was der Standort kostet und bringt, steht unter dem Knopf — dieselbe
+     Auskunft, die "Zu Fuss" ueber seine 53 fehlenden Gehzeiten gibt. */
+  function hereNote() {
+    var ohne = noGeoCount() + ' der ' + D.places.length
+      + ' Orte haben keine Koordinaten und stehen dann hinten.';
+    if (S.hereState === 'wait') return 'Der Standort wird bestimmt…';
+    if (S.hereState === 'denied') {
+      return 'Der Browser hat den Standort verweigert. Das lässt sich in den '
+        + 'Einstellungen für diese Seite wieder erlauben.';
+    }
+    if (S.hereState === 'failed') {
+      return 'Der Standort war nicht zu bestimmen. Noch einmal versuchen.';
+    }
+    if (S.here) {
+      return 'Gemessen ab dem Standort von ' + hereAt() + ', Luftlinie statt Gehzeit. '
+        + 'Nochmal tippen misst wieder ab dem Zeltplatz. ' + ohne;
+    }
+    return 'Alle Entfernungen gelten ab dem Zeltplatz. Mit dem Standort misst '
+      + 'die Liste ab hier — Luftlinie, keine Gehzeit. Er kommt vom Gerät, wird '
+      + 'nicht gespeichert und verlässt es nicht. ' + ohne;
   }
 
   var PLAN_FAR = 1.2;   // ab hier ist der Weg zwischen zwei Stationen erwaehnenswert
@@ -2313,6 +2447,7 @@
         render();
         return;
       }
+      if (e.target.closest('#here-btn')) { e.preventDefault(); toggleHere(); return; }
       if (e.target.closest('#filter-clear')) { resetFilters(); return; }
       if (e.target.closest('#filter-done')) { closeSheet(); }
     });
@@ -2422,6 +2557,7 @@
   if (typeof module === 'object' && module && module.exports) {
     module.exports = {
       hoursWindow: hoursWindow, closedOn: closedOn, closedToday: closedToday,
+      airKmPoint: airKmPoint,
       momentsOf: momentsOf, momentNow: momentNow,
       runsToday: runsToday, tripDay: tripDay, unverified: unverified,
       closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,

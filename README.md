@@ -16,6 +16,7 @@ GitHub Pages liefert das Repo unverändert aus.
 | **Heute** | Tagesblatt statt Einzelvorschlag. Datum, Reisetag, Tagesabschnitt aus der Geräteuhr — darunter eine Leiste über alle vier Abschnitte: vergangene sind gestrichelt umrandet, der laufende trägt eine Unterkante, jeder ist antippbar. Der Vorschlag nennt seine Position im Stapel („3 / 35") und hat Knöpfe vor und zurück; am Anfang ist der Zurück-Knopf deaktiviert. „Sonst noch" zeigt drei Alternativen mit der Gesamtzahl daneben und lässt sich ausklappen. Darunter ein Blick auf den nächsten Abschnitt („Abends dann"). Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert. Bei Regen ohne Treffer nennt der Leerzustand die Orte, die sicher im Trockenen sind; schränkt der Jum-Schalter ein, sagt er das und zeigt, was ohne ihn ginge. |
 | **Plan** | Hieß bis v13 „Gemerkt". Die Reihenfolge steckte immer schon in `pk.saved` — das Feld ist ein Array und wird beim Merken hinten angehängt —, wurde aber nie benutzt, weil die Ansicht nach Entfernung sortierte. Jetzt: nummerierte Stationen, Pfeile zum Umstellen (keine Wischgeste — zwei Knöpfe sind bei einer Handvoll Stationen treffsicherer und lassen sich ohne echtes iOS prüfen), und darüber das Zeitbudget aus `time_min` und `walk_min`. Die Summe sagt dazu, auf wie viele Orte sie sich stützt, wenn Werte fehlen. Zwischen zwei Stationen mit `geo` steht ab 1,2 km die Luftlinie als Warnung; fehlt `geo` bei einer der beiden, bleibt die Zeile weg. Suche, Filter und Sortierung sind dort ausgeblendet — sie würden die Reihenfolge zerschießen, um die es gerade geht. Der Teilen-Link trägt die Reihenfolge automatisch mit. |
 | **Ruhetage** | Steht der Ruhetag wörtlich in `hours` („Ruhetag Mittwoch", „Mi geschlossen", „Mo zu"), wird er gelesen: 14 der 101 Orte tragen einen, verteilt auf Mo 4, Di 4, Mi 6. In „Heute" sinken sie an ihrem Ruhetag ans Ende der Liste — vor jedem anderen Kriterium, eine gute Bewertung hilft an einem geschlossenen Mittwoch nicht. Herausgefiltert werden sie nicht, sonst schrumpfte die Liste still; wer weiterblättert, bekommt den Grund dazugeschrieben („heute Ruhetag"). In der Liste und im Detail ersetzt „heute zu" die Öffnungsangabe — derselbe Slot, dieselbe Zeilenhöhe. Gelesen wird nur `hours`, nie `note`: dort steht bei einem Ort eine Faustregel über italienische Fischläden allgemein, keine Angabe über diesen Laden. |
+| **Von hier** | Alle Entfernungen gelten ab dem Zeltplatz — richtig für „gehen wir heute Abend hin?", falsch, wenn man gerade in Sirmione steht. Im Filter-Sheet unter „Standort" misst ein Knopf ab dem Gerätestandort: Luftlinie, keine Gehzeit. Der Standort kommt vom Gerät, nicht von einem Dienst — er funktioniert im Flugmodus, verlässt das Gerät nicht und wird nirgends gespeichert; gefragt wird erst auf Tippen. Ist er an, misst die Sortierung „Entfernung" ab hier, die Faktenzeile zeigt im selben Slot „286 m von hier", und im Kopf steht ein Chip mit Kreuz. Die 23 Orte ohne `geo` stehen dann hinten, und die Zählzeile sagt das. Im Detail bleibt die Angabe ab dem Zeltplatz als eigene Zeile stehen. |
 | **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". Die Zählzeile sagt immer, wie viele Orte er gerade ausblendet. |
 | **Filter** | Ein Knopf, ein Sheet: Kategorie, „Zu Fuß" (`walk_min ≤ 25`), „Unter 1 h" (`time_min ≤ 60`), „Noch nicht gesehen" und die 85 Tags mit eigenem Suchfeld. Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. Im Kopf steht nur, was gerade an ist — jeder Chip trägt sein Kreuz, ein Tipp nimmt ihn weg. Der Abschlussknopf nennt die Trefferzahl, man tippt nie „Fertig" ins Ungewisse. Unter „Weg und Zeit" steht, dass 53 der 101 Orte keine Gehzeit hinterlegt haben und aus „Zu Fuß" herausfallen — dieselbe Auskunft, die die Zählzeile beim Jum-Schalter gibt. |
 | **Kopf** | Titel, Dauerschalter und Farbschema teilen sich eine Zeile, darunter Suche und Filterzeile: 147 px statt 219. Beim Scrollen nach unten fahren Titel und Suche weg und nur die Filterzeile bleibt — 43 px. Oben angekommen klappt er wieder auf. Er liegt `fixed`, nicht `sticky`: ein Sticky-Kopf belegt Platz im Fluss, und beim Einklappen würde die Liste unter dem Finger wegspringen. |
@@ -91,7 +92,7 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
 | `time_label` | Textfassung, oft mit kurzer und langer Variante. Steht im Detail; die Karte zeigt die aus `time_min` abgeleitete Kurzform. |
 | `rating` / `reviews` | Google-Stand, Datum steht in `meta.stand` und im Footer |
 | `connection` | optional, erscheint im Sheet als „Anfahrt" |
-| `geo` | `null` oder `{ "lat": …, "lon": … }` — siehe Karte unten |
+| `geo` | `null` oder `{ "lat": …, "lon": … }`. Getragen von 78 der 101 Orte. Benutzt für die Luftlinie zwischen zwei Plan-Stationen und für „Von hier"; die Karte braucht es ebenfalls (siehe unten). Der Prüfstand rechnet jeden Ort gegen `meta.base_geo` und schlägt an, wenn einer weiter als 120 km Luftlinie entfernt liegt — ein umgefallenes Komma stellt einen Ort sonst unbemerkt nach Afrika. |
 
 Fehlende Felder sind unkritisch: leere Werte werden weggelassen statt mit
 Platzhaltern gefüllt, `null` wird nie als 0 einsortiert.
@@ -212,12 +213,14 @@ ohne Build:
 node scripts/test-logic.mjs
 ```
 
-Er prüft `hoursWindow`, `closedOn`, `closedToday`, `momentsOf`, `momentNow`,
+Er prüft `hoursWindow`, `closedOn`, `closedToday`, `airKmPoint`, `momentsOf`,
+`momentNow`,
 `runsToday`, `tripDay`, `unverified`, `closingSoon`, `fitsLeft`, `indoorOf`
 und die Formatierer gegen die Schreibweisen, die in den Daten wirklich
 vorkommen — und dazu `places.json` selbst: eindeutige `id`s, bekannte
 Kategorien, `dog` nur `true`/`false`/`null`, `moment` nur aus den vier
-Abschnitten, jeder Ruhetag in `hours` lesbar, Zahlenfelder als Zahlen, jeder
+Abschnitten, jeder Ruhetag in `hours` lesbar, kein `geo` weiter als 120 km vom
+Zeltplatz, Zahlenfelder als Zahlen, jeder
 Kategorie-Akzent mit passender `.acc-`Regel in `style.css`,
 jede Datei aus `SHELL` vorhanden und `CACHE` wie `FONTS` gleich `VERSION`. Am
 Ende stehen die Zahlen, die auch in dieser README vorkommen — abgeschrieben
@@ -330,6 +333,10 @@ Die Seite gehört nicht zur App, ist aus ihr nicht verlinkt und stört nichts.
   weil sich sonst keine Entfernungen zwischen zwei Orten rechnen lassen.
 
 ## Karte (offen)
+
+Seit v16 wird `geo` an zwei Stellen benutzt — der Luftlinie im Plan und
+„Von hier" —, beide ohne Karte und ohne einen einzigen Laufzeit-Request.
+Die Karte selbst ist weiter offen.
 
 Vorgesehen ist ein Tab „Karte" mit Leaflet und OpenStreetMap-Tiles, Marker in
 den Kategoriefarben, Hundefilter live auf den Markern und Marker-Tap öffnet das

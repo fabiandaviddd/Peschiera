@@ -4,9 +4,10 @@ Bestandsaufnahme einer vierten Hand am selben Repo. Alle Zahlen sind aus
 `data/places.json` gerechnet, nicht geschätzt; die Rechenwege stehen jeweils
 dabei. Die Befunde beschreiben den Stand `v13`.
 
-**Vorschlag 1 und 2 sind in `v15` umgesetzt** — siehe „Umsetzungsstand" unten.
-Die Vorschläge 3 bis 8 stehen weiter offen und sind absichtlich so
-beschrieben, dass sie jede Hand einzeln aufgreifen kann.
+**Vorschlag 1, 2 und 4 sind umgesetzt** (`v15` und `v16`) — siehe
+„Umsetzungsstand" unten. Die Vorschläge 3, 5, 6, 7 und 8 stehen weiter offen
+und sind absichtlich so beschrieben, dass sie jede Hand einzeln aufgreifen
+kann.
 
 Der Vorschlag von `docs/redesign-vorschlag.md` ist bis Schritt 3 umgesetzt
 (v8–v12). Was hier steht, ist bewusst **nicht** Schritt 4 — der ist dort schon
@@ -404,12 +405,62 @@ mittwochs wieder da. Der Regen-Leerzustand mit Jum ist eigens nachgestellt.
 
 ---
 
+### Vorschlag 4 — umgesetzt in `v16`
+
+| | v15 | v16 |
+|---|---|---|
+| Stellen, die `geo` lesen | 1 (Luftlinie im Plan) | 2 |
+| Bezugspunkt für Entfernungen | immer der Zeltplatz | wahlweise der Gerätestandort |
+| Prüfungen im Prüfstand | 121 | 131 |
+
+Gebaut:
+
+- `airKmPoint(a, b)` auf rohen `{lat, lon}`. Die vorhandene `airKm(a, b)` aus
+  `v14` rechnet nicht mehr selbst, sondern reicht durch — eine zweite
+  Haversine-Formel im selben Bündel wäre eine Stelle zu viel zum Auseinanderlaufen.
+- `hereKm(p)` und `toggleHere()`. Gefragt wird erst auf Tippen, nie beim
+  Start. `S.here` wird **nirgends gespeichert**: eine Position ist nach dem
+  nächsten Spaziergang falsch, und eine falsche Entfernung ist schlechter als
+  gar keine.
+- Im Filter-Sheet die Gruppe „Standort" mit einem Knopf und einem Hinweis, der
+  seinen Zustand nennt — inklusive der Auskunft, dass 23 Orte keine
+  Koordinaten haben und dann hinten stehen. Dieselbe Ehrlichkeit, die „Zu Fuß"
+  über seine 53 fehlenden Gehzeiten gibt.
+- Im Kopf ein Chip mit Kreuz, wie bei jedem aktiven Filter — obwohl der
+  Standort keiner ist: er blendet nichts aus und zählt deshalb nicht in
+  `anyFilter()` mit, sonst stünde über der Liste „101 von 101 Orten".
+- Faktenzeile und Öffnungskachel: die Luftlinie ab hier im **Weg-Slot**, nicht
+  in einem zusätzlichen. Im Detail bleibt die Angabe ab dem Zeltplatz als
+  eigene Zeile stehen, damit nichts verlorengeht.
+- Aus der Luftlinie wird **nie** eine Gehzeit. Der Weg um ein Hafenbecken
+  herum ist nicht die Strecke darüber.
+
+Nachgerechnet mit einem Standort in Sirmione: vorn stehen Sirmione (286 m),
+die Enoteca delle Antiche Mura und die Osteria Al Torcol — alle drei ohne
+`walk_min`, alle drei 9 bis 13 km vom Zeltplatz und damit vorher weit hinten
+in der Liste. Genau der Fall, für den der Vorschlag da war.
+
+Zehn neue Prüfungen, darunter der von jeder Bibliothek unabhängige Prüfstein
+(ein Grad Breite sind 111,2 km), die Symmetrie, `null` statt `0` bei fehlendem
+Punkt — `0` hieße „hier" — und ein Datenwächter: kein `geo` darf weiter als
+120 km Luftlinie vom Zeltplatz liegen. Ein umgefallenes Komma stellt einen Ort
+sonst unbemerkt nach Afrika.
+
+Geprüft: 131 Prüfungen, dazu Chromium auf 390×844 mit gestelltem Standort —
+einschalten, sortieren, Detail, über das Kreuz wieder ausschalten, und der
+Fall, dass der Browser den Standort verweigert.
+
+---
+
 ## Vorgeschlagene Reihenfolge
 
 1. **Vorschlag 1** sofort — er kostet zehn Minuten und schützt alle anderen.
 2. **Vorschläge 2 und 3** zusammen, nach Absprache mit der Hand, die „Heute"
    umbaut. Der Wochentag ist die größte inhaltliche Lücke der App.
-3. **Vorschlag 4** unabhängig davon — berührt kaum belegte Fläche und macht
-   `geo` zum ersten Mal nützlich.
+3. ~~**Vorschlag 4**~~ — erledigt in `v16`.
 4. **Vorschläge 5, 7, 8** als kleine Züge nebenher.
 5. **Vorschlag 6** zuletzt, gemeinsam mit dem Teilen-Link aus Schritt 4.
+
+Offen sind damit: **3** (Termine mit Vorlauf), **5** („Meine ersetzen"
+rückgängig), **6** (eigene Notiz je Ort), **7** (Manifest) und **8** (drei
+Kleinigkeiten).
