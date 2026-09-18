@@ -411,20 +411,36 @@ await ctx.setOffline(false);
 
 /* ----------------------------------------------- Warnung bei falscher Fassung */
 console.log('\nFassungs-Warnung (sw.js absichtlich auf v6)');
-const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE' });
-const p3 = await ctx2.newPage();
-await p3.goto(STALE + '/index.html', { waitUntil: 'load' });
-await p3.waitForSelector('#app:not([hidden])');
-await p3.waitForTimeout(1200);
-await p3.reload({ waitUntil: 'load' });          // erst jetzt steuert der Worker
-await p3.waitForSelector('#app:not([hidden])');
-await p3.waitForTimeout(1200);
-ok('Warnung steht im Footer', await p3.locator('.foot__warn').count(), 1);
-const warn = await p3.locator('.foot__warn').textContent();
-ok('Warnung nennt beide Staende', /v6/.test(warn) && warn.includes(MARK));
-console.log('       ' + warn.trim().replace(/\s+/g, ' '));
-await p3.screenshot({ path: OUT + '/10-warnung.png' });
-await ctx2.close();
+/* Der zweite Server ist optional. Der Kopf dieser Datei sagt das seit jeher
+   zu -- getan hat es der Code nicht: ohne ihn lief page.goto in
+   ERR_CONNECTION_REFUSED und riss die ganze Suite mit, nach 80 gruenen
+   Pruefungen und noch vor Schriften und Konsole. Jetzt wird vorher
+   angeklopft. */
+let staleUp = true;
+try {
+  const r = await fetch(STALE + '/index.html', { method: 'HEAD' });
+  staleUp = r.ok;
+} catch { staleUp = false; }
+
+if (!staleUp) {
+  console.log('       uebersprungen -- kein Server auf ' + STALE);
+  console.log('       (python3 -m http.server 8114 --directory <Kopie mit altem CACHE>)');
+} else {
+  const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE' });
+  const p3 = await ctx2.newPage();
+  await p3.goto(STALE + '/index.html', { waitUntil: 'load' });
+  await p3.waitForSelector('#app:not([hidden])');
+  await p3.waitForTimeout(1200);
+  await p3.reload({ waitUntil: 'load' });        // erst jetzt steuert der Worker
+  await p3.waitForSelector('#app:not([hidden])');
+  await p3.waitForTimeout(1200);
+  ok('Warnung steht im Footer', await p3.locator('.foot__warn').count(), 1);
+  const warn = await p3.locator('.foot__warn').textContent();
+  ok('Warnung nennt beide Staende', /v6/.test(warn) && warn.includes(MARK));
+  console.log('       ' + warn.trim().replace(/\s+/g, ' '));
+  await p3.screenshot({ path: OUT + '/10-warnung.png' });
+  await ctx2.close();
+}
 
 /* ------------------------------------------------------------------ Schriften */
 console.log('\nSchriften');
