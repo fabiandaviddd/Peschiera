@@ -13,7 +13,7 @@ GitHub Pages liefert das Repo unverändert aus.
 |---|---|
 | **PWA** | `manifest.webmanifest` + `sw.js`. App-Shell und `places.json` liegen im Cache, nach einmaligem Laden läuft alles offline — Merkliste inklusive. Auf dem iPhone-Homescreen installierbar, mit Icon und Startbild. |
 | **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. Das Feld steht auch auf „Heute" — sonst ist von der Startansicht aus nicht zu sehen, dass hinter dem einen Vorschlag 101 Orte liegen. Hineingreifen wechselt in die Liste. |
-| **Heute** | Startansicht statt Liste: Datum, Reisetag, Tagesabschnitt aus der Geräteuhr, ein Vorschlag mit Begründung aus den Daten, zwei Alternativen, ein Knopf für den nächsten. Weiß sie nichts Passendes, sagt sie das und verweist auf die Liste. Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert; die Antwort hält einen Besuch lang (`sessionStorage`, `pk.wet`), damit man sie am Regentag nicht bei jedem Öffnen neu gibt. Ab 45 Minuten vor Ende eines Abschnitts zeigt sie den nächsten („Gleich: Abend"). |
+| **Heute** | Startansicht statt Liste: Datum, Reisetag, Tagesabschnitt aus der Geräteuhr, ein Vorschlag mit Begründung aus den Daten — jeder Ort ist dafür von Hand einem Tagesabschnitt zugeordnet (`moment`), geraten wird nicht mehr —, zwei Alternativen, ein Knopf für den nächsten. Weiß sie nichts Passendes, sagt sie das und verweist auf die Liste. Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert; die Antwort hält einen Besuch lang (`sessionStorage`, `pk.wet`), damit man sie am Regentag nicht bei jedem Öffnen neu gibt. Ab 45 Minuten vor Ende eines Abschnitts zeigt sie den nächsten („Gleich: Abend"). |
 | **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". Die Zählzeile sagt immer, wie viele Orte er gerade ausblendet. |
 | **Filter** | Ein Knopf, ein Sheet: Kategorie, „Zu Fuß" (`walk_min ≤ 25`), „Unter 1 h" (`time_min ≤ 60`), „Noch nicht gesehen" und die 85 Tags mit eigenem Suchfeld. Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. Im Kopf steht nur, was gerade an ist — jeder Chip trägt sein Kreuz, ein Tipp nimmt ihn weg. Der Abschlussknopf nennt die Trefferzahl, man tippt nie „Fertig" ins Ungewisse. Unter „Weg und Zeit" steht, dass 53 der 101 Orte keine Gehzeit hinterlegt haben und aus „Zu Fuß" herausfallen — dieselbe Auskunft, die die Zählzeile beim Jum-Schalter gibt. |
 | **Kopf** | Titel, Dauerschalter und Farbschema teilen sich eine Zeile, darunter Suche und Filterzeile: 147 px statt 219. Beim Scrollen nach unten fahren Titel und Suche weg und nur die Filterzeile bleibt — 43 px. Oben angekommen klappt er wieder auf. Er liegt `fixed`, nicht `sticky`: ein Sticky-Kopf belegt Platz im Fluss, und beim Einklappen würde die Liste unter dem Finger wegspringen. |
@@ -21,9 +21,7 @@ GitHub Pages liefert das Repo unverändert aus.
 | **Aufenthaltsdauer** | Auf jeder Karte kompakt (`3 h`, `45 Min`), im Detail die volle Textfassung („1–1,5 h, mit Museum 2 h"). |
 | **Sortierung** | Ein Knopf rechts in der Filterzeile, der seinen Stand nennt und beim Tippen umschaltet: Entfernung (Standard) oder Bewertung. Zwei Möglichkeiten brauchen keine dauerhafte Segmentleiste. Orte ohne Wert stehen hinten, nicht vorne. |
 | **Merkliste** | Stern auf jeder Karte, eigener Tab „Gemerkt" mit Zähler. Persistenz über `localStorage`, jeder Zugriff in try/catch. |
-| **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch nicht gesehen" blendet sie aus. Der Chip
-hieß bis v7 „Noch offen" und wurde neben Fakten wie „öffnet 9:30" als
-Öffnungszeit gelesen. Eigener Speicher, unabhängig vom Merken. |
+| **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch nicht gesehen" blendet sie aus. Der Chip hieß bis v7 „Noch offen" und wurde neben Fakten wie „öffnet 9:30" als Öffnungszeit gelesen. Eigener Speicher, unabhängig vom Merken. |
 | **Teilen** | Im Tab „Gemerkt": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. |
 | **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail, Luftlinie nur im Detail. **Alle Zeilen sind 97 px hoch** — vorher waren es je nach Datenlage 97, 100 oder 123, und das Auge fand beim Scrollen kein Raster. Die Bewertung steht rechtsbündig auf der Namenszeile und wird damit zu einer Spalte, die man scannen kann; die Zahl der Bewertungen sitzt in einer eigenen, fest breiten Spalte, damit „(1.478)" die Note nicht weiter nach links schiebt als „(806)". Sie bleibt dabei — „4,9" aus 71 Stimmen ist nicht dasselbe wie „4,9" aus 1087. Die Faktenreihe hat feste Slots in fester Reihenfolge (Weg, Dauer, Hund, Öffnung); nur die Öffnung darf kürzen, weil sie als einzige Freitext ist. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind 6 Zeilen sichtbar statt 4, beim Scrollen 8. Steht „Mit Jum" an, entfällt die Marke „Jum ok" an jeder Zeile — sie gilt dann für alle. |
 | **Detailansicht (neu)** | Bottom Sheet, oben drei Kacheln — Weg, Aufenthalt, Öffnung: die drei Fragen, die man vor Ort stellt. Die Öffnungs-Kachel zeigt nur ein ausgeschriebenes „bis 22:30" oder „ab 9:30" (22 der 54 Angaben); wo die Zeiten mehrdeutig sind („Mi–Sa 12:30–14 und 19:30–22"), bleibt sie leer und der volle Wortlaut steht darunter — eine Kachel „bis 14:00" über einem Restaurant, das abends bis 22 Uhr offen hat, wäre falsch. Darunter die Hundregel als eigene Fläche mit drei Zuständen: grün „Jum darf mit", grau-durchgestrichen „Ohne Jum", ockerfarben-gestrichelt „Nicht geklärt — vorher fragen"; letzteres trifft auf 58 der 101 Orte zu und ist damit die häufigste Antwort. Eine Primäraktion („Route in Karten") statt vierer gleich breiter Pillen, darunter Merken, Gesehen und Anrufen als Icon-Reihe. Die Tags am Ende sind antippbar und setzen den Filter — der Weg von „das gefällt mir" zu „mehr davon". Die Systemzurück-Geste schließt das Sheet, statt die App zu verlassen. |
@@ -70,7 +68,9 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
   "bike_min": null,
   "dog": null,
   "tags": ["fisch", "gehoben"],
-  "geo": null
+  "geo": null,
+  "time_min": 150,
+  "moment": ["abend"]
 }
 ```
 
@@ -83,7 +83,7 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
 | `dog` | `true` = erlaubt, `false` = verboten, `null` = ungeklärt. Nur `true` erscheint im Hundefilter. |
 | `walk_min` / `bike_min` / `distance_km` | ab dem Zeltplatz. `null`, wenn nicht sinnvoll messbar. |
 | `time_min` | empfohlene Aufenthaltsdauer in Minuten, **ohne** An- und Abreise. Basis für den Filter „Unter 1 h" und für die Frage in „Heute", ob sich etwas vor dem Abend noch ausgeht. |
-| `moment` | optionale Liste aus `frueh`, `mittag`, `nachmittag`, `abend`. Steuert „Heute" und **schlägt die Herleitung immer**. Fehlt das Feld, wird hergeleitet (siehe unten). |
+| `moment` | Liste aus `frueh`, `mittag`, `nachmittag`, `abend`, in Tagesreihenfolge. Steuert „Heute" und **schlägt die Herleitung immer** — auch als leere Liste: `[]` heißt „kein Tagesvorschlag" und ist die Angabe für Apotheke, Supermarkt, Radverleih, Bahnhof und Anleger. Fehlt das Feld ganz, wird hergeleitet (siehe unten); bei allen 101 Orten steht es, die Herleitung ist die Rückfallebene für neue Einträge. |
 | `indoor` | `true` = man sitzt im Trockenen, `false` = fällt bei Regen aus, fehlend = ungeklärt. Bei „nass" schlägt „Heute" nur `true` vor und rät nie. Für `essen` und `cafe` gilt `true` als Regel (ein Lokal hat einen Innenraum) — reine Terrasse, Schiff oder Bastion brauchen deshalb ein ausdrückliches `"indoor": false`. |
 | `time_label` | Textfassung, oft mit kurzer und langer Variante. Steht im Detail; die Karte zeigt die aus `time_min` abgeleitete Kurzform. |
 | `rating` / `reviews` | Google-Stand, Datum steht in `meta.stand` und im Footer |
@@ -108,11 +108,41 @@ Steht `moment` im JSON, gilt es. Sonst wird in dieser Reihenfolge hergeleitet:
    `ausflug` in jedem hellen Abschnitt, `praktisch` gar nicht — eine
    Apotheke ist kein Tagesvorschlag.
 
-Stand 18.09.2026 greifen die Stufen 1 bis 4 bei 50 der 101 Orte; 38 laufen
-über den Rückfall und gewinnen durch ein gepflegtes `moment`, die restlichen
-13 sind `praktisch` und werden nie vorgeschlagen. Ein `moment` im JSON steht
-bisher bei keinem Ort — es ist der Hebel, mit dem sich „Heute" am schnellsten
-verbessern lässt.
+Stand 18.09.2026 ist das nur noch die Rückfallebene für neue Einträge: alle
+101 Orte tragen ein eingetragenes `moment`. Vorher liefen 38 über den
+Rückfall — der einem Fischrestaurant mit Abendkarte den Mittag gab und einer
+Cocktailbar den Morgen.
+
+Eingeordnet wurde nach diesen Grundsätzen, nicht nach Kategorie:
+
+- **Belegte Zeiten schlagen die Kategorie.** Steht nur „geöffnet bis 22:30",
+  ist der Abend belegt und der Mittag nicht — dann steht auch nur `abend`.
+  `mittag` steht nur dort, wo ein Mittagsfenster wirklich in `hours` steht.
+- **`moment` kennt keine Wochentage.** Ein Abschnitt kommt nur hinein, wenn er
+  an jedem Öffnungstag gilt. „Il Giardino delle Esperidi" hat werktags nur
+  abends geöffnet und Sa/So auch mittags — es steht deshalb nur unter `abend`.
+- **Draußen-Ziele bekommen kein `abend`.** Ein Uferweg um 22 Uhr ist kein
+  Vorschlag. Ausnahme, wo es ausdrücklich dasteht — die Badges „Abendlicht"
+  und „Sonnenuntergang", oder ein Tag wie `livemusik` und `cocktails`. („Livemusik"
+  war bis v11 selbst ein Badge; der Badge-Kanon hat ihn zum Tag gemacht, die
+  Einordnung bleibt dieselbe.)
+- **Wandern und Rad meiden die Mittagshitze**, also `frueh` und `nachmittag`.
+- **Tagesausflüge ab etwa 4,5 h nur `frueh`.** Ob sich etwas heute noch
+  ausgeht, entscheidet danach `fitsLeft`, nicht diese Liste.
+
+Damit sind die Abschnitte so besetzt: `frueh` 49 Orte, `mittag` 41,
+`nachmittag` 48, `abend` 35. 13 Orte tragen `[]` — Tierarzt, Apotheke,
+Supermarkt, Radverleih, Bahnhof, Anleger, Fischladen. Strand, Hundestrand
+und Wochenmarkt sind dagegen echte Vorschläge, obwohl sie unter `praktisch`
+stehen; die Kategorie allein entscheidet das nicht.
+
+Mit angeschaltetem Jum bleiben `frueh` 27, `mittag` 20, `nachmittag` 21 und
+`abend` nur 7 Orte. Das liegt nicht an der Einordnung, sondern an den 58
+ungeklärten Hundregeln: von den Orten mit `dog: true` sitzt man nur in fünf
+im Trockenen, alle fünf sind Lokale. Ein Regenmorgen mit Hund hat deshalb
+nichts anzubieten — „Heute" sagt das dann auch. Am schnellsten hilft dort
+eine geklärte Hundregel bei den vier Frühstückscafés (Dallazia, Pavòn, BASƎ,
+Ammazza), bei denen sie bisher `null` ist.
 
 `indoor` läuft in derselben Reihenfolge: ausdrücklicher Wert, Badge
 „Regentag", die Tags `museum`, `kirche`, `supermarkt`, `notfall`, `regen`,
