@@ -47,39 +47,45 @@
 
 <div id="app" hidden>
 
+  <!-- Der Kopf liegt fix, nicht sticky: beim Einklappen wuerde ein sticky
+       Kopf Platz aus dem Fluss nehmen und die Liste unter dem Finger
+       wegspringen. .main traegt dafuer --bar-full als Abstand oben. -->
   <header class="bar">
-    <div class="wrap">
-      <div class="bar__row">
-        <div class="bar__main">
+    <!-- Faehrt beim Scrollen nach unten weg, die Filterzeile bleibt stehen. -->
+    <div class="bar__top" id="bar-top">
+      <div class="wrap">
+        <div class="bar__row">
           <h1 class="bar__title"><em>Peschiera</em> kompakt</h1>
-          <p class="bar__sub">
-            <button type="button" class="switch" id="jum-btn" role="switch" aria-checked="false">
-              <span class="switch__box" aria-hidden="true"><span class="switch__knob"></span></span>
-              <span class="switch__lbl">Mit Jum</span>
-            </button>
-            <span class="bar__hint" id="jum-n"></span>
-          </p>
+          <button type="button" class="switch" id="jum-btn" role="switch" aria-checked="false">
+            <span class="switch__box" aria-hidden="true"><span class="switch__knob"></span></span>
+            <span class="switch__lbl">Mit Jum</span>
+          </button>
+          <!-- Inhalt setzt applyTheme() beim Start neu, samt Symbol und Ziel. -->
+          <button type="button" class="icon-btn" id="theme-btn" aria-live="polite">
+            <span class="sr-only">Farbschema umschalten</span>
+          </button>
         </div>
-        <!-- Inhalt setzt applyTheme() beim Start neu, samt Symbol und Ziel. -->
-        <button type="button" class="icon-btn" id="theme-btn" aria-live="polite">
-          <span class="sr-only">Farbschema umschalten</span>
-        </button>
-      </div>
 
-      <div class="search" id="search-wrap">
-        <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
-        </svg>
-        <input type="search" id="q" class="search__input" enterkeyhint="search"
-               autocomplete="off" autocorrect="off" spellcheck="false"
-               placeholder="Name, Adresse, Notiz, Tag"
-               aria-label="Orte durchsuchen">
-        <button type="button" class="search__clear" id="q-clear" hidden aria-label="Suche löschen">&times;</button>
+        <div class="search" id="search-wrap">
+          <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
+          </svg>
+          <input type="search" id="q" class="search__input" enterkeyhint="search"
+                 autocomplete="off" autocorrect="off" spellcheck="false"
+                 placeholder="Name, Adresse, Notiz, Tag"
+                 aria-label="Orte durchsuchen">
+          <button type="button" class="search__clear" id="q-clear" hidden aria-label="Suche löschen">&times;</button>
+        </div>
       </div>
+    </div>
 
-      <div class="filters" id="filters">
-        <div class="chipwrap"><div class="chiprow" id="cat-row" role="group" aria-label="Kategorie"></div></div>
-        <div class="chipwrap"><div class="chiprow" id="flag-row" role="group" aria-label="Weitere Filter"></div></div>
+    <!-- Eine Zeile statt zweier scrollender Chipreihen: ein Knopf fuer alle
+         Filter, daneben nur die, die gerade an sind, rechts die Sortierung. -->
+    <div class="filterbar" id="filters">
+      <div class="wrap filterbar__wrap">
+        <button type="button" class="chip chip--filter" id="chip-filter" aria-haspopup="dialog"></button>
+        <div class="filterbar__active" id="active-filters"></div>
+        <button type="button" class="chip chip--sort" id="sort-btn"></button>
       </div>
     </div>
   </header>
@@ -103,10 +109,6 @@
 
       <div class="meta" id="meta-row">
         <p id="count" role="status" aria-live="polite"></p>
-        <div class="sort" id="sort" role="group" aria-label="Sortierung">
-          <button type="button" data-sort="distance" aria-pressed="true">Entfernung</button>
-          <button type="button" data-sort="rating" aria-pressed="false">Bewertung</button>
-        </div>
       </div>
 
       <div class="today" id="today" hidden></div>
