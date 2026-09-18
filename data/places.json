@@ -7,8 +7,12 @@
       "lat": 45.4406,
       "lon": 10.6919
     },
-    "note": "Alle Entfernungen ab dem Zeltplatz, auf Google Maps gemessen. Bewertungen und Öffnungsstatus: Google Maps, Stand 17.09.2026. Fahrpläne und Preise: Trenitalia, Navigazione Laghi, ATV und offizielle Seiten.",
-    "stand": "2026-09-17"
+    "note": "Alle Entfernungen ab dem Zeltplatz, auf Google Maps gemessen. Bewertungen und Öffnungsstatus: Google Maps, Stand 17.09.2026. Fahrpläne und Preise: Trenitalia, Navigazione Laghi, ATV und offizielle Seiten. Ergänzung 18.09.2026: alle Orte haben jetzt time_min (Minuten, empfohlene Aufenthaltsdauer ohne Anfahrt) und time_label (Textfassung). Die am 18.09. ergänzten Orte tragen geschätzte Geh- und Fahrzeiten; Preise und Öffnungszeiten stehen nur dort, wo sie belegt waren, sonst 'ungeprüft'.",
+    "stand": "2026-09-18",
+    "fields": {
+      "time_min": "Empfohlene Aufenthaltsdauer in Minuten, ohne An- und Abreise. Für Tagesplanung und Sortierung.",
+      "time_label": "Menschenlesbare Fassung, oft mit kurzer und ausführlicher Variante."
+    }
   },
   "categories": [
     {
@@ -58,7 +62,9 @@
         "meeresfrüchte",
         "gehoben"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 150,
+      "time_label": "2–2,5 h"
     },
     {
       "id": "alba-nicola",
@@ -79,7 +85,9 @@
         "sardisch",
         "familiär"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 150,
+      "time_label": "2–2,5 h"
     },
     {
       "id": "rivelin",
@@ -99,7 +107,9 @@
         "regional",
         "terrasse"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 120,
+      "time_label": "1,5–2 h"
     },
     {
       "id": "combattente",
@@ -120,7 +130,9 @@
         "seefisch",
         "terrasse"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 120,
+      "time_label": "1,5–2 h"
     },
     {
       "id": "granchio-blu",
@@ -141,7 +153,9 @@
         "fisch",
         "mediterran"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 120,
+      "time_label": "1,5–2 h"
     },
     {
       "id": "inchiostro",
@@ -162,7 +176,9 @@
         "gehoben",
         "bar"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 105,
+      "time_label": "1,5–2 h"
     },
     {
       "id": "raffilu",
@@ -183,7 +199,9 @@
         "fisch",
         "piazza"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 105,
+      "time_label": "1,5–2 h"
     },
     {
       "id": "barcaccia",
@@ -205,7 +223,9 @@
         "wasser",
         "fisch"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 120,
+      "time_label": "1,5–2 h"
     },
     {
       "id": "scavi",
@@ -226,7 +246,9 @@
         "regional",
         "piazza"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 90,
+      "time_label": "1–1,5 h"
     },
     {
       "id": "noris",
@@ -247,7 +269,9 @@
         "meeresfrüchte",
         "ruhig"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 120,
+      "time_label": "1,5–2 h"
     },
     {
       "id": "arilica",
@@ -267,7 +291,9 @@
         "fisch",
         "gehoben"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 120,
+      "time_label": "1,5–2 h"
     },
     {
       "id": "pasta-salame",
@@ -289,7 +315,9 @@
         "takeaway",
         "feinkost"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 30,
+      "time_label": "20–40 Min"
     },
     {
       "id": "esplanade",
@@ -312,7 +340,9 @@
         "fisch",
         "zug"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 180,
+      "time_label": "2,5–3 h"
     },
     {
       "id": "dallazia",
@@ -332,7 +362,9 @@
         "espresso",
         "frühstück"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 20,
+      "time_label": "15–30 Min"
     },
     {
       "id": "pavon",
@@ -352,7 +384,9 @@
         "frühstück",
         "pasticceria"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 40,
+      "time_label": "30–45 Min"
     },
     {
       "id": "dodo",
@@ -371,7 +405,9 @@
       "tags": [
         "gelato"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 20,
+      "time_label": "15–30 Min"
     },
     {
       "id": "pavillon",
@@ -392,7 +428,9 @@
         "terrasse",
         "wasser"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 60,
+      "time_label": "45–75 Min"
     },
     {
       "id": "base-verona",
@@ -412,7 +450,9 @@
         "specialty coffee",
         "verona"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 45,
+      "time_label": "30–60 Min"
     },
     {
       "id": "ammazza-verona",
@@ -432,7 +472,9 @@
         "specialty coffee",
         "verona"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 45,
+      "time_label": "30–60 Min"
     },
     {
       "id": "fortezza",
@@ -453,7 +495,9 @@
         "festung",
         "foto"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 90,
+      "time_label": "1–2 h Mauerrundgang"
     },
     {
       "id": "ponte-voltoni",
@@ -474,7 +518,9 @@
         "foto",
         "wasser"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 30,
+      "time_label": "20–40 Min"
     },
     {
       "id": "porta-brescia",
@@ -494,7 +540,9 @@
         "festung",
         "foto"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 15,
+      "time_label": "10–20 Min"
     },
     {
       "id": "porta-verona",
@@ -513,7 +561,9 @@
       "tags": [
         "festung"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 10,
+      "time_label": "5–15 Min"
     },
     {
       "id": "bastione-san-marco",
@@ -534,7 +584,9 @@
         "ruhig",
         "foto"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 30,
+      "time_label": "20–45 Min"
     },
     {
       "id": "palazzina-storica",
@@ -556,7 +608,9 @@
         "gratis",
         "regen"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 45,
+      "time_label": "30–60 Min"
     },
     {
       "id": "duomo",
@@ -575,7 +629,9 @@
       "tags": [
         "kirche"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 15,
+      "time_label": "10–20 Min"
     },
     {
       "id": "lungomincio",
@@ -597,7 +653,9 @@
         "schatten",
         "spaziergang"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 60,
+      "time_label": "45–90 Min"
     },
     {
       "id": "santuario-frassino",
@@ -619,7 +677,9 @@
         "ruhig",
         "rad"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 45,
+      "time_label": "30–60 Min"
     },
     {
       "id": "lago-frassino",
@@ -641,7 +701,9 @@
         "rad",
         "vögel"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 75,
+      "time_label": "1–1,5 h Runde"
     },
     {
       "id": "mercato",
@@ -662,7 +724,9 @@
         "markt",
         "einkaufen"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 60,
+      "time_label": "45–90 Min"
     },
     {
       "id": "desenzano",
@@ -684,7 +748,9 @@
         "zug"
       ],
       "connection": "Bahnhof 1,2 km ab Zelt (17 Min.), dann ~13 Zugminuten, ab 2,80 €",
-      "geo": null
+      "geo": null,
+      "time_min": 270,
+      "time_label": "halber Tag, 3,5–5 h vor Ort"
     },
     {
       "id": "sirmione",
@@ -708,7 +774,9 @@
         "bummeln"
       ],
       "connection": "Imbarcadero 1,5 km ab Zelt (20 Min.), dann ~25 Schiffsminuten, ~6,50 €. Sommerfahrplan bis 04.10. Im Tragflügelboot (Aliscafo) sind Hunde nicht erlaubt — Battello oder Katamaran nehmen. Abfahrtszeiten am Schalter oder unter 800 551 801 bestätigen.",
-      "geo": null
+      "geo": null,
+      "time_min": 240,
+      "time_label": "3–4 h vor Ort"
     },
     {
       "id": "malcesine",
@@ -730,7 +798,9 @@
         "ganztag"
       ],
       "connection": "Bus 164 bis Garda, dann 484 weiter (im Sommer Direktlinie 483), grob 2–2,5 h je Richtung. Per Schiff mit Umstieg eher länger. Hunde an Bord mit Ticket und Maulkorb.",
-      "geo": null
+      "geo": null,
+      "time_min": 270,
+      "time_label": "4–5 h vor Ort, mit Anfahrt ein ganzer Tag"
     },
     {
       "id": "isola-del-garda",
@@ -754,7 +824,9 @@
         "buchen"
       ],
       "connection": "Erst per Schiff oder Bus zum Abfahrtshafen — Lazise, Bardolino, Sirmione oder Desenzano.",
-      "geo": null
+      "geo": null,
+      "time_min": 180,
+      "time_label": "ca. 3 h inkl. Überfahrt"
     },
     {
       "id": "le-morette",
@@ -776,7 +848,9 @@
         "rad",
         "buchen"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 90,
+      "time_label": "90 Min Verkostung, mit Essen 2–3 h"
     },
     {
       "id": "punta-san-vigilio",
@@ -798,7 +872,9 @@
         "wasser"
       ],
       "connection": "ATV-Bus 164 ab Peschiera Richtung Garda.",
-      "geo": null
+      "geo": null,
+      "time_min": 150,
+      "time_label": "2–3 h vor Ort"
     },
     {
       "id": "lazise-bardolino",
@@ -822,7 +898,9 @@
         "schiff"
       ],
       "connection": "Lazise per Schiff ~20 Min / ~6,50 €. Für Bardolino ist die Schiffsverbindung ab Peschiera nicht direkt — sicherer ist ATV-Bus 164 (Peschiera–Lazise–Bardolino–Garda, tagsüber alle 1–2 h). Mit dem Rad nach Lazise 9,2 km / ~31 Min.",
-      "geo": null
+      "geo": null,
+      "time_min": 180,
+      "time_label": "2–3 h je Ort"
     },
     {
       "id": "borghetto",
@@ -845,7 +923,9 @@
         "wasser"
       ],
       "connection": "14,4 km auf der flachen, autofreien Ciclovia Mantova–Peschiera — gut 45 Min. pro Weg.",
-      "geo": null
+      "geo": null,
+      "time_min": 330,
+      "time_label": "Radtag, 4,5–6 h"
     },
     {
       "id": "verona",
@@ -867,7 +947,9 @@
         "kultur"
       ],
       "connection": "Bahnhof 1,2 km ab Zelt, dann ~16 Zugminuten, ab 4 €, ca. 57 Züge/Tag.",
-      "geo": null
+      "geo": null,
+      "time_min": 300,
+      "time_label": "5 h aufwärts"
     },
     {
       "id": "mantova",
@@ -889,7 +971,9 @@
         "ganztag"
       ],
       "connection": "Ein Umstieg (meist Verona), 65–80 Min. pro Weg, ab 6 €.",
-      "geo": null
+      "geo": null,
+      "time_min": 360,
+      "time_label": "ganzer Tag"
     },
     {
       "id": "parco-sigurta",
@@ -910,7 +994,9 @@
         "park",
         "rad"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 240,
+      "time_label": "3–4 h im Park"
     },
     {
       "id": "lido-ai-pioppi",
@@ -932,7 +1018,9 @@
         "sonne",
         "hund"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 180,
+      "time_label": "halber Nachmittag, 2–4 h"
     },
     {
       "id": "braccobaldo",
@@ -952,7 +1040,9 @@
         "strand",
         "hund"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 180,
+      "time_label": "2–4 h"
     },
     {
       "id": "clinica-catullo",
@@ -972,7 +1062,9 @@
         "tierarzt",
         "notfall"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 45,
+      "time_label": "30–60 Min"
     },
     {
       "id": "vet-san-benedetto",
@@ -992,7 +1084,9 @@
         "tierarzt",
         "notfall"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 45,
+      "time_label": "30–60 Min"
     },
     {
       "id": "farmacia-giubertoni",
@@ -1011,7 +1105,9 @@
       "tags": [
         "apotheke"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 15,
+      "time_label": "10–15 Min"
     },
     {
       "id": "famila",
@@ -1030,7 +1126,9 @@
       "tags": [
         "supermarkt"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 45,
+      "time_label": "30–60 Min"
     },
     {
       "id": "orvea",
@@ -1049,7 +1147,9 @@
       "tags": [
         "supermarkt"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 30,
+      "time_label": "20–40 Min"
     },
     {
       "id": "penny",
@@ -1068,7 +1168,9 @@
       "tags": [
         "supermarkt"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 30,
+      "time_label": "20–40 Min"
     },
     {
       "id": "velolake",
@@ -1088,7 +1190,9 @@
         "rad",
         "verleih"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 15,
+      "time_label": "15 Min Abholung"
     },
     {
       "id": "rentride",
@@ -1108,7 +1212,9 @@
         "rad",
         "verleih"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 15,
+      "time_label": "15 Min Abholung"
     },
     {
       "id": "garda-south-cycling",
@@ -1128,7 +1234,9 @@
         "rad",
         "verleih"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 15,
+      "time_label": "15 Min Abholung"
     },
     {
       "id": "bahnhof",
@@ -1148,7 +1256,9 @@
         "zug",
         "verkehr"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 10,
+      "time_label": "10 Min Vorlauf"
     },
     {
       "id": "imbarcadero",
@@ -1168,7 +1278,1175 @@
         "schiff",
         "verkehr"
       ],
-      "geo": null
+      "geo": null,
+      "time_min": 10,
+      "time_label": "10 Min Vorlauf"
+    },
+    {
+      "id": "bakare",
+      "name": "Osteria Bakarè",
+      "category": "essen",
+      "badge": "Erst anrufen",
+      "note": "24 Plätze, Michelin-Guide-Eintrag ohne Stern, Platz 1 von 156 im Ort (4,8 ★). Fisch und Mediterranes, Degustationsmenü. Quellen widersprechen sich beim Betriebsstatus — vor dem Hinlaufen anrufen.",
+      "address": "Via Venezia 30/B, Peschiera del Garda",
+      "phone": "+390456114830",
+      "rating": 4.8,
+      "reviews": 285,
+      "hours": "Mi–Sa 19:00–23:00 (ungeprüft)",
+      "walk_min": 15,
+      "distance_km": 1.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "fisch",
+        "gehoben",
+        "handwerk",
+        "reservieren"
+      ],
+      "geo": null,
+      "time_min": 150,
+      "time_label": "2–2,5 h"
+    },
+    {
+      "id": "momus",
+      "name": "Cafè Momus",
+      "category": "essen",
+      "badge": "Rohfisch",
+      "note": "Rohfisch, Austern, Kaviar, Tagesfang. Terrasse zum See, offene Küche. Mittags nur Sa/So.",
+      "address": "Via Risorgimento 1/a, Peschiera del Garda",
+      "phone": "+390456448449",
+      "rating": 4.2,
+      "reviews": 856,
+      "hours": "täglich 18–23, Ruhetag Mittwoch",
+      "walk_min": 12,
+      "distance_km": 0.9,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "fisch",
+        "meeresfrüchte",
+        "aperitivo",
+        "seeblick"
+      ],
+      "geo": null,
+      "time_min": 150,
+      "time_label": "2–2,5 h"
+    },
+    {
+      "id": "saligusta",
+      "name": "S'Aligusta",
+      "category": "essen",
+      "badge": "Frutti di mare",
+      "note": "Meeresfisch mit sardischem Einschlag: Bottarga, Spaghetti al nero, Linguine all'astice, Tartare. Ø 45 € p. P. Grosses Haus, Konstanz ist die Frage.",
+      "address": "Via Bell'Italia 12, Peschiera del Garda",
+      "phone": "+390456401337",
+      "rating": 4.3,
+      "reviews": 269,
+      "hours": "12–14 und 19–22:30, Ruhetag Dienstag",
+      "walk_min": 22,
+      "distance_km": 1.5,
+      "bike_min": 8,
+      "dog": true,
+      "tags": [
+        "fisch",
+        "meeresfrüchte",
+        "sardisch"
+      ],
+      "geo": null,
+      "time_min": 120,
+      "time_label": "2 h"
+    },
+    {
+      "id": "mos",
+      "name": "MoS Bistrot Portovecchio",
+      "category": "essen",
+      "badge": "Der zweite grosse Abend",
+      "note": "Am alten Hafen in Desenzano, 25 Plätze innen. Küche von Stefano Zanini, Süßwasserfisch gegen die Typizität gedacht. Weinkarte mit über 150 kleinen Erzeugern. Beim Reservieren ausdrücklich Porto Vecchio sagen — das zweite Haus in Lonato ist ohne Auto unerreichbar.",
+      "address": "Via Porto Vecchio 28, Desenzano del Garda",
+      "phone": "+390309143339",
+      "rating": null,
+      "reviews": null,
+      "hours": "12:30–14 und 19:30–22, Ruhetag Dienstag",
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "fisch",
+        "gehoben",
+        "wein",
+        "handwerk",
+        "reservieren"
+      ],
+      "geo": null,
+      "time_min": 150,
+      "time_label": "2,5 h",
+      "connection": "Zug 8–19 Min, dann 15 Gehminuten. Letzter Zug zurück ca. 21:53 — bei 19:30 Beginn knapp."
+    },
+    {
+      "id": "coccinella",
+      "name": "La Coccinella Siciliana",
+      "category": "essen",
+      "badge": "Immer offen",
+      "note": "Sizilianisch geprägtes Fischlokal am Seeufer in Desenzano, durchgehend warme Küche 11–1 Uhr. Kein Ruhetag.",
+      "address": "Lungolago Cesare Battisti 11, Desenzano del Garda",
+      "phone": "+393492148173",
+      "rating": 4.7,
+      "reviews": 217,
+      "hours": "täglich 11–01",
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "fisch",
+        "sizilianisch",
+        "seeblick"
+      ],
+      "geo": null,
+      "time_min": 105,
+      "time_label": "1,5–2 h",
+      "connection": "Zug 8 Min, dann 10 Gehminuten."
+    },
+    {
+      "id": "rose-sapori",
+      "name": "Rose & Sapori",
+      "category": "essen",
+      "badge": "",
+      "note": "Gehobenes Hotelrestaurant am Ufer in Desenzano, Seeblick, Degustationsmenü und Bistro-Karte parallel. Wenn der Abend über Lage und Ruhe laufen soll statt über Küchenrisiko.",
+      "address": "Lungolago C. Battisti 89, Desenzano del Garda",
+      "phone": "+390309144585",
+      "rating": 4.4,
+      "reviews": 1226,
+      "hours": "Abend Di–So 19–22, Ruhetag Montag",
+      "walk_min": null,
+      "distance_km": 13.5,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "fisch",
+        "gehoben",
+        "seeblick"
+      ],
+      "geo": null,
+      "time_min": 150,
+      "time_label": "2–2,5 h",
+      "connection": "Zug 8 Min, dann 15 Gehminuten."
+    },
+    {
+      "id": "tancredi",
+      "name": "Tancredi",
+      "category": "essen",
+      "badge": "Nur mittags",
+      "note": "Ein Michelin-Stern, Garten zum Wasser. Crudo di mare, Risotto alle rane. Sobald alle Reservierungen da sind, wird das Tor geschlossen — kein Durchlaufbetrieb. Abends ohne Auto kein Rückweg, also mittags.",
+      "address": "Via XXV Aprile 75, Sirmione",
+      "phone": "+390309904391",
+      "rating": null,
+      "reviews": null,
+      "hours": "Mi–Sa 12:30–14 und 19:30–22, Ruhetag Dienstag",
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "fisch",
+        "stern",
+        "gehoben",
+        "reservieren"
+      ],
+      "geo": null,
+      "time_min": 150,
+      "time_label": "2–2,5 h",
+      "connection": "Bus LN026 ca. 25 Min (2,20 €) oder Schiff 25 Min (6 €)."
+    },
+    {
+      "id": "al-torcol",
+      "name": "Osteria Al Torcol",
+      "category": "essen",
+      "badge": "Nur mittags",
+      "note": "Zwei Gehminuten vom Castello, Terrasse unter Pergola. Fisch mit echten vegetarischen Gerichten statt Beilagensalat.",
+      "address": "Via San Salvatore 30, Sirmione",
+      "phone": "+390309904605",
+      "rating": 4.2,
+      "reviews": 3283,
+      "hours": "12–14:15 und 19–22, Ruhetag Mittwoch",
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "fisch",
+        "vegetarisch",
+        "wein"
+      ],
+      "geo": null,
+      "time_min": 105,
+      "time_label": "1,5–2 h",
+      "connection": "Bus oder Schiff nach Sirmione; abends kein verlässlicher Rückweg."
+    },
+    {
+      "id": "oreste",
+      "name": "La Taverna da Oreste",
+      "category": "essen",
+      "badge": "Nur mittags",
+      "note": "Seit 1907 am alten Hafen von Lazise, gegenüber der Dogana. Küche nach Fang: Hecht in Gardesana-Sauce, Coregone, Risotto mit Schleie, gegrillter Seefisch. Ca. 50 € p. P.",
+      "address": "Via F. Fontana 32, Lazise",
+      "phone": "+390457580019",
+      "rating": null,
+      "reviews": null,
+      "hours": "12–14 und 19–22, Ruhetag Mittwoch",
+      "walk_min": null,
+      "distance_km": 10.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "fisch",
+        "seefisch",
+        "hafen"
+      ],
+      "geo": null,
+      "time_min": 105,
+      "time_label": "1,5–2 h",
+      "connection": "Bus 164 ab Bahnhof, 6–7 Min. Letzter Bus zurück 18:40 (So 19:35)."
+    },
+    {
+      "id": "esperidi",
+      "name": "Il Giardino delle Esperidi",
+      "category": "essen",
+      "badge": "Nur Sa/So mittags",
+      "note": "Enoteca con cucina in Bardolino, Michelin-Guide-Eintrag, wechselnde kleine Karte: Salmerino mit Caponata, Parmigiana mit Trüffel. Die Weinauswahl ist der Ausgangspunkt der Küche, nicht der Anhang.",
+      "address": "Via Goffredo Mameli 1, Bardolino",
+      "phone": "+390456210477",
+      "rating": null,
+      "reviews": null,
+      "hours": "werktags nur abends, Sa/So auch 12–14, Ruhetag Dienstag",
+      "walk_min": null,
+      "distance_km": 14.0,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "wein",
+        "fisch",
+        "vegetarisch"
+      ],
+      "geo": null,
+      "time_min": 120,
+      "time_label": "2 h",
+      "connection": "Bus 164, 14–18 Min. Weil der letzte Bus um 18:30 fährt, nur am Wochenende mittags machbar."
+    },
+    {
+      "id": "regio-patio",
+      "name": "Regio Patio (Garda)",
+      "category": "essen",
+      "badge": "Ohne Auto nicht machbar",
+      "note": "Gemüse aus dem eigenen Garten, Seefisch, 700 Weine im Keller — auf dem Papier die perfekte Adresse. Scheitert an der Logistik: nur Abendbetrieb, letzter Bus ab Garda 18:25. Steht hier, damit klar ist, warum es nicht geht.",
+      "address": "Via San Francesco d'Assisi 23, Garda",
+      "phone": "+390457255977",
+      "rating": 4.6,
+      "reviews": null,
+      "hours": "nur abends 19:30–22, Ruhetag Mittwoch",
+      "walk_min": null,
+      "distance_km": 18.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "gehoben",
+        "wein",
+        "gemüse"
+      ],
+      "geo": null,
+      "time_min": 165,
+      "time_label": "2,5–3 h",
+      "connection": "Bus 164 nach Garda 20 Min — aber keine Rückfahrt nach dem Essen."
+    },
+    {
+      "id": "locanda-san-vigilio",
+      "name": "Taverna San Vigilio",
+      "category": "essen",
+      "badge": "Nachmittags",
+      "note": "Historisches Gasthaus auf der Landzunge, seit 1498 belegt. Die Taverna mit Grill am Wasser ist ausdrücklich für Aperitif und Sonnenuntergang gedacht — den ihr wegen des letzten Busses nicht mitnehmen könnt. Also als Nachmittagsziel. Saisonende Ende September möglich, vorher anrufen.",
+      "address": "Punta San Vigilio, Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "saisonal, ungeprüft",
+      "walk_min": null,
+      "distance_km": 21.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "seeblick",
+        "aperitivo",
+        "sonnenuntergang"
+      ],
+      "geo": null,
+      "time_min": 105,
+      "time_label": "1,5–2 h",
+      "connection": "Bus 164 bis Garda, dann 25–30 Min zu Fuss am Ufer."
+    },
+    {
+      "id": "lenoteca",
+      "name": "Lenoteca — Food Wine & Spirit",
+      "category": "cafe",
+      "badge": "Wein",
+      "note": "Weinbar mit Sommelier, Garten, knappe Speisekarte mit Thunfisch-Tataki. Die einzige Adresse im Ort, an der die Weinkarte selbst das Argument ist. Peschiera hat keine ernsthafte Cocktailbar — das hier ist die Antwort darauf. Öffnungszeiten widersprüchlich, anrufen.",
+      "address": "Località Casa Otello 10, Peschiera del Garda",
+      "phone": "+390452233337",
+      "rating": 4.5,
+      "reviews": 1125,
+      "hours": "widersprüchlich — anrufen",
+      "walk_min": 25,
+      "distance_km": 2.0,
+      "bike_min": 8,
+      "dog": null,
+      "tags": [
+        "wein",
+        "aperitivo",
+        "garten"
+      ],
+      "geo": null,
+      "time_min": 75,
+      "time_label": "1–1,5 h"
+    },
+    {
+      "id": "sette-ponti",
+      "name": "7 Ponti",
+      "category": "cafe",
+      "badge": "Livemusik",
+      "note": "Draussen an den Bastionen, wo der See in den Mincio übergeht. Livemusik, vor allem Jazz — vorher nach dem Programm fragen. Deckt Aperitivo am Wasser und Livemusik in einem ab.",
+      "address": "Località Porto Vecchio 4, Peschiera del Garda",
+      "phone": "+390452457613",
+      "rating": null,
+      "reviews": null,
+      "hours": "Di–So, Ruhetag Montag",
+      "walk_min": 14,
+      "distance_km": 1.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "aperitivo",
+        "livemusik",
+        "wasser"
+      ],
+      "geo": null,
+      "time_min": 90,
+      "time_label": "1–1,5 h"
+    },
+    {
+      "id": "lido39",
+      "name": "Lido 3.9 Lounge Bar",
+      "category": "cafe",
+      "badge": "Cocktails",
+      "note": "Lounge- und Champagnerbar direkt am Strand in Desenzano, Cocktails mit frischem Obst, abends DJ. Die realistischste gute Bar im Zugradius — Rückweg ist ein 8-Minuten-Zug statt eines Busproblems. Ende September kann der Aussenbetrieb schon zurückgefahren sein.",
+      "address": "Lungolago Cesare Battisti 39, Desenzano del Garda",
+      "phone": "+390306150970",
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "cocktails",
+        "aperitivo",
+        "seeblick"
+      ],
+      "geo": null,
+      "time_min": 90,
+      "time_label": "1–1,5 h",
+      "connection": "Zug 8 Min, dann 10 Gehminuten."
+    },
+    {
+      "id": "antiche-mura",
+      "name": "Enoteca delle Antiche Mura",
+      "category": "cafe",
+      "badge": "",
+      "note": "Kleine Weinbar in der Altstadt von Sirmione, Schwerpunkt Taglieri und Bruschette. Für Käse und Wein die dafür gebaute Adresse. Sehr wenige Plätze.",
+      "address": "Via Antiche Mura 10, Sirmione",
+      "phone": "+39030916259",
+      "rating": 3.9,
+      "reviews": 1783,
+      "hours": "11–23, Ruhetag Mittwoch",
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "wein",
+        "käse"
+      ],
+      "geo": null,
+      "time_min": 75,
+      "time_label": "1–1,5 h",
+      "connection": "Bus oder Schiff nach Sirmione."
+    },
+    {
+      "id": "bergamini",
+      "name": "Uferweg Cappuccini – Bergamini – Le Fornaci",
+      "category": "sehen",
+      "badge": "Abendlicht",
+      "note": "Nach den Stadtstränden geht der Uferweg in zwei alte Fischerweiler über. Schilf, Bootsstege, Blick nach Sirmione — der einzige Abschnitt bei Peschiera, der nicht nach Ferienort aussieht. Zeigt nach Westen, also Abendlicht.",
+      "address": "Start Lungolago Mazzini, Peschiera del Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": 18,
+      "distance_km": 1.3,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "natur",
+        "weg",
+        "foto",
+        "sonnenuntergang"
+      ],
+      "geo": null,
+      "time_min": 90,
+      "time_label": "40 Min kurz, 1,5–2 h ganz"
+    },
+    {
+      "id": "museo-pesca",
+      "name": "Museo della Pesca",
+      "category": "sehen",
+      "badge": "",
+      "note": "Ein-Raum-Museum im Bastione San Marco: Originalboote, Netze, Werkzeug der Seefischerei, Audioguide am Eingang. Gut als Füller bei Hitze oder Regen. Zeiten und Eintritt nirgends belegt — am Infopoint fragen.",
+      "address": "Bastione San Marco, Peschiera del Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "ungeprüft",
+      "walk_min": 20,
+      "distance_km": 1.4,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "museum",
+        "regen",
+        "fisch"
+      ],
+      "geo": null,
+      "time_min": 45,
+      "time_label": "20–30 Min kurz, 1 h mit Audioguide"
+    },
+    {
+      "id": "parco-catullo",
+      "name": "Parco Catullo",
+      "category": "sehen",
+      "badge": "Schatten",
+      "note": "Die Grünfläche in der Festung, im Mittelalter der Gemüsegarten. Von Besuchern als Passeggiata im Schatten beschrieben — genau dafür steht er hier: 13–16 Uhr, wenn draussen nichts geht.",
+      "address": "Parco Catullo, Peschiera del Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": 17,
+      "distance_km": 1.2,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "park",
+        "schatten",
+        "natur"
+      ],
+      "geo": null,
+      "time_min": 45,
+      "time_label": "30–60 Min"
+    },
+    {
+      "id": "lungolago-lugana",
+      "name": "Lungolago di Lugana",
+      "category": "sehen",
+      "badge": "Schatten",
+      "note": "2,5 km Uferweg durch Wiesen mit hohen alten Bäumen, Schwäne und Blässhühner im Schilf, Blick auf die Halbinsel Sirmione. Der schattigste Uferabschnitt am Südufer. Füttern ist verboten und wird teuer.",
+      "address": "Ab Kirche Santa Maria di Lugana, Sirmione",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 7.0,
+      "bike_min": 30,
+      "dog": true,
+      "tags": [
+        "natur",
+        "weg",
+        "schatten",
+        "vögel"
+      ],
+      "geo": null,
+      "time_min": 90,
+      "time_label": "1,5 h hin und zurück, mit Pause 2–3 h",
+      "connection": "Mit dem Rad über den Uferweg 25–35 Min."
+    },
+    {
+      "id": "jamaica-beach",
+      "name": "Jamaica Beach & Schwefelquelle",
+      "category": "sehen",
+      "badge": "Foto",
+      "note": "Weisse Kalkfelsplatten unterhalb der Grotte, türkises Flachwasser, dazu die 69 °C heisse Schwefelquelle, die in den See läuft. Das fotogenste Stück Ufer am Südsee. Kein Schatten, Platten rutschig, bei hohem Wasserstand nicht ganz begehbar.",
+      "address": "Spitze der Halbinsel, Sirmione",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "strand",
+        "foto",
+        "natur",
+        "weg"
+      ],
+      "geo": null,
+      "time_min": 120,
+      "time_label": "1 h Runde, mit Pausen 2–3 h",
+      "connection": "Bus 25 Min oder Schiff 25 Min, dann zu Fuss durch den Ort."
+    },
+    {
+      "id": "grotte-catullo",
+      "name": "Grotte di Catullo",
+      "category": "sehen",
+      "badge": "Hund ok",
+      "note": "Römische Villa auf der Landzunge — interessanter als Ruine ist der Olivenhain: 1.500 Bäume, einzelne 400–500 Jahre alt, auf zwei Hektar Terrassen über dem Wasser. Hunde an der Leine im Freigelände erlaubt, im Museum getragen. 10 €.",
+      "address": "Piazzale Orti Manara 4, Sirmione",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "Mo 9–13, Di–Sa 8:30–19:30, So 10–19:30",
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "natur",
+        "aussicht",
+        "foto",
+        "kultur"
+      ],
+      "geo": null,
+      "time_min": 90,
+      "time_label": "1–1,5 h, mit Museum 2 h",
+      "connection": "Bus oder Schiff nach Sirmione, dann 20 Min zu Fuss hinauf."
+    },
+    {
+      "id": "castello-desenzano",
+      "name": "Castello di Desenzano",
+      "category": "sehen",
+      "badge": "",
+      "note": "Eher Mauerring als Burg, aber der Mastio liefert das weiteste Panorama über den Golf. Achtung Öffnungszeiten: Di–Do nur bis 12:30, das passt schlecht zum späten Start. Fr–So bis 18:30. 7 €.",
+      "address": "Castello, Desenzano del Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "Di–Do 9:30–12:30, Fr–So 9:30–18:30, Mo zu",
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "aussicht",
+        "kultur"
+      ],
+      "geo": null,
+      "time_min": 60,
+      "time_label": "45–60 Min",
+      "connection": "Zug 8 Min, dann 15 Min bergauf."
+    },
+    {
+      "id": "rivoltella",
+      "name": "Uferweg Desenzano – Rivoltella",
+      "category": "sehen",
+      "badge": "",
+      "note": "2 km direkt am Wasser mit Blick auf Sirmione und die Rocca di Manerba. Radfahren verboten, keine Absicherung zum Wasser. Vormittags komplett in der Sonne, also eher ab 16 Uhr. An einigen Abschnitten dürfen Hunde ins Wasser.",
+      "address": "Desenzano Hafen bis Rivoltella",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "weg",
+        "natur",
+        "hund-baden"
+      ],
+      "geo": null,
+      "time_min": 75,
+      "time_label": "1–1,5 h",
+      "connection": "Zug 8 Min."
+    },
+    {
+      "id": "pacengo-lazise",
+      "name": "Uferweg Pacengo – Lazise",
+      "category": "sehen",
+      "badge": "",
+      "note": "Flacher Uferweg durch Ufervegetation bis zu den Mauern von Lazise, 5 km hin und zurück. Der ruhigste Abschnitt zwischen Peschiera und Lazise. Schatten nur abschnittweise.",
+      "address": "Ab Hafen Pacengo",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 5.0,
+      "bike_min": 20,
+      "dog": true,
+      "tags": [
+        "weg",
+        "natur"
+      ],
+      "geo": null,
+      "time_min": 90,
+      "time_label": "1,5 h, mit Einkehr 3 h",
+      "connection": "Bus 164 bis Pacengo, 5–8 Min, oder Rad 20 Min."
+    },
+    {
+      "id": "torri-del-benaco",
+      "name": "Castello Scaligero Torri del Benaco",
+      "category": "ausflug",
+      "badge": "",
+      "note": "Die interessanteste der Scaligerburgen: im Hof eine noch funktionierende Limonaia mit Teich, dazu Räume zu Seefischerei und Olivenöl, Aufstieg auf den Hauptturm. Kleiner alter Hafen davor. Achtung Mittagspause 12:30–14:30, montags zu. Eintritt 5 oder 6 € — Quellen widersprechen sich.",
+      "address": "Viale Fratelli Lavanda 2, Torri del Benaco",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "9:30–12:30 und 14:30–18, Mo zu",
+      "walk_min": null,
+      "distance_km": 28.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "kultur",
+        "aussicht",
+        "hafen"
+      ],
+      "geo": null,
+      "time_min": 75,
+      "time_label": "45 Min kurz, 2,5–3,5 h mit Ort",
+      "connection": "Bus 483 ab Peschiera Centro, stündlich um :14, ca. 1h05–1h15."
+    },
+    {
+      "id": "rocca-di-garda",
+      "name": "Rocca di Garda",
+      "category": "ausflug",
+      "badge": "Aussicht",
+      "note": "Der einzige echte Gipfelblick ohne Seilbahn: 241 Höhenmeter durch Weinberge und Wald auf den Felskopf über Garda, oben Ruinen, Gipfelwiese und das Eremo dei Camaldolesi mit Hofladen. Waldweg, also Schatten. Der Aussichtspunkt hat eine ungesicherte Abbruchkante — Jum dort tragen.",
+      "address": "Start Via San Bernardo, Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 18.0,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "wandern",
+        "aussicht",
+        "natur",
+        "foto"
+      ],
+      "geo": null,
+      "time_min": 150,
+      "time_label": "1 h Aufstieg, 2,5–3 h komplett",
+      "connection": "Bus 164 nach Garda, ca. 20 Min. Letzter Bus zurück 18:25 (So 19:20)."
+    },
+    {
+      "id": "torre-san-martino",
+      "name": "Torre di San Martino della Battaglia",
+      "category": "ausflug",
+      "badge": "Aussicht",
+      "note": "64 m hoher Rundturm von 1880 auf einem Moränenhügel, innen eine Spiralrampe statt Treppe, oben 360 Grad über See, Sirmione und Monte Baldo. Der beste Rundumblick, der nicht in den Bergen liegt. Mittagspause 12:30–14:30, Eintritt 7 oder 10 € — Quellen widersprechen sich.",
+      "address": "San Martino della Battaglia, Desenzano",
+      "phone": "+390309910370",
+      "rating": null,
+      "reviews": null,
+      "hours": "9–12:30 und 14:30–19, So durchgehend",
+      "walk_min": null,
+      "distance_km": 10.0,
+      "bike_min": 35,
+      "dog": null,
+      "tags": [
+        "aussicht",
+        "kultur",
+        "foto"
+      ],
+      "geo": null,
+      "time_min": 120,
+      "time_label": "45–60 Min nur Turm, 2–3 h mit Museum",
+      "connection": "Zug nach Desenzano, dann Bus LN034. Bahnhof San Martino ist seit 1991 stillgelegt. Oder Rad, ca. 10 km flach."
+    },
+    {
+      "id": "monte-luppia",
+      "name": "Sentiero delle incisioni rupestri",
+      "category": "ausflug",
+      "badge": "Foto",
+      "note": "Pfad durch Macchia und Eichen zu prähistorischen Felszeichnungen auf gletschergeschliffenen Platten, darunter die Pietra dei Cavalieri. Tiefblicke auf den See. Markierung ist schlecht — GPX vorher aufs Handy. Die Gravuren zeichnen sich bei streifendem Licht am späten Nachmittag deutlich besser ab.",
+      "address": "Ab Punta San Vigilio Richtung Monte Luppia",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 21.0,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "wandern",
+        "natur",
+        "foto",
+        "schatten"
+      ],
+      "geo": null,
+      "time_min": 120,
+      "time_label": "1,5–2 h kurze Variante (die lange Runde ist 15 km / 5 h)",
+      "connection": "Bus 164 bis Garda, dann Uferweg nach Punta San Vigilio."
+    },
+    {
+      "id": "giro-delle-mura",
+      "name": "Giro delle Mura — Bootsfahrt",
+      "category": "ausflug",
+      "badge": "Ohne Hund",
+      "note": "Offenes Boot, 25–30 Min durch die Kanäle und um die Festungsmauern, max. 15 Personen, alle halbe Stunde. Ticket ist datumsflexibel. Später Nachmittag ist fotografisch der richtige Moment. Hunde sind ausdrücklich nicht erlaubt.",
+      "address": "Piazzetta San Marco, Peschiera del Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "Juni–September 10–21",
+      "walk_min": 18,
+      "distance_km": 1.3,
+      "bike_min": null,
+      "dog": false,
+      "tags": [
+        "boot",
+        "foto",
+        "festung"
+      ],
+      "geo": null,
+      "time_min": 60,
+      "time_label": "30 Min Fahrt, 1–1,5 h mit Vorlauf"
+    },
+    {
+      "id": "bootstour-pomeridiano",
+      "name": "Nachmittags-Bootstour ab Peschiera",
+      "category": "ausflug",
+      "badge": "Ohne Hund",
+      "note": "2 h Rundfahrt über den Südsee — Sirmione, Isola del Garda, Punta San Vigilio, Bardolino, Lazise vom Wasser aus, kein Landgang. Abfahrten 14:00 und 16:00. Die 14-Uhr-Fahrt passt zum Tagesrhythmus, die 16-Uhr-Fahrt zum Licht. Kein WC an Bord. Hunde nicht erlaubt.",
+      "address": "Lungolago Mazzini, Peschiera del Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "täglich 14:00 und 16:00",
+      "walk_min": 15,
+      "distance_km": 1.1,
+      "bike_min": null,
+      "dog": false,
+      "tags": [
+        "boot",
+        "aussicht",
+        "foto"
+      ],
+      "geo": null,
+      "time_min": 150,
+      "time_label": "2 h Fahrt, 2,5 h gesamt"
+    },
+    {
+      "id": "linienschiff-hund",
+      "name": "Linienschiff als Bootstour",
+      "category": "ausflug",
+      "badge": "Hund gratis",
+      "note": "Die verlässliche Bootstour mit Jum ist keine Tour, sondern das Linienschiff: Hunde unter 50 cm fahren kostenlos, Maulkorb muss mitgeführt werden, in der Tasche entfällt die Pflicht. Peschiera–Sirmione 25 Min / 6 €, Lazise 20 Min / 6 €, Desenzano 30 Min / 11,50 €. Sommerfahrplan bis 04.10.",
+      "address": "Imbarcadero Peschiera",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": 16,
+      "distance_km": 1.2,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "boot",
+        "hund",
+        "aussicht"
+      ],
+      "geo": null,
+      "time_min": 120,
+      "time_label": "je nach Strecke 20–60 Min pro Richtung"
+    },
+    {
+      "id": "ciclabile-lugana",
+      "name": "Radrunde durch die Lugana-Weinberge",
+      "category": "ausflug",
+      "badge": "Weinlese läuft",
+      "note": "Flache Runde vom Uferradweg landeinwärts durch die Lugana-Lagen und über den Mincio-Radweg zurück. Kein Schatten, also nicht zwischen 12 und 15 Uhr. Ende September wird gelesen — Lesemaschinen und Handlese im Gegenlicht sind das Motiv der Woche.",
+      "address": "Ab Peschiera Richtung Sirmione",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 22.0,
+      "bike_min": 90,
+      "dog": true,
+      "tags": [
+        "rad",
+        "natur",
+        "wein",
+        "foto"
+      ],
+      "geo": null,
+      "time_min": 120,
+      "time_label": "1,5–2 h, grosse Runde 3,5–4 h"
+    },
+    {
+      "id": "ciclabile-ostufer",
+      "name": "Radweg Peschiera – Lazise – Bardolino – Garda",
+      "category": "ausflug",
+      "badge": "",
+      "note": "Der Uferradweg am Ostufer, komplett flach: Pacengo 5 km, Lazise 10 km, Bardolino 15 km, Garda 20 km. Der Trick ist die Rückfahrt — hin mit dem Rad, zurück mit Schiff (Rad 3,50–6,90 €) oder Bus 164. In Sirmione gibt es 2026 Radbeschränkungen am Anleger.",
+      "address": "Ab Peschiera Lungolago nach Norden",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 20.0,
+      "bike_min": 100,
+      "dog": true,
+      "tags": [
+        "rad",
+        "natur",
+        "aussicht"
+      ],
+      "geo": null,
+      "time_min": 270,
+      "time_label": "halber Tag, 4–5 h mit Rückfahrt per Schiff"
+    },
+    {
+      "id": "ponti-sul-mincio",
+      "name": "Forte Ardietti & Monte della Guardia",
+      "category": "ausflug",
+      "badge": "",
+      "note": "Achteckiges österreichisch-ungarisches Fort auf einem Moränenhügel über dem Mincio, für Besucher geöffnet, Artillerie und Blick ins Flusstal. Der Nachbarhügel ist eine offizielle Beobachtungsstation des Greifvogelzugs. Zeiten und Eintritt ungeprüft.",
+      "address": "Ponti sul Mincio",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "ungeprüft",
+      "walk_min": null,
+      "distance_km": 11.0,
+      "bike_min": 45,
+      "dog": null,
+      "tags": [
+        "rad",
+        "aussicht",
+        "natur",
+        "vögel"
+      ],
+      "geo": null,
+      "time_min": 105,
+      "time_label": "1,5–2 h vor Ort, mit Anfahrt halber Tag",
+      "connection": "Rad auf dem Mincio-Radweg, flach und asphaltiert."
+    },
+    {
+      "id": "zenato",
+      "name": "Cantina Zenato",
+      "category": "ausflug",
+      "badge": "Buchen",
+      "note": "Der grosse Lugana-Name, seit 1960, im Ortsteil San Benedetto. Classic Tour 40 € (4 Weine, 36 Monate gereifter Parmigiano, 1,5 h), Premium Tour 80 € (5 ikonische Weine, 2 h). Nur mit Buchung.",
+      "address": "Via San Benedetto 8, Peschiera del Garda",
+      "phone": "+390457550300",
+      "rating": null,
+      "reviews": null,
+      "hours": "Weinshop Mo–Sa 8:30–12:30 und 14–18",
+      "walk_min": null,
+      "distance_km": 4.0,
+      "bike_min": 18,
+      "dog": null,
+      "tags": [
+        "wein",
+        "lugana"
+      ],
+      "geo": null,
+      "time_min": 90,
+      "time_label": "1,5 h (Premium 2 h)"
+    },
+    {
+      "id": "ottella",
+      "name": "Azienda Agricola Ottella",
+      "category": "ausflug",
+      "badge": "Auch sonntags",
+      "note": "Familie Montresor, Lugana mit Kunstbezug. Sechs Weine in 1,5 h, höchstens zehn Leute — die intimste der drei Verkostungen, ab 50 € p. P. Das einzige der Güter mit Sonntagsöffnung. Kein Strassenschild am Haus, per Karte navigieren.",
+      "address": "Località Boschetti 1, San Benedetto di Lugana, Peschiera del Garda",
+      "phone": "+390457551950",
+      "rating": null,
+      "reviews": null,
+      "hours": "Mo–Sa 9–18:30, bis 01.11. auch So",
+      "walk_min": null,
+      "distance_km": 4.5,
+      "bike_min": 20,
+      "dog": null,
+      "tags": [
+        "wein",
+        "lugana"
+      ],
+      "geo": null,
+      "time_min": 90,
+      "time_label": "ca. 1,5 h"
+    },
+    {
+      "id": "selva-capuzza",
+      "name": "Podere Selva Capuzza",
+      "category": "ausflug",
+      "badge": "Hund willkommen",
+      "note": "Familienbetrieb mit ausschliesslich autochthonen Sorten — Turbiana, Tuchì, Groppello. Die Verkostung schliesst einen Spaziergang durch die Reben ein. 25 € (4 Weine, Brot, Öl) oder 40 € (plus Käseplatte), je 1 h. Hunde ausdrücklich willkommen. Lässt sich mit der Torre di San Martino zu einem Tag verbinden.",
+      "address": "Via Selva Capuzza, San Martino della Battaglia",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "ganzjährig ausser November–März, nur mit Buchung",
+      "walk_min": null,
+      "distance_km": 10.0,
+      "bike_min": 35,
+      "dog": true,
+      "tags": [
+        "wein",
+        "lugana",
+        "natur"
+      ],
+      "geo": null,
+      "time_min": 60,
+      "time_label": "1 h Verkostung, 2,5–3 h mit Weinberg",
+      "connection": "Zug nach Desenzano, dann Bus LN034 — oder Rad, ca. 10 km flach."
+    },
+    {
+      "id": "cantina-zeni",
+      "name": "Cantina Zeni 1870 & Weinmuseum",
+      "category": "ausflug",
+      "badge": "Ohne Termin",
+      "note": "Weinmuseum und Enoteca in Bardolino, für Einzelbesucher ohne Reservierung und ohne Führung zugänglich — der einzige Weinstopp der Region, den man spontan machen kann. Dazu eine Duftgalerie. Öffnungszeiten ungeprüft.",
+      "address": "Via Costabella 9, Bardolino",
+      "phone": "+390457210022",
+      "rating": null,
+      "reviews": null,
+      "hours": "ungeprüft",
+      "walk_min": null,
+      "distance_km": 14.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "wein",
+        "museum",
+        "spontan"
+      ],
+      "geo": null,
+      "time_min": 90,
+      "time_label": "30–45 Min kurz, 1,5–2 h mit Verkostung",
+      "connection": "Bus 164 nach Bardolino, 14–18 Min, dann 15 Gehminuten."
+    },
+    {
+      "id": "villa-dei-cedri",
+      "name": "Parco Termale Villa dei Cedri",
+      "category": "ausflug",
+      "badge": "Ohne Hund",
+      "note": "13 Hektar alter Baumbestand, zwei Thermalseen mit 37 °C, Grotten. Der stärkste Kandidat für einen heissen Nachmittag — aber Tiere sind nicht zugelassen, also nur an einem Tag, an dem Jum ein bis zwei Stunden im Zelt bleibt. 35 €, ab 17 Uhr 25 €, Liege 6 €.",
+      "address": "Piazza di Sopra 4, Colà di Lazise",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "So–Fr 9:30–23, Sa bis 1:00",
+      "walk_min": null,
+      "distance_km": 7.0,
+      "bike_min": null,
+      "dog": false,
+      "tags": [
+        "wellness",
+        "schatten",
+        "nichtstun"
+      ],
+      "geo": null,
+      "time_min": 300,
+      "time_label": "4–6 h",
+      "connection": "7 km ab Peschiera, Busverbindung ungeprüft."
+    },
+    {
+      "id": "rocca-manerba",
+      "name": "Riserva Rocca e Sasso di Manerba",
+      "category": "ausflug",
+      "badge": "Ganzer Tag",
+      "note": "Naturschutzgebiet auf einem Felsrücken am Westufer mit 360-Grad-Blick, romanischer Kirche und weissen Kieselstränden darunter. Die Ausnahme in der Liste: Blick nach Osten, also ist hier der Vormittag das bessere Licht. Feste Schuhe zwingend, kein Kiosk, kein Trinkbrunnen — Wasser mitnehmen.",
+      "address": "Via della Rocca 16, Manerba del Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 30.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "wandern",
+        "aussicht",
+        "natur",
+        "strand"
+      ],
+      "geo": null,
+      "time_min": 270,
+      "time_label": "2,5 h Rundweg, mit Badepause 4–5 h",
+      "connection": "Zug nach Desenzano, dann Bus R-Link 204 Richtung Salò, stündlich. Ca. 1h15–1h45 je Richtung."
+    },
+    {
+      "id": "rievocazione",
+      "name": "Rievocazione Storica Peschiera",
+      "category": "sehen",
+      "badge": "25.–27.09.",
+      "note": "160 Jahre Fall des Quadrilatero: rund 400 Reenactors aus ganz Europa, Lager in der Festung, Paraden, Artillerie, eine Seeschlacht mit historischen Segelbooten. Samstagabend die grosse Schlacht mit Kapitulation der Festung. Fotografisch das ergiebigste Motiv der Woche — vormittags in den Lagern ist das Licht weich und die Menge dünn. Datum widersprüchlich: 25.–27. oder 26.–28.09., am Infopoint klären.",
+      "address": "Festung und Altstadt, Peschiera del Garda",
+      "phone": "+390456444700",
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": 17,
+      "distance_km": 1.2,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "event",
+        "foto",
+        "festung"
+      ],
+      "geo": null,
+      "time_min": 180,
+      "time_label": "1 h kurz, 3–4 h am Samstagnachmittag"
+    },
+    {
+      "id": "visite-rocca",
+      "name": "Visite Gratuite alla Rocca",
+      "category": "sehen",
+      "badge": "26./27.09.",
+      "note": "Kostenlose Besichtigungen der Rocca als Open Day der Gemeinde. Ihr kennt die Festung von aussen — das ist die Gelegenheit, ohne Ticket hineinzukommen. Uhrzeiten und Anmeldung ungeprüft.",
+      "address": "Rocca di Peschiera",
+      "phone": "+390456444700",
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": 17,
+      "distance_km": 1.2,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "event",
+        "festung",
+        "kultur"
+      ],
+      "geo": null,
+      "time_min": 75,
+      "time_label": "1–1,5 h"
+    },
+    {
+      "id": "festa-castelnuovo",
+      "name": "Festa dell'Uva Castelnuovo",
+      "category": "ausflug",
+      "badge": "18.–20.09.",
+      "note": "60. Ausgabe, Eintritt frei. Stände ab 19 Uhr, sonntags auch ab 11 Uhr. Freitag Umzug der Bruderschaften, Samstag Livemusik auf allen Bühnen, Sonntag Wanderung, Audiotouren und um 22 Uhr tanzende Springbrunnen. Abendlastig — mit eurem Rhythmus passt nur der Sonntag ab 11 Uhr, oder ihr macht es zum Abendprogramm und klärt vorher die Rückfahrt.",
+      "address": "Piazza della Libertà, Castelnuovo del Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": null,
+      "walk_min": null,
+      "distance_km": 8.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "event",
+        "wein",
+        "livemusik"
+      ],
+      "geo": null,
+      "time_min": 180,
+      "time_label": "2–4 h",
+      "connection": "Bus 164 ab Peschiera, ca. 15 Min. Rückfahrt am späten Abend ungeprüft."
+    },
+    {
+      "id": "lapescheria",
+      "name": "Lapescheria",
+      "category": "praktisch",
+      "badge": "",
+      "note": "Der einzige Fischhändler im Gemeindegebiet. Öffnungszeiten nicht auffindbar — italienische Pescherie öffnen meist vormittags und haben montags zu. Vor der Fahrt anrufen.",
+      "address": "Località Fornaci 21/A, Peschiera del Garda",
+      "phone": "+390452476445",
+      "rating": null,
+      "reviews": null,
+      "hours": "ungeprüft",
+      "walk_min": null,
+      "distance_km": 3.0,
+      "bike_min": 13,
+      "dog": null,
+      "tags": [
+        "fisch",
+        "einkauf",
+        "selbstkochen"
+      ],
+      "geo": null,
+      "time_min": 25,
+      "time_label": "20–30 Min"
+    },
+    {
+      "id": "pescheria-cavallaro",
+      "name": "Pescheria Cavallaro",
+      "category": "praktisch",
+      "badge": "",
+      "note": "Eingeführte Pescheria in der Altstadt von Desenzano, unterhalb des Castello. Am Dienstag zusammen mit dem Markt am Lungolago in einem Gang erledigt. Kühltasche einpacken.",
+      "address": "Località Stretta Castello 19, Desenzano del Garda",
+      "phone": "+390309142495",
+      "rating": null,
+      "reviews": null,
+      "hours": "ungeprüft",
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": null,
+      "tags": [
+        "fisch",
+        "einkauf",
+        "selbstkochen"
+      ],
+      "geo": null,
+      "time_min": 25,
+      "time_label": "20–30 Min",
+      "connection": "Zug 8 Min, dann 12 Gehminuten."
+    },
+    {
+      "id": "mercato-desenzano",
+      "name": "Wochenmarkt Desenzano (Dienstag)",
+      "category": "praktisch",
+      "badge": "Di 22.09.",
+      "note": "Dienstagvormittag 8–13 Uhr direkt am Lungolago. Deutlich größer als der Peschiera-Markt und direkt am Wasser. Im Zeitraum: Dienstag 22.09.",
+      "address": "Lungolago Cesare Battisti, Desenzano del Garda",
+      "phone": null,
+      "rating": null,
+      "reviews": null,
+      "hours": "Di 8–13",
+      "walk_min": null,
+      "distance_km": 13.0,
+      "bike_min": null,
+      "dog": true,
+      "tags": [
+        "markt",
+        "einkauf",
+        "bummeln"
+      ],
+      "geo": null,
+      "time_min": 105,
+      "time_label": "1,5–2 h mit Bummel",
+      "connection": "Zug 8 Min, dann 10 Gehminuten."
     }
   ],
   "merken": [
@@ -1207,7 +2485,15 @@
     {
       "title": "Notruf",
       "text": "112 — vermittelt an 113 Polizei, 115 Feuerwehr, 118 Rettung."
-    }
+    },
+    "Bus 164: letzte Rückfahrt nach Peschiera ab Garda 18:25, Bardolino 18:30, Lazise 18:40 (sonntags rund eine Stunde später). Seit 10.09. gilt der Winterfahrplan — vor dem ersten Ausflug am Bahnhof gegenprüfen.",
+    "Desenzano ist das einzige auswärtige Abendziel: letzter Zug zurück ca. 21:53. Alles andere ist Mittagsprogramm.",
+    "Nach Malcesine fährt die Linie 483 direkt, stündlich ab Peschiera Centro um :14, ca. 2h15. Täglich bis 18.10.",
+    "Auf den Linienschiffen fahren Hunde unter 50 cm gratis; Maulkorb mitführen, in der Tasche entfällt die Pflicht. Die geführten Bootstouren ab Peschiera und Sirmione nehmen dagegen keine Hunde mit.",
+    "Die Bardolino-Weinlese hat am 14.09. begonnen und läuft während des ganzen Aufenthalts. Wer landeinwärts radelt, sieht arbeitende Weinberge.",
+    "Der ShuttleBus auf der Halbinsel Sirmione fährt nur noch bis einschliesslich 27.09. Danach alles zu Fuss.",
+    "Caffè Italia in Desenzano ist nach 42 Jahren dauerhaft geschlossen (Juni 2025), steht aber noch in Guides und mit aktiver Website. Nicht hinlaufen.",
+    "Die Olivenernte beginnt erst Mitte Oktober — Mühlenbesichtigungen gibt es jetzt noch nicht."
   ],
   "open_questions": [
     {
@@ -1249,7 +2535,17 @@
       "topic": "Radverleih",
       "status": "Hundekorb überall nur auf Anfrage.",
       "contact": null
-    }
+    },
+    "Osteria Bakarè: offen oder dauerhaft geschlossen? +39 045 611 4830",
+    "Lenoteca Peschiera: gelten die Laden- oder die Abendzeiten? +39 045 223 3337",
+    "Öffnungszeiten der beiden Pescherie (Peschiera, Desenzano) und der Cantina Zeni",
+    "Parco Baia delle Sirene: sind Hunde erlaubt? +39 045 725 6676 — entscheidet, ob Punta San Vigilio ein Jum-Tag wird",
+    "Castello Malcesine: Öffnungszeiten 2026 (publiziert sind nur die von 2025) +39 045 658 9911",
+    "Rievocazione Storica: 25.–27. oder 26.–28.09.? Gemeinde +39 045 644 4700",
+    "Forte Ardietti, Ponti sul Mincio: Öffnungszeiten und Eintritt",
+    "Fahrradmitnahme in Bus 164 und auf den Navigarda-Schiffen (in Sirmione 2026 belegt eingeschränkt)",
+    "Torre di San Martino: Eintritt 7 oder 10 €, Ruhetag in der Sommersaison +39 030 991 0370",
+    "Castello Torri del Benaco: 5 € oder 6 €, täglich oder montags geschlossen?"
   ],
   "faktencheck": [
     "Osteria Bakarè ist vorübergehend geschlossen (Google, 17.09.) — raus.",

@@ -380,6 +380,8 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 
 .chip--unseen[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); }
+.chip--short[aria-pressed="true"] { background: var(--gold-ink); border-color: var(--gold-ink); }
+.fact--time { color: var(--gold-ink); font-weight: 500; }
 .chip svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9;
   stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
 

@@ -7,12 +7,13 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v4 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v5 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
   var LS_THEME = 'pk.theme';
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
+  var SHORT_MAX = 60;         // Schwelle für den Filter "Unter 1 h"
   var TAGS_SHOWN = 12;        // sichtbare Tag-Chips, Rest hinter "mehr"
 
   /* ---------------------------------------------------------------- Zustand */
@@ -28,6 +29,7 @@
     walk: false,
     tags: [],
     unseen: false,
+    short: false,
     sort: 'distance',
     tagsOpen: false,
     saved: [],
@@ -97,6 +99,14 @@
     return v < 1 ? nf0.format(Math.round(v * 1000)) + ' m' : nf1.format(v) + ' km';
   }
 
+  /* 45 -> "45 Min", 90 -> "1,5 h", 120 -> "2 h" */
+  function dur(min) {
+    if (!has(min) || typeof min !== 'number') return '';
+    if (min < 60) return min + ' Min';
+    var h = min / 60;
+    return (h % 1 === 0 ? String(h) : nf1.format(h)) + ' h';
+  }
+
   function norm(s) {
     return String(s == null ? '' : s).toLowerCase()
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -128,6 +138,7 @@
     rating: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.9l6-.8z"/></svg>',
     walk: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4.2" r="1.8"/><path d="M11 21l1.4-5.4-2.6-2.2.9-4.6 3.1-1.1 2.1 3.4 2.6 1"/><path d="M12.4 15.6L9 21"/><path d="M7.6 11.4L5 12.6"/></svg>',
     bike: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.6" cy="17" r="3.2"/><circle cx="18.4" cy="17" r="3.2"/><path d="M8.8 17h5l2.6-7.4h2.2M8 9.6h5.6l2.4 7.4"/><circle cx="14.6" cy="4.6" r="1.4"/></svg>',
+    hourglass: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.4h10M7 20.6h10"/><path d="M8 3.4v3.2c0 2 4 3.6 4 5.4s-4 3.4-4 5.4v3.2"/><path d="M16 3.4v3.2c0 2-4 3.6-4 5.4s4 3.4 4 5.4v3.2"/></svg>',
     clock: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3.2 2"/></svg>',
     dog: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6 8.2V4.6l3 1.8h4.6l3-1.8v3.6"/><path d="M4.6 8.2c0 4 2.2 5.4 2.2 8.2 0 1.6 1.2 2.6 3 2.6h5c1.8 0 3-1 3-2.6 0-2.8 2.2-4.2 2.2-8.2"/><path d="M9.4 12.4h.01M14.6 12.4h.01"/></svg>',
     pin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6.4-6 6.4-10.4A6.4 6.4 0 0 0 5.6 10.6C5.6 15 12 21 12 21z"/><circle cx="12" cy="10.4" r="2.4"/></svg>',
@@ -318,13 +329,16 @@
   function buildFlagChips() {
     var dogs = D.places.filter(function (p) { return p.dog === true; }).length;
     var walks = D.places.filter(function (p) { return has(p.walk_min) && p.walk_min <= WALK_MAX; }).length;
+    var shorts = D.places.filter(function (p) { return has(p.time_min) && p.time_min <= SHORT_MAX; }).length;
     $('flag-row').innerHTML =
       '<button type="button" class="chip chip--dog" id="chip-dog" aria-pressed="false">'
       + ICON.dog + 'Hund erlaubt<span class="chip__n">' + dogs + '</span></button>'
       + '<button type="button" class="chip chip--walk" id="chip-walk" aria-pressed="false">'
       + ICON.walk + 'Zu Fuß<span class="chip__n">' + walks + '</span></button>'
       + '<button type="button" class="chip chip--unseen" id="chip-unseen" aria-pressed="false">'
-      + ICON.checkRound + 'Noch offen<span class="chip__n" id="chip-unseen-n"></span></button>';
+      + ICON.checkRound + 'Noch offen<span class="chip__n" id="chip-unseen-n"></span></button>'
+      + '<button type="button" class="chip chip--short" id="chip-short" aria-pressed="false">'
+      + ICON.hourglass + 'Unter 1 h<span class="chip__n">' + shorts + '</span></button>';
   }
 
   function allTags() {
@@ -371,6 +385,7 @@
     $('chip-dog').setAttribute('aria-pressed', S.dog ? 'true' : 'false');
     $('chip-walk').setAttribute('aria-pressed', S.walk ? 'true' : 'false');
     $('chip-unseen').setAttribute('aria-pressed', S.unseen ? 'true' : 'false');
+    $('chip-short').setAttribute('aria-pressed', S.short ? 'true' : 'false');
     $('chip-unseen-n').textContent = String(D.places.length - S.seen.length);
     var tags = $('tag-row').querySelectorAll('[data-tag]');
     for (var j = 0; j < tags.length; j++) {
@@ -389,11 +404,11 @@
   }
 
   function anyFilter() {
-    return !!S.q || S.cats.length > 0 || S.dog || S.walk || S.unseen || S.tags.length > 0;
+    return !!S.q || S.cats.length > 0 || S.dog || S.walk || S.unseen || S.short || S.tags.length > 0;
   }
 
   function resetFilters() {
-    S.q = ''; S.cats = []; S.dog = false; S.walk = false; S.unseen = false; S.tags = [];
+    S.q = ''; S.cats = []; S.dog = false; S.walk = false; S.unseen = false; S.short = false; S.tags = [];
     $('q').value = '';
     render();
   }
@@ -412,6 +427,7 @@
       if (S.dog && p.dog !== true) return false;
       if (S.walk && !(has(p.walk_min) && p.walk_min <= WALK_MAX)) return false;
       if (S.unseen && S.seen.indexOf(p.id) >= 0) return false;
+      if (S.short && !(has(p.time_min) && p.time_min <= SHORT_MAX)) return false;
       if (S.tags.length) {
         var hit = false;
         for (var i = 0; i < S.tags.length; i++) if (p.tags.indexOf(S.tags[i]) >= 0) { hit = true; break; }
@@ -521,6 +537,9 @@
     } else if (has(p.distance_km)) {
       f.push('<span class="fact">' + ICON.pin + km(p.distance_km) + '</span>');
     }
+    if (has(p.time_min)) {
+      f.push('<span class="fact fact--time">' + ICON.hourglass + esc(dur(p.time_min)) + '</span>');
+    }
     if (has(p.hours)) f.push('<span class="fact">' + ICON.clock + esc(p.hours) + '</span>');
     if (p.dog === true) f.push('<span class="fact fact--dog">' + ICON.dog + 'Jum ok</span>');
     else if (p.dog === false) f.push('<span class="fact fact--nodog">' + ICON.dog + 'ohne Jum</span>');
@@ -570,8 +589,19 @@
       h += '<section class="section"><h2 class="section__h">Gut zu wissen</h2>'
         + '<p class="section__lead">Regeln und Faustregeln für unterwegs.</p>'
         + D.merken.map(function (m) {
-            return '<div class="panel"><h3 class="panel__t">' + esc(m.title) + '</h3>'
-              + '<p class="panel__x">' + esc(m.text) + '</p></div>';
+            /* Die Liste enthält Objekte {title,text} und blanken Text
+               nebeneinander — beides muss sauber rauskommen. */
+            if (typeof m === 'string') {
+              return '<div class="panel"><p class="panel__x">' + esc(m) + '</p></div>';
+            }
+            if (!m) return '';
+            var title = has(m.title) ? String(m.title) : '';
+            var text = has(m.text) ? String(m.text) : '';
+            if (!title && !text) return '';
+            return '<div class="panel">'
+              + (title ? '<h3 class="panel__t">' + esc(title) + '</h3>' : '')
+              + (text ? '<p class="panel__x">' + esc(text) + '</p>' : '')
+              + '</div>';
           }).join('')
         + '</section>';
     }
@@ -581,9 +611,26 @@
         + '<p class="section__lead">' + D.open_questions.length
         + ' ungeklärte Fakten — bewusst sichtbar statt versteckt.</p>'
         + D.open_questions.map(function (q) {
+            /* Auch hier stehen Objekte und blanker Text nebeneinander. Bei
+               reinem Text wird eine enthaltene Telefonnummer anklickbar. */
+            if (typeof q === 'string') {
+              var mt = /(\+?\d[\d\s/()-]{7,}\d)/.exec(q);
+              var body = esc(q);
+              if (mt) {
+                var num = telHref(mt[1]);
+                if (num) {
+                  body = esc(q.slice(0, mt.index))
+                    + '<a href="tel:' + esc(num) + '">' + esc(mt[1].trim()) + '</a>'
+                    + esc(q.slice(mt.index + mt[1].length));
+                }
+              }
+              return '<div class="panel panel--open"><p class="panel__x">' + body + '</p></div>';
+            }
+            if (!q) return '';
             var tel = has(q.contact) ? telHref(q.contact) : null;
-            return '<div class="panel panel--open"><h3 class="panel__t">' + esc(q.topic) + '</h3>'
-              + '<p class="panel__x">' + esc(q.status) + '</p>'
+            return '<div class="panel panel--open">'
+              + (has(q.topic) ? '<h3 class="panel__t">' + esc(q.topic) + '</h3>' : '')
+              + (has(q.status) ? '<p class="panel__x">' + esc(q.status) + '</p>' : '')
               + (has(q.contact)
                   ? '<p class="panel__c">' + (tel
                       ? '<a href="tel:' + esc(tel) + '">' + esc(q.contact) + '</a>'
@@ -598,7 +645,12 @@
       h += '<section class="section"><h2 class="section__h">Faktencheck</h2>'
         + '<p class="section__lead">Korrigiert gegenüber der ersten Recherche.</p>'
         + '<ul class="checks">'
-        + D.faktencheck.map(function (f) { return '<li><span>' + esc(f) + '</span></li>'; }).join('')
+        + D.faktencheck.map(function (f) {
+            var txt = typeof f === 'string' ? f
+                    : (f && has(f.text) ? String(f.text)
+                    : (f && has(f.claim) ? String(f.claim) : ''));
+            return txt ? '<li><span>' + esc(txt) + '</span></li>' : '';
+          }).join('')
         + '</ul></section>';
     }
 
@@ -714,6 +766,9 @@
       + (has(p.rating)
           ? row('Bewertung', nf1.format(p.rating) + ' ★'
               + (has(p.reviews) ? ' · ' + nf0.format(p.reviews) + ' Bewertungen' : ''))
+          : '')
+      + (has(p.time_label) || has(p.time_min)
+          ? row('Aufenthalt', esc(has(p.time_label) ? p.time_label : dur(p.time_min)))
           : '')
       + (has(p.hours) ? row('Öffnung', esc(p.hours)) : '')
       + (dist.length ? row('Entfernung', esc(dist.join(' · '))) : '')
@@ -1067,6 +1122,7 @@
       if (b.id === 'chip-dog') S.dog = !S.dog;
       if (b.id === 'chip-walk') S.walk = !S.walk;
       if (b.id === 'chip-unseen') S.unseen = !S.unseen;
+      if (b.id === 'chip-short') S.short = !S.short;
       render();
     });
 

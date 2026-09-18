@@ -13,7 +13,8 @@ GitHub Pages liefert das Repo unverändert aus.
 |---|---|
 | **PWA** | `manifest.webmanifest` + `sw.js`. App-Shell und `places.json` liegen im Cache, nach einmaligem Laden läuft alles offline — Merkliste inklusive. Auf dem iPhone-Homescreen installierbar, mit Icon und Startbild. |
 | **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. |
-| **Filter** | Chip-Leiste, beliebig kombinierbar: Kategorie, „Hund erlaubt" (`dog: true`), „Zu Fuß" (`walk_min ≤ 25`), Tags. Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. |
+| **Filter** | Chip-Leiste, beliebig kombinierbar: Kategorie, „Hund erlaubt" (`dog: true`), „Zu Fuß" (`walk_min ≤ 25`), „Unter 1 h" (`time_min ≤ 60`), Tags. Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. |
+| **Aufenthaltsdauer** | Auf jeder Karte kompakt (`3 h`, `45 Min`), im Detail die volle Textfassung („1–1,5 h, mit Museum 2 h"). |
 | **Sortierung** | Entfernung (Standard) oder Bewertung. Orte ohne Wert stehen hinten, nicht vorne. |
 | **Merkliste** | Stern auf jeder Karte, eigener Tab „Gemerkt" mit Zähler. Persistenz über `localStorage`, jeder Zugriff in try/catch. |
 | **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch offen" blendet sie aus. Eigener Speicher, unabhängig vom Merken. |
@@ -67,12 +68,19 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
 | `badge` | optionale Kuratierungsnotiz („Der Abend", „Für Jum", „Regentag") |
 | `dog` | `true` = erlaubt, `false` = verboten, `null` = ungeklärt. Nur `true` erscheint im Hundefilter. |
 | `walk_min` / `bike_min` / `distance_km` | ab dem Zeltplatz. `null`, wenn nicht sinnvoll messbar. |
+| `time_min` | empfohlene Aufenthaltsdauer in Minuten, **ohne** An- und Abreise. Basis für den Filter „Unter 1 h" und später für die Tagesplanung. |
+| `time_label` | Textfassung, oft mit kurzer und langer Variante. Steht im Detail; die Karte zeigt die aus `time_min` abgeleitete Kurzform. |
 | `rating` / `reviews` | Google-Stand, Datum steht in `meta.stand` und im Footer |
 | `connection` | optional, erscheint im Sheet als „Anfahrt" |
 | `geo` | `null` oder `{ "lat": …, "lon": … }` — siehe Karte unten |
 
 Fehlende Felder sind unkritisch: leere Werte werden weggelassen statt mit
 Platzhaltern gefüllt, `null` wird nie als 0 einsortiert.
+
+`merken[]` und `open_questions[]` dürfen Objekte (`{title, text}` bzw.
+`{topic, status, contact}`) und blanken Text gemischt enthalten. Bei blankem
+Text in `open_questions[]` wird eine enthaltene Telefonnummer automatisch
+anklickbar.
 
 Nach einer Änderung an einer Datei **`CACHE` in `sw.js` hochzählen** und
 `VERSION` in `app.js` mitziehen — beide müssen zusammenpassen.
