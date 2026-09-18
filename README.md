@@ -124,6 +124,8 @@ getestet wird. Diese Punkte sind gezielt behandelt:
 | Eingabefelder unter 16 px lösen Zoom aus | Suchfeld auf `1rem` |
 | Randbereiche bei randlosem Bildschirm | `viewport-fit=cover` plus `env(safe-area-inset-*)` in Kopf, Tableiste und Sheet |
 | `color-mix()` erst ab Safari 16.4 | Fokusring hängt nicht mehr daran |
+| `-webkit-overflow-scrolling: touch` hebt den Container auf eine eigene Ebene und macht darüberliegende Knöpfe untippbar | Entfernt (seit iOS 13 ohnehin wirkungslos); das ✕ liegt zusätzlich mit eigenem `z-index` darüber |
+| Runde Knöpfe verschenken die Ecken ihrer Trefferfläche | Das ✕ ist ein abgerundetes Quadrat, alle 44×44 px treffen |
 
 Nicht behandelbar von hier aus: Safari räumt bei Websites, die längere Zeit
 nicht benutzt werden, den Offline-Speicher und `localStorage` weg. Bei
