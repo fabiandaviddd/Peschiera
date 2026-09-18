@@ -1508,10 +1508,7 @@
         "meeresfrüchte",
         "sardisch"
       ],
-      "geo": {
-        "lat": 45.449772,
-        "lon": 10.665231
-      },
+      "geo": null,
       "time_min": 120,
       "time_label": "2 h"
     },
@@ -1678,10 +1675,7 @@
         "seefisch",
         "hafen"
       ],
-      "geo": {
-        "lat": 45.461968,
-        "lon": 10.719596
-      },
+      "geo": null,
       "time_min": 105,
       "time_label": "1,5–2 h",
       "connection": "Bus 164 ab Bahnhof, 6–7 Min. Letzter Bus zurück 18:40 (So 19:35)."
@@ -2371,10 +2365,7 @@
         "natur",
         "vögel"
       ],
-      "geo": {
-        "lat": 45.412515,
-        "lon": 10.687221
-      },
+      "geo": null,
       "time_min": 105,
       "time_label": "1,5–2 h vor Ort, mit Anfahrt halber Tag",
       "connection": "Rad auf dem Mincio-Radweg, flach und asphaltiert."

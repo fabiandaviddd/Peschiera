@@ -70,14 +70,24 @@
   var LS = 'pk.coords';
 
   var $ = function (id) { return document.getElementById(id); };
-  var data = null, found = {}, running = false, stop = false;
+  var data = null, found = {}, failed = {}, running = false, stop = false;
 
-  try { found = JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { found = {}; }
+  try {
+    var raw = JSON.parse(localStorage.getItem(LS) || '{}') || {};
+    /* alte Fassung speicherte nur die Treffer */
+    found = raw.found || raw;
+    failed = raw.failed || {};
+  } catch (e) { found = {}; failed = {}; }
 
-  function save() { try { localStorage.setItem(LS, JSON.stringify(found)); } catch (e) {} }
+  function save() {
+    try { localStorage.setItem(LS, JSON.stringify({ found: found, failed: failed })); }
+    catch (e) {}
+  }
 
   function todo() {
-    return data.places.filter(function (p) { return !p.geo && !found[p.id]; });
+    return data.places.filter(function (p) {
+      return !p.geo && !found[p.id] && !failed[p.id];
+    });
   }
 
   function done() {
@@ -87,8 +97,11 @@
   function paint() {
     var n = data.places.length, d = done();
     $('count').textContent = d + ' von ' + n;
-    $('sub').textContent = d === n ? 'Alle Orte haben Koordinaten.'
-      : (running ? 'läuft…' : 'noch ' + (n - d) + ' offen');
+    var f = Object.keys(failed).length;
+    $('sub').textContent = running ? 'läuft…'
+      : d === n ? 'Alle Orte haben Koordinaten.'
+      : (todo().length ? 'noch ' + todo().length + ' offen' : 'fertig')
+        + (f ? ' · ' + f + ' nicht gefunden' : '');
     $('bar').style.width = (d / n * 100) + '%';
     $('eta').textContent = Math.max(1, Math.round(todo().length * PAUSE / 60000)) + ' Minuten';
     $('dl').hidden = d === 0;
@@ -108,6 +121,85 @@
     else line.textContent = msg;
     el.appendChild(line);
     el.scrollTop = el.scrollHeight;
+  }
+
+  /* --- Plausibilitaetspruefung ---------------------------------------
+     Beim ersten Durchlauf sind drei Orte falsch verortet worden. Zwei Regeln,
+     an den vorhandenen Daten geeicht, haetten alle drei abgefangen:
+
+     1. Ortsname. Steht in der Adresse ein Ort, muss er auch im Ergebnis
+        vorkommen. "Via F. Fontana 32, Lazise" darf nicht in Peschiera landen.
+     2. Entfernung. Die Luftlinie kann nie laenger sein als die gemessene
+        Strassenentfernung aus distance_km. Mit etwas Spielraum, weil kurze
+        Strecken grob gerundet sind.
+
+     Eine Untergrenze fuer die Entfernung waere untauglich: 17 korrekte Orte
+     liegen unter jedem Schwellenwert, der die falschen faengt. */
+
+  var BOX = { lonMin: 10.35, latMax: 45.95, lonMax: 11.15, latMin: 45.05 };
+
+  function nrm(x) {
+    return String(x || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  var TOWNS = [];
+  function buildTowns() {
+    var seen = {};
+    data.places.forEach(function (p) {
+      var a = (p.address || '').trim();
+      if (a.indexOf(',') < 0) return;
+      var t = a.split(',').pop().trim();
+      if (t && !seen[nrm(t)]) { seen[nrm(t)] = 1; TOWNS.push(t); }
+    });
+    /* laengere Namen zuerst, damit "Colà di Lazise" vor "Lazise" greift */
+    TOWNS.sort(function (a, b) { return b.length - a.length; });
+  }
+
+  function townOf(p) {
+    var raw = (p.address || '').trim();
+    var a = nrm(raw);
+    if (!a) return null;
+    for (var i = 0; i < TOWNS.length; i++) {
+      if (a.indexOf(nrm(TOWNS[i])) >= 0) return TOWNS[i];
+    }
+    /* Adressen ohne Komma, die wie ein Ortsname aussehen: kurz, keine Ziffern,
+       kein Strassen- oder Wegwort am Anfang. Faengt Faelle wie
+       "Ponti sul Mincio", die sonst ungeprueft durchlaufen. */
+    if (raw.indexOf(',') < 0 && !/\d/.test(raw)) {
+      var w = raw.split(/\s+/);
+      if (w.length <= 4 && !/^(via|piazza|ab|start|localita|località|centro|spitze|parco|lungolago|imbarcadero|festung)$/i.test(w[0])) {
+        return raw;
+      }
+    }
+    return null;
+  }
+
+  function km(a, b) {
+    var R = 6371, r = function (x) { return x * Math.PI / 180; };
+    var dLat = r(b.lat - a.lat), dLon = r(b.lon - a.lon);
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+          + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  /* Gibt null zurueck, wenn der Treffer passt — sonst den Ablehnungsgrund. */
+  function reject(p, hit, displayName) {
+    var t = townOf(p);
+    if (t && nrm(displayName).indexOf(nrm(t)) < 0) {
+      return 'liegt nicht in ' + t;
+    }
+    var base = data.meta && data.meta.base_geo;
+    if (base && typeof p.distance_km === 'number' && p.distance_km > 0) {
+      var luft = km(base, hit);
+      var grenze = p.distance_km * 1.15 + 0.5;
+      if (luft > grenze) {
+        return 'zu weit weg (' + luft.toFixed(1) + ' km Luftlinie bei '
+             + p.distance_km + ' km Strasse)';
+      }
+    }
+    return null;
   }
 
   /* Von genau nach grob — die erste Anfrage, die etwas findet, gewinnt. */
@@ -130,14 +222,21 @@
 
   function ask(q) {
     var url = 'https://nominatim.openstreetmap.org/search'
-      + '?format=jsonv2&limit=1&countrycodes=it&accept-language=de&q=' + encodeURIComponent(q);
+      + '?format=jsonv2&limit=3&countrycodes=it&accept-language=de'
+      /* auf die Reisegegend eingegrenzt — verhindert Treffer in halb Italien */
+      + '&viewbox=' + BOX.lonMin + ',' + BOX.latMax + ',' + BOX.lonMax + ',' + BOX.latMin
+      + '&bounded=1'
+      + '&q=' + encodeURIComponent(q);
     return fetch(url, { headers: { 'Accept': 'application/json' } }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     }).then(function (hits) {
-      if (!hits || !hits.length) return null;
-      return { lat: Number(Number(hits[0].lat).toFixed(6)),
-               lon: Number(Number(hits[0].lon).toFixed(6)) };
+      if (!hits || !hits.length) return [];
+      return hits.map(function (h) {
+        return { geo: { lat: Number(Number(h.lat).toFixed(6)),
+                        lon: Number(Number(h.lon).toFixed(6)) },
+                 name: h.display_name || '' };
+      });
     });
   }
 
@@ -151,24 +250,48 @@
 
     var i = 0;
     function next() {
-      if (stop || i >= list.length) { running = false; paint();
-        log(stop ? 'angehalten' : 'fertig — jetzt die Datei herunterladen', stop ? null : 'b');
-        return Promise.resolve(); }
+      if (stop || i >= list.length) {
+        running = false; paint();
+        if (stop) { log('angehalten'); return Promise.resolve(); }
+        var ids = Object.keys(failed);
+        log('fertig — jetzt die Datei herunterladen', 'b');
+        if (ids.length) {
+          log('');
+          log(ids.length + ' Orte ohne Koordinate — bitte mir diese Liste schicken:');
+          ids.forEach(function (id) {
+            var pl = null;
+            for (var k = 0; k < data.places.length; k++) if (data.places[k].id === id) pl = data.places[k];
+            log('   ' + (pl ? pl.name : id) + failed[id], 's');
+          });
+        }
+        return Promise.resolve();
+      }
 
       var p = list[i++];
       var qs = queries(p), qi = 0;
 
+      var gruende = [];
+
       function tryOne() {
         if (qi >= qs.length) {
-          log('✗ ' + p.name + ' — nichts gefunden', 's');
+          var warum = gruende.length ? ' — ' + gruende[0] : ' — nichts gefunden';
+          failed[p.id] = warum;
+          save();
+          log('✗ ' + p.name + warum, 's');
           return wait(PAUSE).then(next);
         }
         var q = qs[qi++];
-        return ask(q).then(function (hit) {
-          if (hit) {
-            found[p.id] = hit; save(); paint();
-            log('✓ ' + p.name);
-            return wait(PAUSE).then(next);
+        return ask(q).then(function (hits) {
+          for (var i = 0; i < hits.length; i++) {
+            var grund = reject(p, hits[i].geo, hits[i].name);
+            if (!grund) {
+              found[p.id] = hits[i].geo;
+              delete failed[p.id];
+              save(); paint();
+              log('✓ ' + p.name);
+              return wait(PAUSE).then(next);
+            }
+            if (gruende.indexOf(grund) < 0) gruende.push(grund);
           }
           return wait(PAUSE).then(tryOne);
         }).catch(function (err) {
@@ -201,11 +324,11 @@
   $('dl').addEventListener('click', download);
   $('reset').addEventListener('click', function () {
     if (!window.confirm('Alle bisher geholten Koordinaten verwerfen?')) return;
-    found = {}; save(); $('log').innerHTML = ''; $('log').hidden = true; paint();
+    found = {}; failed = {}; save(); $('log').innerHTML = ''; $('log').hidden = true; paint();
   });
 
   fetch(DATA, { cache: 'no-cache' }).then(function (r) { return r.json(); })
-    .then(function (d) { data = d; paint(); })
+    .then(function (d) { data = d; buildTowns(); paint(); })
     .catch(function () {
       $('count').textContent = 'Fehler';
       $('sub').textContent = 'data/places.json nicht gefunden — läuft diese Seite im Projektordner?';
