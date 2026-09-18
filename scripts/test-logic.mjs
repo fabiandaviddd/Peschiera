@@ -288,6 +288,37 @@ ok('Caffè → caffe', pk.norm('Caffè'), 'caffe');
 ok('Straße → strasse', pk.norm('Straße'), 'strasse');
 ok('Ausflüge → ausfluge', pk.norm('Ausflüge'), 'ausfluge');
 
+/* ----------------------------------------------------------- Luftlinie */
+group('airKmPoint — Entfernung ohne Dienst und ohne Raten');
+
+/* Ein Grad Breite sind rund 111,19 km — unabhaengig von jeder Bibliothek
+   nachschlagbar und deshalb der richtige Pruefstein. */
+ok('ein Grad Breite', Math.round(pk.airKmPoint({ lat: 45, lon: 10 }, { lat: 46, lon: 10 }) * 10) / 10, 111.2);
+ok('derselbe Punkt ist null km', pk.airKmPoint({ lat: 45.44, lon: 10.69 }, { lat: 45.44, lon: 10.69 }), 0);
+/* Symmetrisch: hin wie zurueck. */
+truthy('hin wie zurueck',
+  Math.abs(pk.airKmPoint({ lat: 45.4, lon: 10.6 }, { lat: 45.5, lon: 10.8 })
+         - pk.airKmPoint({ lat: 45.5, lon: 10.8 }, { lat: 45.4, lon: 10.6 })) < 1e-9);
+/* Fehlt ein Punkt oder eine Zahl, kommt null — nie 0. 0 hiesse "hier". */
+ok('ohne ersten Punkt', pk.airKmPoint(null, { lat: 45, lon: 10 }), null);
+ok('ohne zweiten Punkt', pk.airKmPoint({ lat: 45, lon: 10 }, null), null);
+ok('lat fehlt', pk.airKmPoint({ lon: 10 }, { lat: 45, lon: 10 }), null);
+ok('lat ist ein String', pk.airKmPoint({ lat: '45', lon: 10 }, { lat: 45, lon: 10 }), null);
+ok('geo: null wie in den Daten', pk.airKmPoint(null, null), null);
+
+/* Gegen die echten Daten: vom Zeltplatz aus liegt kein Ort weiter als der
+   weiteste Ausflug, und keiner naeher als null. Faellt ein Komma im geo um,
+   steht der Ort ploetzlich in Afrika. */
+const base = data.meta.base_geo;
+truthy('meta.base_geo hat lat und lon',
+  base && typeof base.lat === 'number' && typeof base.lon === 'number');
+const weit = data.places
+  .filter((p) => p.geo)
+  .map((p) => ({ id: p.id, d: pk.airKmPoint(base, p.geo) }))
+  .filter((x) => x.d > 120)
+  .map((x) => `${x.id}: ${Math.round(x.d)} km`);
+ok('kein Ort liegt weiter als 120 km Luftlinie vom Zeltplatz', weit, []);
+
 /* -------------------------------------------------------------- Sortierung */
 group('Sortierung — ohne Wert nach hinten, nie als 0');
 
@@ -542,6 +573,11 @@ function stats() {
   line('hours fehlt', P.filter((p) => !p.hours).length);
   const shut = P.filter((p) => pk.closedOn(p.hours) !== null);
   line('Ruhetag lesbar in hours', shut.length);
+  const mitGeo = P.filter((p) => p.geo);
+  const fern = mitGeo.map((p) => pk.airKmPoint(data.meta.base_geo, p.geo));
+  line('Luftlinie ab Zeltplatz: max / median',
+    `${Math.round(Math.max(...fern))} km / `
+    + `${(fern.slice().sort((a, b) => a - b)[Math.floor(fern.length / 2)]).toFixed(1)} km`);
   line('… verteilt auf', ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
     .map((w, i) => ({ w, n: shut.filter((p) => pk.closedOn(p.hours) === (i + 1) % 7).length }))
     .filter((x) => x.n).map((x) => `${x.w} ${x.n}`).join(' · '));
