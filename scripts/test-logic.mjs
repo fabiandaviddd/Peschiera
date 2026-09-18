@@ -408,6 +408,43 @@ for (const p of data.places) {
 ok('jede Koordinate liegt in der Reisegegend', outOfBox, []);
 ok('keine Luftlinie länger als der Straßenweg', tooFar, []);
 
+/* Ein Punkt, den mehrere Orte tragen, heisst fast immer: der Dienst hat einen
+   Ortsmittelpunkt statt der Adresse geliefert. Die beiden Regeln oben fangen
+   das nicht — "Peschiera del Garda" als Adresse bestaetigt den Ortspunkt, und
+   die Luftlinie bleibt klein. Deshalb zwei Regeln ueber die Punkte selbst.
+   Sie haetten die drei falschen Gruppen gefangen: Festung/Bahnhof/Anleger
+   ueber die erste, Trattoria mit dem Lago del Frassino ueber die zweite. */
+const spotsBy = new Map();
+for (const p of data.places) {
+  if (!p.geo) continue;
+  const k = `${p.geo.lat},${p.geo.lon}`;
+  if (!spotsBy.has(k)) spotsBy.set(k, []);
+  spotsBy.get(k).push(p);
+}
+
+/* Strassen- oder Flurteil der Adresse, ohne Hausnummer und Ortsteil. So fallen
+   "Via Venezia 86" und "Via Venezia 72" zusammen, "Strada Bergamini" und
+   "Strada Santa Cristina" nicht. */
+function addressStem(a) {
+  return String(a || '').split(',')[0]
+    .replace(/\s*\d+\s*[/A-Za-z]*\s*$/, '')
+    .replace(/[^\p{L}\p{N} ]/gu, ' ')
+    .toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+const crowded = [];
+const mixedSpots = [];
+for (const [k, group] of spotsBy) {
+  if (group.length >= 3) crowded.push(`${k}: ${group.map((p) => p.id).join(', ')}`);
+  if (group.length < 2) continue;
+  const stems = new Set(group.map((p) => addressStem(p.address)));
+  if (stems.size > 1) {
+    mixedSpots.push(`${group.map((p) => p.id).join(' + ')} (${[...stems].join(' | ')})`);
+  }
+}
+ok('kein Punkt mit drei oder mehr Orten', crowded, []);
+ok('Orte auf einem Punkt nennen dieselbe Straße', mixedSpots, []);
+
 /* Die Prüfliste nennt Zahlen im Kopf. Abgeschrieben veralten sie. */
 const listeDoc = readFileSync(join(root, 'docs', 'koordinaten-pruefliste.md'), 'utf8');
 const withGeo = data.places.filter((p) => p.geo).length;
