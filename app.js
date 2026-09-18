@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v9 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v10 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -1595,7 +1595,7 @@
   }
 
   /* Fragt den Worker nach seinem Cache-Namen und vergleicht nur die Marke
-     davor: 'peschiera-v9' gegen 'v9 · 2026-09-18' ist gleich, das Datum
+     davor: 'peschiera-v10' gegen 'v10 · 2026-09-18' ist gleich, das Datum
      dahinter zaehlt nicht mit. */
   function checkCacheVersion() {
     if (!('serviceWorker' in navigator) || !window.MessageChannel) return;
