@@ -597,7 +597,9 @@
   function factsHtml(p) {
     var f = [];
     if (has(p.rating)) {
-      f.push('<span class="fact fact--rating">' + ICON.rating + nf1.format(p.rating) + '</span>');
+      f.push('<span class="fact fact--rating">' + ICON.rating + nf1.format(p.rating)
+        + (has(p.reviews) ? '<span class="fact__n">(' + nf0.format(p.reviews) + ')</span>' : '')
+        + '</span>');
     }
     if (has(p.walk_min)) {
       f.push('<span class="fact">' + ICON.walk + p.walk_min + ' Min</span>');
@@ -613,7 +615,9 @@
       f.push('<span class="fact">' + ICON.clock
         + esc(String(p.hours).replace(/^ge\u00f6ffnet\s+/i, '')) + '</span>');
     }
-    if (p.dog === true) f.push('<span class="fact fact--dog">' + ICON.dog + 'Jum ok</span>');
+    /* Steht der Dauerschalter auf "Mit Jum", ist jeder gezeigte Ort hundeok —
+       die Marke an jeder Zeile sagt dann nichts mehr und kostet nur Platz. */
+    if (p.dog === true && !S.jum) f.push('<span class="fact fact--dog">' + ICON.dog + 'Jum ok</span>');
     else if (p.dog === false) f.push('<span class="fact fact--nodog">' + ICON.dog + 'ohne Jum</span>');
     return f.length ? '<div class="facts">' + f.join('') + '</div>' : '';
   }
@@ -734,6 +738,9 @@
     if (p.indoor === true || p.indoor === false) return p.indoor;
     if (p.badge === 'Regentag') return true;
     for (var i = 0; i < INDOOR_YES.length; i++) if (p.tags.indexOf(INDOOR_YES[i]) >= 0) return true;
+    /* Vor den Außen-Tags: "wasser" heißt bei einem Restaurant am See, dass
+       es am Wasser liegt, nicht dass man im Regen sitzt. */
+    if (p.category === 'essen' || p.category === 'cafe') return true;
     for (var j = 0; j < INDOOR_NO.length; j++) if (p.tags.indexOf(INDOOR_NO[j]) >= 0) return false;
     return null;                 // ungeklärt — und wird auch nicht behauptet
   }
