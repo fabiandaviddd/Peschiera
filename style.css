@@ -14,6 +14,11 @@
   --gold:  #B8912A;
   --brick: #A3462F;
   --verde: #2F6B5C;
+  /* Fuenfte Kategoriefarbe. Bis v7 teilten sich "Ausfluege" und "Praktisch"
+     das Seeblau — bei 44 von 101 Orten sagte die farbige Kante damit nichts.
+     Stein ist bewusst entsaettigt: eine Apotheke ist Infrastruktur, keine
+     Attraktion. 5,34:1 auf --bg, 5,97:1 auf --card. */
+  --stein: #6B6152;
 
   /* Text-Varianten der Akzente. Gold erreicht als Text kein AA (2,9:1),
      deshalb für Schrift eine dunklere Variante. */
@@ -21,6 +26,7 @@
   --gold-ink:  #7A5E12;
   --brick-ink: var(--brick);
   --verde-ink: var(--verde);
+  --stein-ink: var(--stein);
 
   --shadow: 0 1px 2px rgba(32,32,28,.05), 0 4px 14px rgba(32,32,28,.06);
   --shadow-lift: 0 2px 6px rgba(32,32,28,.08), 0 12px 32px rgba(32,32,28,.12);
@@ -33,6 +39,17 @@
 
   --font-head: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-body: 'Karla', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Typo-Leiter. Bis v7 standen 30 verschiedene Schriftgroessen im
+     Stylesheet — gefuehlte Groessen statt einer Leiter. Sechs Stufen
+     reichen. Dazu kommt die 1rem-Basis, die nicht verhandelbar ist:
+     darunter zoomt iOS beim Tippen ins Suchfeld. */
+  --t-display: 1.625rem;   /* Fraunces 600 — Tagesabschnitt, Name im Sheet */
+  --t-title:   1.25rem;    /* Fraunces 600 — Kopf, Sektionskoepfe */
+  --t-name:    1.0625rem;  /* Fraunces 600 — Ortsname in der Zeile */
+  --t-body:    .9375rem;   /* Karla 400 — Notiz, Fliesstext */
+  --t-meta:    .8125rem;   /* Karla 500 — Fakten, Chips, Labels */
+  --t-micro:   .6875rem;   /* Karla 700 — Marken, Zaehler, Tableiste */
 
   --t: 160ms;
   --ease: cubic-bezier(.2,.7,.3,1);
@@ -52,11 +69,13 @@
     --gold:  #E0BC5B;
     --brick: #E08C72;
     --verde: #77C0AC;
+    --stein: #A79C86;          /* 6,19:1 auf --card */
 
     --lake-ink:  var(--lake);
     --gold-ink:  var(--gold);
     --brick-ink: var(--brick);
     --verde-ink: var(--verde);
+    --stein-ink: var(--stein);
 
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.34);
     --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
@@ -78,11 +97,13 @@
   --gold:  #E0BC5B;
   --brick: #E08C72;
   --verde: #77C0AC;
+  --stein: #A79C86;          /* 6,19:1 auf --card */
 
   --lake-ink:  var(--lake);
   --gold-ink:  var(--gold);
   --brick-ink: var(--brick);
   --verde-ink: var(--verde);
+  --stein-ink: var(--stein);
 
   --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.34);
   --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
@@ -97,6 +118,7 @@
 .acc-gold  { --accent: var(--gold);  --accent-ink: var(--gold-ink); }
 .acc-brick { --accent: var(--brick); --accent-ink: var(--brick-ink); }
 .acc-verde { --accent: var(--verde); --accent-ink: var(--verde-ink); }
+.acc-stein { --accent: var(--stein); --accent-ink: var(--stein-ink); }
 
 /* --- Basis --------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -185,17 +207,17 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 /* min-width:0 ist nötig, damit der lange Titel im Flex-Kind kürzen darf. */
 .bar__main { flex: 1 1 auto; min-width: 0; }
 
-.bar__title { font-size: 1.32rem; letter-spacing: -.015em; }
+.bar__title { font-size: var(--t-title); letter-spacing: -.015em; }
 .bar__title em { font-style: normal; color: var(--lake-ink); }
 .bar__sub { display: flex; align-items: center; gap: .55rem; margin-top: .25rem; }
-.bar__hint { font-size: .74rem; color: var(--soft); }
+.bar__hint { font-size: var(--t-meta); color: var(--soft); }
 
 /* Dauerschalter für den Hund. Kein Chip — ein Chip sagt "jetzt gerade",
    ein Schalter sagt "immer", und genau das ist gemeint. */
 .switch {
   display: inline-flex; align-items: center; gap: .4rem;
   min-height: 32px; padding: 0 .1rem;
-  font-size: .82rem; font-weight: 700; color: var(--soft);
+  font-size: var(--t-meta); font-weight: 700; color: var(--soft);
   cursor: pointer;
 }
 .switch__box {
@@ -256,7 +278,7 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   position: absolute; right: .35rem; top: 50%; margin-top: -22px;
   width: 44px; height: 44px; border-radius: var(--r-pill);
   display: grid; place-items: center;
-  color: var(--soft); cursor: pointer; font-size: 1.3rem; line-height: 1;
+  color: var(--soft); cursor: pointer; font-size: var(--t-title); line-height: 1;
 }
 
 /* --- Filter-Chips ------------------------------------------------------- */
@@ -284,7 +306,7 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   flex: 0 0 auto;
   display: inline-flex; align-items: center; gap: .35rem;
   min-height: 36px; padding: .3rem .72rem;
-  font-size: .85rem; font-weight: 500;
+  font-size: var(--t-meta); font-weight: 500;
   color: var(--soft); background: var(--card);
   border: 1px solid var(--line); border-radius: var(--r-pill);
   cursor: pointer; white-space: nowrap;
@@ -292,7 +314,7 @@ button { font: inherit; color: inherit; background: none; border: 0; }
               border-color var(--t) var(--ease);
   -webkit-tap-highlight-color: transparent;
 }
-.chip__n { font-size: .74rem; font-variant-numeric: tabular-nums; opacity: .75; }
+.chip__n { font-size: var(--t-micro); font-variant-numeric: tabular-nums; opacity: .75; }
 .chip[aria-pressed="true"] {
   color: var(--card); background: var(--accent, var(--lake));
   border-color: var(--accent, var(--lake));
@@ -305,13 +327,13 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .meta {
   display: flex; align-items: center; justify-content: space-between;
   gap: .75rem; padding: .1rem 0 .6rem;
-  font-size: .8rem; color: var(--soft);
+  font-size: var(--t-meta); color: var(--soft);
 }
 .sort { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-pill);
   background: var(--card); overflow: hidden; }
 .sort button {
   min-height: 36px; padding: .25rem .7rem;
-  font-size: .8rem; font-weight: 500; color: var(--soft); cursor: pointer;
+  font-size: var(--t-meta); font-weight: 500; color: var(--soft); cursor: pointer;
   transition: color var(--t) var(--ease), background var(--t) var(--ease);
 }
 .sort button[aria-pressed="true"] { color: var(--card); background: var(--lake); }
@@ -333,7 +355,11 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   display: grid; grid-template-columns: minmax(0, 1fr);
   align-items: start;
   min-height: 5.7rem;
-  padding: .62rem 3.1rem .68rem .85rem;
+  /* Die Typo-Leiter hat Meta und Notiz angehoben (.72/.86 -> .8125/.9375)
+     und damit jede Zeile um rund 7 px wachsen lassen. Bei 101 Orten ist das
+     die falsche Richtung, also kommen die 7 px aus den Innenabstaenden
+     zurueck: Schritt 1 aendert die Schrift, nicht die Zeilenhoehe. */
+  padding: .52rem 3.1rem .58rem .85rem;
   background: var(--card);
   border-bottom: 1px solid var(--line);
   border-left: 3px solid var(--accent, var(--line));
@@ -347,27 +373,33 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 }
 
 .card > h3, .card > p, .card > .facts { grid-column: 1; margin: 0; min-width: 0; }
-.card > * + * { margin-top: .16rem; }
+.card > * + * { margin-top: .1rem; }
 
-.card__name { font-size: 1.02rem; letter-spacing: -.01em; }
+.card__name { font-size: var(--t-name); letter-spacing: -.01em; }
 .card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .45rem; }
+/* Kategorie und Badge standen bis v7 beide in Versalien, .72rem gegen
+   .68rem — typografisch fast gleich, semantisch das Gegenteil (Taxonomie
+   gegen Kuratierung). Beide gemischt geschrieben, der Name bleibt die
+   einzige Spitze der Zeile. */
 .card__badge {
-  font-family: var(--font-body); font-size: .68rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .06em;
+  font-family: var(--font-body); font-size: var(--t-micro); font-weight: 700;
   color: var(--accent-ink, var(--soft));
   border: 1px solid currentColor; border-radius: 5px;
-  padding: .05rem .34rem;
+  padding: .04rem .36rem;
 }
-.card__cat { font-size: .72rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--accent-ink, var(--soft)); }
+.card__cat { font-size: var(--t-micro); font-weight: 700;
+  color: var(--accent-ink, var(--soft)); }
 
-.card__note { font-size: .86rem; color: var(--soft);
+/* line-height 1.4 statt der geerbten 1.55: eine einzelne, ohnehin
+   abgeschnittene Zeile braucht keinen Fliesstext-Durchschuss — und holt
+   die 2 px zurueck, die die groessere Body-Stufe gekostet hat. */
+.card__note { font-size: var(--t-body); line-height: 1.4; color: var(--soft);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.facts { display: flex; flex-wrap: wrap; gap: .1rem .52rem; font-size: .78rem; color: var(--soft); }
+.facts { display: flex; flex-wrap: wrap; gap: .1rem .52rem; font-size: var(--t-meta); color: var(--soft); }
 .fact { display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; }
 .fact--rating { color: var(--ink); font-weight: 500; }
-.fact__n { margin-left: .18rem; font-size: .72rem; font-weight: 400; color: var(--soft); }
+.fact__n { margin-left: .18rem; font-size: var(--t-micro); font-weight: 400; color: var(--soft); }
 .fact--dog { color: var(--verde-ink); font-weight: 500; }
 .fact--nodog { color: var(--soft); }
 .fact svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9;
@@ -393,7 +425,7 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 .star[aria-pressed="true"] { color: var(--gold-ink); }
 .star[aria-pressed="true"] svg { fill: currentColor; }
 
-.seen[aria-pressed="true"] { color: var(--verde-ink); }
+.seen[aria-pressed="true"] { color: var(--ink); }
 .seen[aria-pressed="true"] svg { stroke-width: 2.2; }
 
 /* Gesehen: erkennbar, aber weiter gut lesbar */
@@ -403,28 +435,34 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 
 .card__seen {
   display: inline-flex; align-items: center; gap: .22rem;
-  font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-  color: var(--verde-ink);
+  font-size: var(--t-micro); font-weight: 700;
+  /* Nicht mehr Verde: Verde heisst in dieser App Jum. "Gesehen" ist eine
+     Ablage, keine Bestaetigung — und die Zeile ist ohnehin schon gedaempft. */
+  color: var(--soft);
 }
 .card__seen svg { width: 12px; height: 12px; fill: none; stroke: currentColor;
   stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 
-.chip--unseen[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); }
-.chip--short[aria-pressed="true"] { background: var(--gold-ink); border-color: var(--gold-ink); }
-.fact--time { color: var(--gold-ink); font-weight: 500; }
+/* Aktive Filter-Chips sind alle Seeblau. Bis v7 war "Noch offen" gruen und
+   "Unter 1 h" golden — drei Farben fuer dieselbe Aussage "dieser Filter ist
+   an", und sie besetzten dabei Gold und Verde, die etwas anderes bedeuten. */
+.chip--unseen[aria-pressed="true"],
+.chip--short[aria-pressed="true"] { background: var(--lake); border-color: var(--lake); }
+/* Die Aufenthaltsdauer war golden und hatte mit der Merkliste nichts zu tun. */
+.fact--time { font-variant-numeric: tabular-nums; }
 .chip svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9;
   stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
 
 /* --- Leerzustände ------------------------------------------------------- */
 .empty { text-align: center; padding: 2.6rem 1rem; color: var(--soft); }
-.empty h2 { font-size: 1.05rem; color: var(--ink); margin-bottom: .3rem; }
-.empty p { font-size: .88rem; }
+.empty h2 { font-size: var(--t-title); color: var(--ink); margin-bottom: .3rem; }
+.empty p { font-size: var(--t-body); }
 .empty .btn { margin-top: 1.1rem; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
   min-height: 44px; padding: 0 1.1rem;
-  font-family: var(--font-body); font-size: .95rem; font-weight: 500;
+  font-family: var(--font-body); font-size: var(--t-body); font-weight: 500;
   border-radius: var(--r-pill); border: 1px solid var(--line);
   background: var(--card); color: var(--ink);
   cursor: pointer; text-decoration: none;
@@ -443,39 +481,41 @@ button { font: inherit; color: inherit; background: none; border: 0; }
   background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card);
   padding: .7rem .85rem; margin-bottom: .7rem; box-shadow: var(--shadow);
 }
-.sharebar__t { font-size: .84rem; color: var(--soft); }
-.sharebar .btn { min-height: 40px; padding: 0 .9rem; font-size: .88rem; flex: 0 0 auto; }
+.sharebar__t { font-size: var(--t-meta); color: var(--soft); }
+.sharebar .btn { min-height: 40px; padding: 0 .9rem; flex: 0 0 auto; }
 
 .inbox {
   background: var(--card); border: 1px solid var(--gold); border-left: 3px solid var(--gold);
   border-radius: var(--r-card); padding: .95rem 1rem 1rem; margin-bottom: .8rem;
   box-shadow: var(--shadow-lift);
 }
-.inbox__t { font-size: 1.05rem; margin-bottom: .2rem; }
-.inbox__x { font-size: .87rem; color: var(--soft); margin-bottom: .8rem; }
+.inbox__t { font-size: var(--t-title); margin-bottom: .2rem; }
+.inbox__x { font-size: var(--t-body); color: var(--soft); margin-bottom: .8rem; }
 .inbox__acts { display: grid; gap: .45rem; }
 
 /* --- Info-Ansicht ------------------------------------------------------- */
 .section { margin-bottom: 1.6rem; }
-.section__h { font-size: 1.1rem; margin-bottom: .2rem; }
-.section__lead { font-size: .83rem; color: var(--soft); margin-bottom: .75rem; }
+.section__h { font-size: var(--t-title); margin-bottom: .2rem; }
+.section__lead { font-size: var(--t-meta); color: var(--soft); margin-bottom: .75rem; }
 
 .panel {
   background: var(--card); border: 1px solid var(--line);
   border-radius: var(--r-card); padding: .85rem .95rem; margin-bottom: .6rem;
   box-shadow: var(--shadow);
 }
-.panel--open { border-left: 3px solid var(--gold); }
-.panel__t { font-size: .98rem; margin-bottom: .2rem; }
-.panel__x { font-size: .88rem; color: var(--soft); }
-.panel__c { font-size: .85rem; margin-top: .45rem; }
+/* Achtung, nicht Merkliste: Gold ist ab jetzt fuer Gemerktes reserviert.
+   Dieselbe Rolle hat Ziegel schon bei .today__late. */
+.panel--open { border-left: 3px solid var(--brick); }
+.panel__t { font-size: var(--t-name); margin-bottom: .2rem; }
+.panel__x { font-size: var(--t-body); color: var(--soft); }
+.panel__c { font-size: var(--t-body); margin-top: .45rem; }
 
 .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
 .checks li {
   display: grid; grid-template-columns: 1.1rem 1fr; gap: .5rem;
-  font-size: .87rem; color: var(--soft);
+  font-size: var(--t-body); color: var(--soft);
 }
-.checks li::before { content: "✓"; color: var(--verde-ink); font-weight: 700; line-height: 1.5; }
+.checks li::before { content: "✓"; color: var(--soft); font-weight: 700; line-height: 1.5; }
 
 /* --- Detail-Sheet ------------------------------------------------------- */
 .scrim {
@@ -515,7 +555,7 @@ button { font: inherit; color: inherit; background: none; border: 0; }
      von den 44px spuerbar Trefferflaeche weg. */
   border-radius: 12px;
   background: var(--wash); color: var(--ink);
-  cursor: pointer; font-size: 1.35rem; line-height: 1;
+  cursor: pointer; font-size: var(--t-title); line-height: 1;
 }
 
 .sheet__body {
@@ -528,29 +568,29 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 }
 .sheet__body > * { max-width: var(--col); margin-inline: auto; }
 
-.sheet__cat { font-size: .72rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--accent-ink, var(--soft)); }
-.sheet__name { font-size: 1.42rem; letter-spacing: -.02em; padding-right: 3rem; margin: .1rem 0 .5rem; }
-.sheet__note { font-size: .95rem; margin-bottom: .9rem; }
+.sheet__cat { font-size: var(--t-micro); font-weight: 700;
+  color: var(--accent-ink, var(--soft)); }
+.sheet__name { font-size: var(--t-display); letter-spacing: -.02em; padding-right: 3rem; margin: .1rem 0 .5rem; }
+.sheet__note { font-size: var(--t-body); margin-bottom: .9rem; }
 
 .dl { display: grid; grid-template-columns: 6.2rem 1fr; gap: .45rem .8rem; margin: 0 0 1rem; }
-.dl dt { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+.dl dt { font-size: var(--t-micro); font-weight: 700;
   color: var(--soft); padding-top: .15rem; }
-.dl dd { margin: 0; font-size: .92rem; }
+.dl dd { margin: 0; font-size: var(--t-body); }
 .dl dd.soft { color: var(--soft); }
 .dl a { text-decoration: none; border-bottom: 1px solid currentColor; }
 
 .sheet__conn {
-  font-size: .87rem; color: var(--soft);
+  font-size: var(--t-body); color: var(--soft);
   background: var(--wash); border-radius: 10px; padding: .6rem .7rem; margin-bottom: 1rem;
 }
-.sheet__conn b { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+.sheet__conn b { display: block; font-size: var(--t-micro); font-weight: 700;
   color: var(--accent-ink, var(--soft)); margin-bottom: .15rem; }
 
 .sheet__acts { display: grid; gap: .5rem; }
 
 /* Tag-Auswahl im Filter-Sheet: umbrechend, nicht scrollend — hier ist Platz. */
-.sheet__count { font-size: .82rem; font-weight: 700; color: var(--lake-ink); margin-bottom: .8rem; }
+.sheet__count { font-size: var(--t-meta); font-weight: 700; color: var(--lake-ink); margin-bottom: .8rem; }
 .tagpick { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.1rem; }
 .chip--tags[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 
@@ -571,7 +611,7 @@ body.is-typing .tabs { transform: translateY(110%); }
 .tab {
   flex: 1; min-height: 3.6rem; padding: .45rem .2rem;
   display: grid; justify-items: center; gap: .1rem;
-  font-size: .68rem; font-weight: 500; color: var(--soft);
+  font-size: var(--t-micro); font-weight: 500; color: var(--soft);
   cursor: pointer;
   transition: color var(--t) var(--ease);
   -webkit-tap-highlight-color: transparent;
@@ -584,13 +624,13 @@ body.is-typing .tabs { transform: translateY(110%); }
    position:relative auf .tab — sonst bezieht er sich auf die Tableiste. */
 .tab__n {
   position: absolute; transform: translate(1.15rem, -.15rem);
-  font-size: .62rem; font-weight: 700; line-height: 1;
+  font-size: var(--t-micro); font-weight: 700; line-height: 1;
   color: var(--card); background: var(--gold-ink);
   border-radius: var(--r-pill); padding: .12rem .3rem;
 }
 
 /* --- Fuß ---------------------------------------------------------------- */
-.foot { padding: 1.6rem 0 .4rem; font-size: .74rem; color: var(--soft); text-align: center; }
+.foot { padding: 1.6rem 0 .4rem; font-size: var(--t-meta); color: var(--soft); text-align: center; }
 .foot p + p { margin-top: .3rem; }
 /* Fassung im Offline-Speicher passt nicht zur App — sichtbar, nicht laut. */
 .foot__warn { display: block; margin-top: .35rem; color: var(--brick-ink); font-weight: 700; }
@@ -602,9 +642,9 @@ body.is-typing .tabs { transform: translateY(110%); }
   padding: 1.5rem; text-align: center; background: var(--bg); color: var(--soft);
 }
 .boot[hidden] { display: none; }
-.boot h2 { font-size: 1.15rem; color: var(--ink); }
-.boot p { font-size: .88rem; max-width: 26rem; }
-.boot code { font-family: ui-monospace, Menlo, monospace; font-size: .82rem;
+.boot h2 { font-size: var(--t-title); color: var(--ink); }
+.boot p { font-size: var(--t-body); max-width: 26rem; }
+.boot code { font-family: ui-monospace, Menlo, monospace; font-size: var(--t-meta);
   background: var(--wash); padding: .1rem .3rem; border-radius: 4px; }
 .spin { width: 28px; height: 28px; border-radius: 50%;
   border: 3px solid var(--line); border-top-color: var(--lake); animation: spin 850ms linear infinite; }
@@ -614,43 +654,46 @@ body.is-typing .tabs { transform: translateY(110%); }
 
 .today { padding-top: .9rem; }
 
-.today__date { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+/* Versalien gibt es ab jetzt genau hier: drei Sektionsmarken in "Heute",
+   je eine pro Abschnitt. Bis v7 waren sieben Versalienstile gleichzeitig
+   sichtbar — Kategorie, Badge, "gesehen", dl-Label, Kicker, Datum, Lead. */
+.today__date, .today__kicker, .today__lead {
+  font-size: var(--t-micro); font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+}
+.today__date { color: var(--soft); }
 .today__now {
   display: flex; align-items: baseline; gap: .6rem;
-  font-size: 1.9rem; letter-spacing: -.02em; margin: .2rem 0 0;
+  font-size: var(--t-display); letter-spacing: -.02em; margin: .2rem 0 0;
   padding-bottom: .7rem; border-bottom: 2px solid var(--ink);
 }
-.today__clock { font-family: var(--font-body); font-size: .9rem; font-weight: 400; color: var(--soft); }
+.today__clock { font-family: var(--font-body); font-size: var(--t-body); font-weight: 400; color: var(--soft); }
 
 .today__weather {
   display: flex; align-items: center; gap: .45rem;
   padding: .7rem 0 .9rem;
-  font-size: .86rem; color: var(--soft);
+  font-size: var(--t-body); color: var(--soft);
   border-bottom: 1px solid var(--line);
 }
 .today__weather .chip { height: 34px; }
 
-.today__kicker {
-  font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--brick-ink); margin-top: 1.1rem;
-}
+.today__kicker { color: var(--brick-ink); margin-top: 1.1rem; }
 .today__cat {
   display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap;
-  font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: var(--t-micro); font-weight: 700;
   color: var(--accent-ink, var(--soft)); margin-top: .8rem;
 }
-.today__hours { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--soft); }
-.today__name { font-size: 1.62rem; letter-spacing: -.02em; margin-top: .3rem; }
-.today__note { font-size: .95rem; color: var(--soft); margin-top: .45rem;
+.today__hours { font-weight: 400; color: var(--soft); }
+.today__name { font-size: var(--t-display); letter-spacing: -.02em; margin-top: .3rem; }
+.today__note { font-size: var(--t-body); color: var(--soft); margin-top: .45rem;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.today__why { font-size: .88rem; margin-top: .5rem; }
+.today__why { font-size: var(--t-body); margin-top: .5rem; }
 .today__late { color: var(--brick-ink); }
 
 .today__acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
 .today__acts .btn { flex: 1 1 auto; }
 
 .today__lead {
-  font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
   color: var(--soft); margin: 1.6rem 0 .1rem;
   padding-top: 1rem; border-top: 1px solid var(--line);
 }
@@ -659,20 +702,20 @@ body.is-typing .tabs { transform: translateY(110%); }
   display: grid; gap: .1rem; text-align: left; cursor: pointer;
   padding: .7rem 0; border-bottom: 1px solid var(--line);
 }
-.today__small-n { font-family: var(--font-head); font-weight: 600; font-size: 1.02rem; }
-.today__small-m { font-size: .8rem; color: var(--soft); }
+.today__small-n { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name); }
+.today__small-m { font-size: var(--t-meta); color: var(--soft); }
 
 .today__none {
   margin-top: 1.4rem; padding: 1.1rem 1.1rem 1.2rem;
   background: var(--wash); border-radius: var(--r-card);
 }
-.today__none h3 { font-size: 1.1rem; }
-.today__none p { font-size: .9rem; color: var(--soft); margin-top: .35rem; }
+.today__none h3 { font-size: var(--t-title); }
+.today__none p { font-size: var(--t-body); color: var(--soft); margin-top: .35rem; }
 
 .today__all {
   display: flex; align-items: center; justify-content: space-between; gap: .5rem;
   width: 100%; min-height: 48px; margin: 1.3rem 0 .5rem;
-  font-size: .95rem; color: var(--ink); cursor: pointer;
+  font-size: var(--t-body); color: var(--ink); cursor: pointer;
   border-top: 1px solid var(--line); padding-top: 1rem;
 }
 .today__all svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: var(--soft);
@@ -680,7 +723,6 @@ body.is-typing .tabs { transform: translateY(110%); }
 
 /* --- Ab 33rem: etwas mehr Luft, Spalte bleibt bei 32rem ---------------- */
 @media (min-width: 33rem) {
-  .bar__title { font-size: 1.5rem; }
   .card { padding: .8rem 1.1rem .85rem 1rem; }
   .sheet { left: 50%; right: auto; width: min(34rem, 100%); transform: translate(-50%, 101%); }
   .sheet.is-on { transform: translate(-50%, 0); }
