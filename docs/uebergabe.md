@@ -1,6 +1,6 @@
 # Übergabe — Peschiera kompakt
 
-Für den nächsten, der hier weiterarbeitet. Stand `v17`, 18.09.2026.
+Für den nächsten, der hier weiterarbeitet. Stand `v18`, 18.09.2026.
 
 Geschrieben von der Sitzung, die den UI/UX-Audit gemacht und die vier
 Schritte des Redesigns umgesetzt hat (`session_01XKR7hXRNhF2Y23GAgwp8Uf`).
@@ -20,16 +20,28 @@ Build-Schritt** — GitHub Pages liefert das Repo unverändert aus.
 
 ```
 index.html          146 Zeilen   Shell
-app.js             2375 Zeilen   Laden, Zustand, Filter, Sheet, Heute, Plan
-style.css           993 Zeilen   Tokens, Light/Dark, Layout
+app.js             2607 Zeilen   Laden, Zustand, Filter, Sheet, Heute, Plan
+style.css          1004 Zeilen   Tokens, Light/Dark, Layout
 sw.js               147 Zeilen   Service Worker
-data/places.json   3139 Zeilen   alle Inhalte
-scripts/test-logic.mjs  391      Prüfstand, 94 Prüfungen, ohne Browser
+data/places.json   3121 Zeilen   alle Inhalte
+scripts/test-logic.mjs       598 Prüfstand, 140 Prüfungen, ohne Browser
+scripts/browser-abnahme.mjs  469 Browser, 92 Prüfungen (90 ohne 2. Server)
+scripts/browser-abschnitte.mjs 198 Browser, 56 Prüfungen zu vier Uhrzeiten
+.github/workflows/pruefstand.yml  CI: der Prüfstand bei Push und PR.
+                                  Die Browser-Suiten laufen dort nicht —
+                                  das bräuchte Chromium im Runner.
 selbsttest.html                  Diagnoseseite für echte Geräte
 koordinaten.html                 einmalige Koordinatensuche
 docs/redesign-vorschlag.md       Audit + die vier Schritte + Umsetzungsstand
+docs/verbesserungsvorschlaege.md Bestandsaufnahme einer vierten Hand
 docs/koordinaten-pruefliste.md   Regeln der Geocodierung
+docs/uebergabe.md                dieses Dokument (Konventionen, Fallen)
+docs/uebergabe-gracious-volta.md Kalender und Bezugspunkt
+docs/uebergabe-gifted-noether.md Koordinaten und die Browser-Suiten
 ```
+
+Die Zahlen bewegen sich schnell. Prüf sie nach, statt ihnen zu glauben —
+`node scripts/test-logic.mjs` druckt am Ende die Kennzahlen aus den Daten.
 
 Der **Default-Branch ist `claude/peschiera-kompakt-v2-vqzy9s`**, nicht
 `main` — ein `main` existiert nicht. Die README behauptet an einer Stelle
@@ -147,7 +159,31 @@ hat, ist schlicht falsch. Die Öffnungs-Kachel im Sheet benutzt deshalb einen
 strengeren eigenen Leser (`hoursShort()`), der nur ein ausgeschriebenes
 „bis" oder „ab" akzeptiert: 22 der 54 Angaben.
 
-### 3.7 iOS Safari ist von hier aus nicht prüfbar
+### 3.7 Asynchrones Schließen: zwei Fehler, die erst zusammen auffielen
+
+Diese Sitzung hat beim Einbau der Zurück-Geste (`history.pushState`, `v11`)
+zwei Fehler eingebracht, die eine andere Hand beheben musste. Beide lohnen
+sich als Muster:
+
+1. **`history.back()` löst `popstate` aus**, während das Sheet noch sichtbar
+   ist — das Ausblenden läuft 260 ms nach. Der `popstate`-Zuhörer rief
+   `closeSheet` ein zweites Mal auf.
+2. **Der 260-ms-Timer wurde nicht abgebrochen.** Wer das ✕ tippt und sofort
+   einen anderen Ort öffnet, bekam das neue Sheet vom alten Timer wieder
+   ausgeblendet — auf dem Handy eine ganz normale Bewegung, die aussieht wie
+   ein toter Tipp.
+
+Behoben durch: `showSheet()` bricht einen laufenden Schließvorgang ab,
+`closeSheet()` sperrt sich gegen Wiedereintritt und merkt sich seinen Timer.
+
+Die Lehre: **wo eine Animation nachläuft, gehört der Timer in den Zustand.**
+Und beim Prüfen nicht nur „schließt es?" fragen, sondern „was passiert, wenn
+der nächste Tipp kommt, bevor es fertig geschlossen ist?". Der erste Fehler
+war kosmetisch, der zweite hätte die App auf dem Gerät kaputt aussehen
+lassen — und keiner meiner Browsertests hat ihn gesehen, weil sie brav
+gewartet haben.
+
+### 3.8 iOS Safari ist von hier aus nicht prüfbar
 
 Getestet wird in Chromium. **Chromium unterdrückt kleine
 `touchmove`-Ereignisse, iOS Safari liefert sie aus** — so ist schon einmal
@@ -161,7 +197,7 @@ genauso, solange niemand auf einem Gerät prüfen kann.
 `selbsttest.html` ist die Diagnoseseite dafür. Sie gehört nicht zur App und
 ist aus ihr nicht verlinkt.
 
-### 3.8 Die Egress-Policy blockt einiges
+### 3.9 Die Egress-Policy blockt einiges
 
 In dieser Umgebung nicht erreichbar: `fonts.googleapis.com`,
 `fabiandaviddd.github.io`, `nominatim.openstreetmap.org`, die CDNs,
@@ -178,10 +214,14 @@ selbst hat noch nie jemand hier gesehen.
 **Vor jedem Push:**
 
 ```bash
-node scripts/test-logic.mjs      # 94 Prüfungen, kein Browser, kein Build
+node scripts/test-logic.mjs      # 140 Prüfungen, kein Browser, kein Build
 node --check app.js && node --check sw.js
 python3 -c "import json; json.load(open('data/places.json'))"
 ```
+
+Derselbe Prüfstand läuft seit `v15` als CI bei jedem Push und jedem PR
+(`.github/workflows/pruefstand.yml`, kein `npm install`, kein Build). Er
+ersetzt den Lauf von Hand nicht — er fängt nur, was jemand vergisst.
 
 Der Prüfstand lädt `app.js` mit node. Dafür reicht die Datei am Ende ihre
 reinen Helfer an `module.exports` und kehrt um — im Browser gibt es kein
@@ -215,8 +255,10 @@ die nur ein Gerät beantwortet:
    ist das behandelt (`body.is-typing`), für den Kopf ist das Einklappen
    während des Tippens abgeschaltet, aber ob er sauber sitzt, sagt nur das
    Gerät.
-2. Die Zurück-Geste über `history.pushState` (seit `v11`) verhält sich in
-   der iOS-PWA anders als im Browser-Tab.
+2. Die Zurück-Geste über `history.pushState` (seit `v11`). Zwei Fehler
+   darin sind inzwischen behoben und durch Browser-Suiten abgedeckt (siehe
+   3.7) — wie sie sich in der **iOS-PWA** verhält, sagt trotzdem nur das
+   Gerät: dort gibt es keinen Zurück-Knopf des Browsers, nur die Wischgeste.
 3. Die Touch-Ziele der Umsortier-Pfeile im Plan (seit `v14`).
 
 **Daten.** `indoor` ist nur bei 1 von 101 Orten ausdrücklich gesetzt; die
@@ -226,21 +268,26 @@ ergibt. `geo` fehlt bei 29 von 101 Orten — davon hängt die Wegwarnung im
 Plan ab. `rating` fehlt bei 65, weshalb die Sortierung nach Bewertung
 faktisch ein Drittel sortiert.
 
+**Zwei Listen offener Punkte, nicht eine.** Neben diesem Abschnitt führt
+`docs/verbesserungsvorschlaege.md` die Bestandsaufnahme einer vierten Hand:
+Vorschlag 1 und 2 sind in `v15` umgesetzt, 3 bis 8 stehen offen und sind so
+geschrieben, dass sie einzeln aufgegriffen werden können. Wer hier
+zusammenführt, sollte beide Listen nebeneinander legen — sie überschneiden
+sich teilweise.
+
 **Aus dem Redesign-Vorschlag nicht umgesetzt:** die größere Umbauung der
 Informationsarchitektur aus Abschnitt 3.1 — ein Tab „Mehr", der Info,
 Teilen und Einstellungen aufnimmt. Sie war nie Teil der vier Schritte.
 Ebenfalls offen: die Karte (Abschnitt „Karte (offen)" in der README), die
 Leaflet lokal im Repo und die fehlenden 29 Koordinaten voraussetzt.
 
-**Eine Kleinigkeit am Deployment**, ein Einzeiler, offen:
+**Eine Kleinigkeit am Deployment**, ein Einzeiler, offen — der zweite
+Punkt hat sich erledigt: `main` existiert seit dem Aufräumen, ist der
+Default-Branch, und Pages liefert daraus. Die Angabe in der README stimmt.
 
 - Es fehlt eine `.nojekyll`. Aktuell gibt es keine Datei mit führendem
   Unterstrich, es tut also nichts weh — bei einer statischen App ist sie
   trotzdem die übliche Absicherung.
-
-Der zweite Punkt hat sich erledigt: `main` existiert seit dem Aufräumen,
-ist der Default-Branch, und Pages liefert daraus. Die Angabe in der README
-stimmt jetzt.
 
 ---
 
