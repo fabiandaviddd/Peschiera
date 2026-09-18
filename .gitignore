@@ -1,3 +1,6 @@
 .DS_Store
 Thumbs.db
 *.log
+
+# Screenshots der Browser-Suiten
+scripts/browser/*.png

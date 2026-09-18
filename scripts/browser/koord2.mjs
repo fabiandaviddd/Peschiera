@@ -1,0 +1,100 @@
+import { createRequire } from 'node:module';
+/* Playwright liegt global, nicht im Projekt — der Pfad kommt aus der Umgebung. */
+const BASE = process.env.PK_BASE || 'http://localhost:8765';
+/* Screenshots nur, wenn ein Zielordner uebergeben wird. */
+const SHOT = process.argv[2] || null;
+const { chromium } = createRequire(import.meta.url)(
+  process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright');
+const R=[]; const ok=(n,p,x='')=>{R.push([p?'PASS':'FAIL',n,x]); if(!p) process.exitCode=1;};
+const browser = await chromium.launch();
+const ctx = await browser.newContext({viewport:{width:402,height:754},deviceScaleFactor:3,
+  hasTouch:true, acceptDownloads:true});
+const page = await ctx.newPage();
+const errs=[]; page.on('pageerror',e=>errs.push(e.message));
+
+// Die echten Fehlerfälle von Lauf 1 nachstellen
+const FAKE = {
+  // oreste: Adresse sagt Lazise, Dienst liefert etwas in Peschiera -> muss abgelehnt werden
+  'Fontana': [{lat:45.461968, lon:10.719596, display_name:'Via Fontana, Peschiera del Garda, Verona, Italia'}],
+  // ponti-sul-mincio: Dienst liefert etwas in Peschiera statt Ponti sul Mincio
+  'Ponti':   [{lat:45.412515, lon:10.687221, display_name:'Peschiera del Garda, Verona, Italia'}],
+  // saligusta: Adresse stimmt, aber Punkt liegt 2,3 km weg bei 1,5 km Straße -> abgelehnt
+  "Bell":    [{lat:45.449772, lon:10.665231, display_name:"Via Bell'Italia, Peschiera del Garda, Italia"}],
+};
+let queries = [];
+await ctx.route('https://nominatim.openstreetmap.org/**', route => {
+  const u = new URL(route.request().url());
+  const q = u.searchParams.get('q') || '';
+  queries.push({q, bounded: u.searchParams.get('bounded'), viewbox: u.searchParams.get('viewbox')});
+  for (const key in FAKE) if (q.includes(key)) {
+    return route.fulfill({status:200, contentType:'application/json', body: JSON.stringify(FAKE[key])});
+  }
+  // alles andere: ein plausibler Treffer nahe der Basis, mit passendem Ortsnamen
+  const town = (q.split(',').slice(-2)[0] || 'Peschiera del Garda').trim();
+  route.fulfill({status:200, contentType:'application/json', body: JSON.stringify(
+    [{lat:45.4420, lon:10.6930, display_name: town + ', Verona, Italia'}])});
+});
+
+await page.goto(`${BASE}/koordinaten.html`,{waitUntil:'networkidle'});
+await page.waitForTimeout(400);
+ok('Startet beim echten Stand', (await page.textContent('#count')).trim()==='78 von 101',
+   await page.textContent('#count'));
+
+await page.click('#start');
+// warten bis fertig
+for (let i=0;i<150;i++){ await page.waitForTimeout(1000);
+  if ((await page.textContent('#log')).includes('fertig —')) break; }
+await page.waitForTimeout(800);
+
+const log = await page.textContent('#log');
+ok('Region wird eingegrenzt', queries.every(q=>q.bounded==='1' && q.viewbox),
+   JSON.stringify(queries[0]));
+
+// Entscheidend ist das Ergebnis: der falsche Punkt darf nicht übernommen werden.
+// Wird er abgelehnt, probiert die Seite die nächste Schreibweise — das ist gewollt.
+const gespeichert = await page.evaluate(()=>JSON.parse(localStorage.getItem('pk.coords')||'{}'));
+const BAD = {
+  saligusta:        {lat:45.449772, lon:10.665231},
+  oreste:           {lat:45.461968, lon:10.719596},
+  'ponti-sul-mincio':{lat:45.412515, lon:10.687221},
+};
+for (const id in BAD) {
+  const g = (gespeichert.found||{})[id];
+  ok(`${id}: falscher Punkt nicht übernommen`,
+     !g || g.lat !== BAD[id].lat || g.lon !== BAD[id].lon,
+     g ? JSON.stringify(g) : 'kein Treffer — ebenfalls ok');
+}
+ok('Ortsprüfung greift auch ohne Komma in der Adresse',
+   /Ardietti.*liegt nicht in Ponti sul Mincio/.test(log),
+   (log.match(/[^✓✗]*Ardietti[^✓✗]*/)||['nicht im Protokoll'])[0]);
+
+ok('Abschlussbericht erscheint', /Orte ohne Koordinate —/.test(log));
+ok('Gute Treffer wurden übernommen', (log.match(/✓/g)||[]).length >= 10,
+   String((log.match(/✓/g)||[]).length));
+
+// Zweiter Lauf darf die Fehlschläge nicht erneut durchprobieren
+queries = [];
+const nochOffen = await page.evaluate(()=>!document.getElementById('start').hidden);
+if (nochOffen) { await page.click('#start'); await page.waitForTimeout(2500); }
+ok('Zweiter Lauf wiederholt Fehlschläge nicht', queries.length === 0,
+   String(queries.length)+' Anfragen');
+
+// Datei prüfen
+const [dl] = await Promise.all([ page.waitForEvent('download'), page.click('#dl') ]);
+const fs = await import('node:fs');
+const out = JSON.parse(fs.readFileSync(await dl.path(),'utf8'));
+ok('Datei hat 101 Orte', out.places.length===101);
+const drei = ['saligusta','oreste','ponti-sul-mincio'].map(id=>out.places.find(p=>p.id===id));
+ok('Keiner der drei trägt wieder den falschen Punkt',
+   drei.every(p=>!p.geo || p.geo.lat!==BAD[p.id].lat || p.geo.lon!==BAD[p.id].lon),
+   JSON.stringify(drei.map(p=>p.id+':'+JSON.stringify(p.geo))));
+const mitGeo = out.places.filter(p=>p.geo).length;
+ok('Mehr Orte verortet als vorher', mitGeo > 78, `${mitGeo} (vorher 78)`);
+ok('Bestehende Werte unangetastet', out.places.find(p=>p.id==='bip').geo.lat === 
+   JSON.parse(fs.readFileSync('/home/user/Peschiera/data/places.json','utf8')).places.find(p=>p.id==='bip').geo.lat);
+
+ok('Keine JS-Fehler', errs.length===0, errs.join(' | '));
+if (SHOT) await page.screenshot({ path: SHOT + '/koord2.png' });
+await browser.close();
+console.log(R.map(r=>`${r[0]}  ${r[1]}${r[2]?'  ['+r[2]+']':''}`).join('\n'));
+console.log('\n'+R.filter(r=>r[0]==='PASS').length+'/'+R.length+' passed');
