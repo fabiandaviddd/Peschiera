@@ -10,8 +10,8 @@
    ========================================================================== */
 'use strict';
 
-var CACHE = 'peschiera-v5';
-var FONTS = 'peschiera-fonts-v5';
+var CACHE = 'peschiera-v6';
+var FONTS = 'peschiera-fonts-v6';
 var TIMEOUT = 2500;   // ms, danach greift der Cache
 
 var SHELL = [

@@ -62,7 +62,10 @@
         "meeresfrüchte",
         "gehoben"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.441666,
+        "lon": 10.703273
+      },
       "time_min": 150,
       "time_label": "2–2,5 h"
     },
@@ -85,7 +88,10 @@
         "sardisch",
         "familiär"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.446474,
+        "lon": 10.666308
+      },
       "time_min": 150,
       "time_label": "2–2,5 h"
     },
@@ -107,7 +113,10 @@
         "regional",
         "terrasse"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.437756,
+        "lon": 10.690716
+      },
       "time_min": 120,
       "time_label": "1,5–2 h"
     },
@@ -130,7 +139,10 @@
         "seefisch",
         "terrasse"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.449042,
+        "lon": 10.669794
+      },
       "time_min": 120,
       "time_label": "1,5–2 h"
     },
@@ -153,7 +165,10 @@
         "fisch",
         "mediterran"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438023,
+        "lon": 10.694211
+      },
       "time_min": 120,
       "time_label": "1,5–2 h"
     },
@@ -176,7 +191,10 @@
         "gehoben",
         "bar"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438222,
+        "lon": 10.693191
+      },
       "time_min": 105,
       "time_label": "1,5–2 h"
     },
@@ -199,7 +217,10 @@
         "fisch",
         "piazza"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.43835,
+        "lon": 10.695579
+      },
       "time_min": 105,
       "time_label": "1,5–2 h"
     },
@@ -223,7 +244,10 @@
         "wasser",
         "fisch"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439289,
+        "lon": 10.698773
+      },
       "time_min": 120,
       "time_label": "1,5–2 h"
     },
@@ -246,7 +270,10 @@
         "regional",
         "piazza"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.43799,
+        "lon": 10.695114
+      },
       "time_min": 90,
       "time_label": "1–1,5 h"
     },
@@ -269,7 +296,10 @@
         "meeresfrüchte",
         "ruhig"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.448842,
+        "lon": 10.653437
+      },
       "time_min": 120,
       "time_label": "1,5–2 h"
     },
@@ -291,7 +321,10 @@
         "fisch",
         "gehoben"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.437081,
+        "lon": 10.684576
+      },
       "time_min": 120,
       "time_label": "1,5–2 h"
     },
@@ -315,7 +348,10 @@
         "takeaway",
         "feinkost"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438007,
+        "lon": 10.69339
+      },
       "time_min": 30,
       "time_label": "20–40 Min"
     },
@@ -340,7 +376,10 @@
         "fisch",
         "zug"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.465751,
+        "lon": 10.549986
+      },
       "time_min": 180,
       "time_label": "2,5–3 h"
     },
@@ -362,7 +401,10 @@
         "espresso",
         "frühstück"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438872,
+        "lon": 10.694233
+      },
       "time_min": 20,
       "time_label": "15–30 Min"
     },
@@ -384,7 +426,10 @@
         "frühstück",
         "pasticceria"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.4398,
+        "lon": 10.687867
+      },
       "time_min": 40,
       "time_label": "30–45 Min"
     },
@@ -405,7 +450,10 @@
       "tags": [
         "gelato"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.446803,
+        "lon": 10.668521
+      },
       "time_min": 20,
       "time_label": "15–30 Min"
     },
@@ -428,7 +476,10 @@
         "terrasse",
         "wasser"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439701,
+        "lon": 10.695365
+      },
       "time_min": 60,
       "time_label": "45–75 Min"
     },
@@ -450,7 +501,10 @@
         "specialty coffee",
         "verona"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438266,
+        "lon": 10.987676
+      },
       "time_min": 45,
       "time_label": "30–60 Min"
     },
@@ -472,7 +526,10 @@
         "specialty coffee",
         "verona"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.442498,
+        "lon": 10.985738
+      },
       "time_min": 45,
       "time_label": "30–60 Min"
     },
@@ -495,7 +552,10 @@
         "festung",
         "foto"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439158,
+        "lon": 10.680395
+      },
       "time_min": 90,
       "time_label": "1–2 h Mauerrundgang"
     },
@@ -518,7 +578,10 @@
         "foto",
         "wasser"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438563,
+        "lon": 10.696378
+      },
       "time_min": 30,
       "time_label": "20–40 Min"
     },
@@ -540,7 +603,10 @@
         "festung",
         "foto"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.43778,
+        "lon": 10.691274
+      },
       "time_min": 15,
       "time_label": "10–20 Min"
     },
@@ -561,7 +627,10 @@
       "tags": [
         "festung"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439967,
+        "lon": 10.696438
+      },
       "time_min": 10,
       "time_label": "5–15 Min"
     },
@@ -584,7 +653,10 @@
         "ruhig",
         "foto"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438546,
+        "lon": 10.69638
+      },
       "time_min": 30,
       "time_label": "20–45 Min"
     },
@@ -608,7 +680,10 @@
         "gratis",
         "regen"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439695,
+        "lon": 10.694142
+      },
       "time_min": 45,
       "time_label": "30–60 Min"
     },
@@ -629,7 +704,10 @@
       "tags": [
         "kirche"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.43799,
+        "lon": 10.695114
+      },
       "time_min": 15,
       "time_label": "10–20 Min"
     },
@@ -677,7 +755,10 @@
         "ruhig",
         "rad"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.428511,
+        "lon": 10.676008
+      },
       "time_min": 45,
       "time_label": "30–60 Min"
     },
@@ -701,7 +782,10 @@
         "rad",
         "vögel"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.449042,
+        "lon": 10.669794
+      },
       "time_min": 75,
       "time_label": "1–1,5 h Runde"
     },
@@ -748,7 +832,10 @@
         "zug"
       ],
       "connection": "Bahnhof 1,2 km ab Zelt (17 Min.), dann ~13 Zugminuten, ab 2,80 €",
-      "geo": null,
+      "geo": {
+        "lat": 45.469485,
+        "lon": 10.538947
+      },
       "time_min": 270,
       "time_label": "halber Tag, 3,5–5 h vor Ort"
     },
@@ -774,7 +861,10 @@
         "bummeln"
       ],
       "connection": "Imbarcadero 1,5 km ab Zelt (20 Min.), dann ~25 Schiffsminuten, ~6,50 €. Sommerfahrplan bis 04.10. Im Tragflügelboot (Aliscafo) sind Hunde nicht erlaubt — Battello oder Katamaran nehmen. Abfahrtszeiten am Schalter oder unter 800 551 801 bestätigen.",
-      "geo": null,
+      "geo": {
+        "lat": 45.492869,
+        "lon": 10.607726
+      },
       "time_min": 240,
       "time_label": "3–4 h vor Ort"
     },
@@ -798,7 +888,10 @@
         "ganztag"
       ],
       "connection": "Bus 164 bis Garda, dann 484 weiter (im Sommer Direktlinie 483), grob 2–2,5 h je Richtung. Per Schiff mit Umstieg eher länger. Hunde an Bord mit Ticket und Maulkorb.",
-      "geo": null,
+      "geo": {
+        "lat": 45.768481,
+        "lon": 10.831466
+      },
       "time_min": 270,
       "time_label": "4–5 h vor Ort, mit Anfahrt ein ganzer Tag"
     },
@@ -848,7 +941,10 @@
         "rad",
         "buchen"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.44495,
+        "lon": 10.665657
+      },
       "time_min": 90,
       "time_label": "90 Min Verkostung, mit Essen 2–3 h"
     },
@@ -872,7 +968,10 @@
         "wasser"
       ],
       "connection": "ATV-Bus 164 ab Peschiera Richtung Garda.",
-      "geo": null,
+      "geo": {
+        "lat": 45.572708,
+        "lon": 10.671911
+      },
       "time_min": 150,
       "time_label": "2–3 h vor Ort"
     },
@@ -898,7 +997,10 @@
         "schiff"
       ],
       "connection": "Lazise per Schiff ~20 Min / ~6,50 €. Für Bardolino ist die Schiffsverbindung ab Peschiera nicht direkt — sicherer ist ATV-Bus 164 (Peschiera–Lazise–Bardolino–Garda, tagsüber alle 1–2 h). Mit dem Rad nach Lazise 9,2 km / ~31 Min.",
-      "geo": null,
+      "geo": {
+        "lat": 45.518333,
+        "lon": 10.733395
+      },
       "time_min": 180,
       "time_label": "2–3 h je Ort"
     },
@@ -923,7 +1025,10 @@
         "wasser"
       ],
       "connection": "14,4 km auf der flachen, autofreien Ciclovia Mantova–Peschiera — gut 45 Min. pro Weg.",
-      "geo": null,
+      "geo": {
+        "lat": 45.352515,
+        "lon": 10.724593
+      },
       "time_min": 330,
       "time_label": "Radtag, 4,5–6 h"
     },
@@ -947,7 +1052,10 @@
         "kultur"
       ],
       "connection": "Bahnhof 1,2 km ab Zelt, dann ~16 Zugminuten, ab 4 €, ca. 57 Züge/Tag.",
-      "geo": null,
+      "geo": {
+        "lat": 45.442498,
+        "lon": 10.985738
+      },
       "time_min": 300,
       "time_label": "5 h aufwärts"
     },
@@ -971,7 +1079,10 @@
         "ganztag"
       ],
       "connection": "Ein Umstieg (meist Verona), 65–80 Min. pro Weg, ab 6 €.",
-      "geo": null,
+      "geo": {
+        "lat": 45.169263,
+        "lon": 10.670837
+      },
       "time_min": 360,
       "time_label": "ganzer Tag"
     },
@@ -994,7 +1105,10 @@
         "park",
         "rad"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.354518,
+        "lon": 10.74239
+      },
       "time_min": 240,
       "time_label": "3–4 h im Park"
     },
@@ -1018,7 +1132,10 @@
         "sonne",
         "hund"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.443321,
+        "lon": 10.695487
+      },
       "time_min": 180,
       "time_label": "halber Nachmittag, 2–4 h"
     },
@@ -1040,7 +1157,10 @@
         "strand",
         "hund"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.451692,
+        "lon": 10.663365
+      },
       "time_min": 180,
       "time_label": "2–4 h"
     },
@@ -1062,7 +1182,10 @@
         "tierarzt",
         "notfall"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438335,
+        "lon": 10.688835
+      },
       "time_min": 45,
       "time_label": "30–60 Min"
     },
@@ -1084,7 +1207,10 @@
         "tierarzt",
         "notfall"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.446869,
+        "lon": 10.668822
+      },
       "time_min": 45,
       "time_label": "30–60 Min"
     },
@@ -1105,7 +1231,10 @@
       "tags": [
         "apotheke"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.440126,
+        "lon": 10.686123
+      },
       "time_min": 15,
       "time_label": "10–15 Min"
     },
@@ -1147,7 +1276,10 @@
       "tags": [
         "supermarkt"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438895,
+        "lon": 10.712373
+      },
       "time_min": 30,
       "time_label": "20–40 Min"
     },
@@ -1168,7 +1300,10 @@
       "tags": [
         "supermarkt"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438895,
+        "lon": 10.712373
+      },
       "time_min": 30,
       "time_label": "20–40 Min"
     },
@@ -1190,7 +1325,10 @@
         "rad",
         "verleih"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.43778,
+        "lon": 10.691274
+      },
       "time_min": 15,
       "time_label": "15 Min Abholung"
     },
@@ -1212,7 +1350,10 @@
         "rad",
         "verleih"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.440373,
+        "lon": 10.683922
+      },
       "time_min": 15,
       "time_label": "15 Min Abholung"
     },
@@ -1234,7 +1375,10 @@
         "rad",
         "verleih"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.441161,
+        "lon": 10.681262
+      },
       "time_min": 15,
       "time_label": "15 Min Abholung"
     },
@@ -1256,7 +1400,10 @@
         "zug",
         "verkehr"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439158,
+        "lon": 10.680395
+      },
       "time_min": 10,
       "time_label": "10 Min Vorlauf"
     },
@@ -1278,7 +1425,10 @@
         "schiff",
         "verkehr"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439158,
+        "lon": 10.680395
+      },
       "time_min": 10,
       "time_label": "10 Min Vorlauf"
     },
@@ -1294,7 +1444,7 @@
       "reviews": 285,
       "hours": "Mi–Sa 19:00–23:00 (ungeprüft)",
       "walk_min": 15,
-      "distance_km": 1.0,
+      "distance_km": 1,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1303,7 +1453,10 @@
         "handwerk",
         "reservieren"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.440272,
+        "lon": 10.696394
+      },
       "time_min": 150,
       "time_label": "2–2,5 h"
     },
@@ -1328,7 +1481,10 @@
         "aperitivo",
         "seeblick"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.440064,
+        "lon": 10.690286
+      },
       "time_min": 150,
       "time_label": "2–2,5 h"
     },
@@ -1352,7 +1508,10 @@
         "meeresfrüchte",
         "sardisch"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.449772,
+        "lon": 10.665231
+      },
       "time_min": 120,
       "time_label": "2 h"
     },
@@ -1368,7 +1527,7 @@
       "reviews": null,
       "hours": "12:30–14 und 19:30–22, Ruhetag Dienstag",
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1378,7 +1537,10 @@
         "handwerk",
         "reservieren"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.471159,
+        "lon": 10.540284
+      },
       "time_min": 150,
       "time_label": "2,5 h",
       "connection": "Zug 8–19 Min, dann 15 Gehminuten. Letzter Zug zurück ca. 21:53 — bei 19:30 Beginn knapp."
@@ -1395,7 +1557,7 @@
       "reviews": 217,
       "hours": "täglich 11–01",
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": true,
       "tags": [
@@ -1403,7 +1565,10 @@
         "sizilianisch",
         "seeblick"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.47439,
+        "lon": 10.538699
+      },
       "time_min": 105,
       "time_label": "1,5–2 h",
       "connection": "Zug 8 Min, dann 10 Gehminuten."
@@ -1428,7 +1593,10 @@
         "gehoben",
         "seeblick"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.476937,
+        "lon": 10.538016
+      },
       "time_min": 150,
       "time_label": "2–2,5 h",
       "connection": "Zug 8 Min, dann 15 Gehminuten."
@@ -1445,7 +1613,7 @@
       "reviews": null,
       "hours": "Mi–Sa 12:30–14 und 19:30–22, Ruhetag Dienstag",
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1454,7 +1622,10 @@
         "gehoben",
         "reservieren"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.477221,
+        "lon": 10.610858
+      },
       "time_min": 150,
       "time_label": "2–2,5 h",
       "connection": "Bus LN026 ca. 25 Min (2,20 €) oder Schiff 25 Min (6 €)."
@@ -1471,7 +1642,7 @@
       "reviews": 3283,
       "hours": "12–14:15 und 19–22, Ruhetag Mittwoch",
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1479,7 +1650,10 @@
         "vegetarisch",
         "wein"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.493711,
+        "lon": 10.60728
+      },
       "time_min": 105,
       "time_label": "1,5–2 h",
       "connection": "Bus oder Schiff nach Sirmione; abends kein verlässlicher Rückweg."
@@ -1496,7 +1670,7 @@
       "reviews": null,
       "hours": "12–14 und 19–22, Ruhetag Mittwoch",
       "walk_min": null,
-      "distance_km": 10.0,
+      "distance_km": 10,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1504,7 +1678,10 @@
         "seefisch",
         "hafen"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.461968,
+        "lon": 10.719596
+      },
       "time_min": 105,
       "time_label": "1,5–2 h",
       "connection": "Bus 164 ab Bahnhof, 6–7 Min. Letzter Bus zurück 18:40 (So 19:35)."
@@ -1521,7 +1698,7 @@
       "reviews": null,
       "hours": "werktags nur abends, Sa/So auch 12–14, Ruhetag Dienstag",
       "walk_min": null,
-      "distance_km": 14.0,
+      "distance_km": 14,
       "bike_min": null,
       "dog": true,
       "tags": [
@@ -1529,7 +1706,10 @@
         "fisch",
         "vegetarisch"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.548354,
+        "lon": 10.720054
+      },
       "time_min": 120,
       "time_label": "2 h",
       "connection": "Bus 164, 14–18 Min. Weil der letzte Bus um 18:30 fährt, nur am Wochenende mittags machbar."
@@ -1546,7 +1726,7 @@
       "reviews": null,
       "hours": "nur abends 19:30–22, Ruhetag Mittwoch",
       "walk_min": null,
-      "distance_km": 18.0,
+      "distance_km": 18,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1554,7 +1734,10 @@
         "wein",
         "gemüse"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.573861,
+        "lon": 10.708733
+      },
       "time_min": 165,
       "time_label": "2,5–3 h",
       "connection": "Bus 164 nach Garda 20 Min — aber keine Rückfahrt nach dem Essen."
@@ -1571,7 +1754,7 @@
       "reviews": null,
       "hours": "saisonal, ungeprüft",
       "walk_min": null,
-      "distance_km": 21.0,
+      "distance_km": 21,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1579,7 +1762,10 @@
         "aperitivo",
         "sonnenuntergang"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.572708,
+        "lon": 10.671911
+      },
       "time_min": 105,
       "time_label": "1,5–2 h",
       "connection": "Bus 164 bis Garda, dann 25–30 Min zu Fuss am Ufer."
@@ -1596,7 +1782,7 @@
       "reviews": 1125,
       "hours": "widersprüchlich — anrufen",
       "walk_min": 25,
-      "distance_km": 2.0,
+      "distance_km": 2,
       "bike_min": 8,
       "dog": null,
       "tags": [
@@ -1604,7 +1790,10 @@
         "aperitivo",
         "garten"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.431672,
+        "lon": 10.697084
+      },
       "time_min": 75,
       "time_label": "1–1,5 h"
     },
@@ -1620,7 +1809,7 @@
       "reviews": null,
       "hours": "Di–So, Ruhetag Montag",
       "walk_min": 14,
-      "distance_km": 1.0,
+      "distance_km": 1,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1628,7 +1817,10 @@
         "livemusik",
         "wasser"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.435304,
+        "lon": 10.697972
+      },
       "time_min": 90,
       "time_label": "1–1,5 h"
     },
@@ -1644,7 +1836,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1652,7 +1844,10 @@
         "aperitivo",
         "seeblick"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.47755,
+        "lon": 10.538349
+      },
       "time_min": 90,
       "time_label": "1–1,5 h",
       "connection": "Zug 8 Min, dann 10 Gehminuten."
@@ -1669,14 +1864,17 @@
       "reviews": 1783,
       "hours": "11–23, Ruhetag Mittwoch",
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": null,
       "tags": [
         "wein",
         "käse"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.493263,
+        "lon": 10.607266
+      },
       "time_min": 75,
       "time_label": "1–1,5 h",
       "connection": "Bus oder Schiff nach Sirmione."
@@ -1726,7 +1924,10 @@
         "regen",
         "fisch"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438546,
+        "lon": 10.69638
+      },
       "time_min": 45,
       "time_label": "20–30 Min kurz, 1 h mit Audioguide"
     },
@@ -1750,7 +1951,10 @@
         "schatten",
         "natur"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439701,
+        "lon": 10.695365
+      },
       "time_min": 45,
       "time_label": "30–60 Min"
     },
@@ -1766,7 +1970,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 7.0,
+      "distance_km": 7,
       "bike_min": 30,
       "dog": true,
       "tags": [
@@ -1792,7 +1996,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1818,7 +2022,7 @@
       "reviews": null,
       "hours": "Mo 9–13, Di–Sa 8:30–19:30, So 10–19:30",
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": true,
       "tags": [
@@ -1827,7 +2031,10 @@
         "foto",
         "kultur"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.500913,
+        "lon": 10.606708
+      },
       "time_min": 90,
       "time_label": "1–1,5 h, mit Museum 2 h",
       "connection": "Bus oder Schiff nach Sirmione, dann 20 Min zu Fuss hinauf."
@@ -1844,14 +2051,17 @@
       "reviews": null,
       "hours": "Di–Do 9:30–12:30, Fr–So 9:30–18:30, Mo zu",
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": null,
       "tags": [
         "aussicht",
         "kultur"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.469369,
+        "lon": 10.537866
+      },
       "time_min": 60,
       "time_label": "45–60 Min",
       "connection": "Zug 8 Min, dann 15 Min bergauf."
@@ -1868,7 +2078,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": true,
       "tags": [
@@ -1893,7 +2103,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 5.0,
+      "distance_km": 5,
       "bike_min": 20,
       "dog": true,
       "tags": [
@@ -1917,7 +2127,7 @@
       "reviews": null,
       "hours": "9:30–12:30 und 14:30–18, Mo zu",
       "walk_min": null,
-      "distance_km": 28.0,
+      "distance_km": 28,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -1925,7 +2135,10 @@
         "aussicht",
         "hafen"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.607876,
+        "lon": 10.685891
+      },
       "time_min": 75,
       "time_label": "45 Min kurz, 2,5–3,5 h mit Ort",
       "connection": "Bus 483 ab Peschiera Centro, stündlich um :14, ca. 1h05–1h15."
@@ -1942,7 +2155,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 18.0,
+      "distance_km": 18,
       "bike_min": null,
       "dog": true,
       "tags": [
@@ -1951,7 +2164,10 @@
         "natur",
         "foto"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.569236,
+        "lon": 10.713238
+      },
       "time_min": 150,
       "time_label": "1 h Aufstieg, 2,5–3 h komplett",
       "connection": "Bus 164 nach Garda, ca. 20 Min. Letzter Bus zurück 18:25 (So 19:20)."
@@ -1968,7 +2184,7 @@
       "reviews": null,
       "hours": "9–12:30 und 14:30–19, So durchgehend",
       "walk_min": null,
-      "distance_km": 10.0,
+      "distance_km": 10,
       "bike_min": 35,
       "dog": null,
       "tags": [
@@ -1976,7 +2192,10 @@
         "kultur",
         "foto"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438661,
+        "lon": 10.597953
+      },
       "time_min": 120,
       "time_label": "45–60 Min nur Turm, 2–3 h mit Museum",
       "connection": "Zug nach Desenzano, dann Bus LN034. Bahnhof San Martino ist seit 1991 stillgelegt. Oder Rad, ca. 10 km flach."
@@ -1993,7 +2212,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 21.0,
+      "distance_km": 21,
       "bike_min": null,
       "dog": true,
       "tags": [
@@ -2051,7 +2270,10 @@
         "aussicht",
         "foto"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.441909,
+        "lon": 10.687306
+      },
       "time_min": 150,
       "time_label": "2 h Fahrt, 2,5 h gesamt"
     },
@@ -2091,7 +2313,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 22.0,
+      "distance_km": 22,
       "bike_min": 90,
       "dog": true,
       "tags": [
@@ -2116,7 +2338,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 20.0,
+      "distance_km": 20,
       "bike_min": 100,
       "dog": true,
       "tags": [
@@ -2140,7 +2362,7 @@
       "reviews": null,
       "hours": "ungeprüft",
       "walk_min": null,
-      "distance_km": 11.0,
+      "distance_km": 11,
       "bike_min": 45,
       "dog": null,
       "tags": [
@@ -2149,7 +2371,10 @@
         "natur",
         "vögel"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.412515,
+        "lon": 10.687221
+      },
       "time_min": 105,
       "time_label": "1,5–2 h vor Ort, mit Anfahrt halber Tag",
       "connection": "Rad auf dem Mincio-Radweg, flach und asphaltiert."
@@ -2166,14 +2391,17 @@
       "reviews": null,
       "hours": "Weinshop Mo–Sa 8:30–12:30 und 14–18",
       "walk_min": null,
-      "distance_km": 4.0,
+      "distance_km": 4,
       "bike_min": 18,
       "dog": null,
       "tags": [
         "wein",
         "lugana"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439636,
+        "lon": 10.673724
+      },
       "time_min": 90,
       "time_label": "1,5 h (Premium 2 h)"
     },
@@ -2212,7 +2440,7 @@
       "reviews": null,
       "hours": "ganzjährig ausser November–März, nur mit Buchung",
       "walk_min": null,
-      "distance_km": 10.0,
+      "distance_km": 10,
       "bike_min": 35,
       "dog": true,
       "tags": [
@@ -2237,7 +2465,7 @@
       "reviews": null,
       "hours": "ungeprüft",
       "walk_min": null,
-      "distance_km": 14.0,
+      "distance_km": 14,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -2245,7 +2473,10 @@
         "museum",
         "spontan"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.539118,
+        "lon": 10.735099
+      },
       "time_min": 90,
       "time_label": "30–45 Min kurz, 1,5–2 h mit Verkostung",
       "connection": "Bus 164 nach Bardolino, 14–18 Min, dann 15 Gehminuten."
@@ -2262,7 +2493,7 @@
       "reviews": null,
       "hours": "So–Fr 9:30–23, Sa bis 1:00",
       "walk_min": null,
-      "distance_km": 7.0,
+      "distance_km": 7,
       "bike_min": null,
       "dog": false,
       "tags": [
@@ -2287,7 +2518,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 30.0,
+      "distance_km": 30,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -2345,7 +2576,10 @@
         "festung",
         "kultur"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438346,
+        "lon": 10.694581
+      },
       "time_min": 75,
       "time_label": "1–1,5 h"
     },
@@ -2361,7 +2595,7 @@
       "reviews": null,
       "hours": null,
       "walk_min": null,
-      "distance_km": 8.0,
+      "distance_km": 8,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -2369,7 +2603,10 @@
         "wein",
         "livemusik"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439491,
+        "lon": 10.764766
+      },
       "time_min": 180,
       "time_label": "2–4 h",
       "connection": "Bus 164 ab Peschiera, ca. 15 Min. Rückfahrt am späten Abend ungeprüft."
@@ -2386,7 +2623,7 @@
       "reviews": null,
       "hours": "ungeprüft",
       "walk_min": null,
-      "distance_km": 3.0,
+      "distance_km": 3,
       "bike_min": 13,
       "dog": null,
       "tags": [
@@ -2394,7 +2631,10 @@
         "einkauf",
         "selbstkochen"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.451692,
+        "lon": 10.663365
+      },
       "time_min": 25,
       "time_label": "20–30 Min"
     },
@@ -2410,7 +2650,7 @@
       "reviews": null,
       "hours": "ungeprüft",
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": null,
       "tags": [
@@ -2435,7 +2675,7 @@
       "reviews": null,
       "hours": "Di 8–13",
       "walk_min": null,
-      "distance_km": 13.0,
+      "distance_km": 13,
       "bike_min": null,
       "dog": true,
       "tags": [
@@ -2443,7 +2683,10 @@
         "einkauf",
         "bummeln"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.47755,
+        "lon": 10.538349
+      },
       "time_min": 105,
       "time_label": "1,5–2 h mit Bummel",
       "connection": "Zug 8 Min, dann 10 Gehminuten."
