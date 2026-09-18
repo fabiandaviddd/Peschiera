@@ -7,14 +7,14 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v6 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v7 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
   var LS_THEME = 'pk.theme';
+  var LS_JUM   = 'pk.jum';
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
   var SHORT_MAX = 60;         // Schwelle für den Filter "Unter 1 h"
-  var TAGS_SHOWN = 12;        // sichtbare Tag-Chips, Rest hinter "mehr"
 
   /* ---------------------------------------------------------------- Zustand */
 
@@ -22,16 +22,18 @@
   var catById = {};
 
   var S = {
-    view: 'orte',
+    view: 'heute',
     q: '',
     cats: [],
-    dog: false,
+    jum: false,          // Dauereinstellung, kein Filter: ueberlebt den Neustart
     walk: false,
     tags: [],
     unseen: false,
     short: false,
     sort: 'distance',
-    tagsOpen: false,
+    filterOpen: false,
+    wet: false,             // vom Benutzer gesagt, nicht abgerufen
+    pick: 0,                // welcher Vorschlag gerade dran ist
     saved: [],
     seen: [],
     theme: 'auto',
@@ -147,7 +149,9 @@
     info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 10.8V17M12 7.6h.01"/></svg>',
     sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>',
     moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.4A8.4 8.4 0 1 1 9.6 4a6.8 6.8 0 0 0 10.4 10.4z"/></svg>',
-    auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8" /><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"/></svg>'
+    auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8" /><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"/></svg>',
+    shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 8.4h11.2l-2.6-2.7M20.4 15.6H9.2l2.6 2.7"/></svg>',
+    tags: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 11.2V4.8a1.2 1.2 0 0 1 1.2-1.2h6.4l8.4 8.4a1.4 1.4 0 0 1 0 2l-5.6 5.6a1.4 1.4 0 0 1-2 0z"/><path d="M7.6 7.6h.01"/></svg>'
   };
 
   /* ----------------------------------------------------------------- Laden */
@@ -231,13 +235,18 @@
     if (['auto', 'light', 'dark'].indexOf(S.theme) < 0) S.theme = 'auto';
     applyTheme();
 
-    $('sub').textContent = has(D.meta.subtitle) ? D.meta.subtitle : '';
+    S.jum = lsGet(LS_JUM, false) === true;
+
+    /* Der Reisezeitraum stand bisher als zweite Zeile im Kopf. Dort steht
+       jetzt der Jum-Schalter; die Angabe wandert in den Fuss, wo schon der
+       Datenstand steht. */
+    $('foot-sub').textContent = has(D.meta.subtitle) ? D.meta.subtitle : '';
     $('foot-note').textContent = has(D.meta.note) ? D.meta.note : '';
 
     buildTabs();
     buildCatChips();
     buildFlagChips();
-    buildTagChips();
+    applyJum();
     bind();
     render();
 
@@ -278,9 +287,31 @@
     applyTheme();
   }
 
+  /* ------------------------------------------------------------- Jum-Schalter */
+
+  /* Der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei. Das ist
+     keine Filterfrage, die man dreimal am Tag neu beantwortet, sondern eine
+     Einstellung — wie das Farbschema, und genauso dauerhaft. */
+  function applyJum() {
+    var btn = $('jum-btn');
+    btn.setAttribute('aria-checked', S.jum ? 'true' : 'false');
+    $('jum-n').textContent = S.jum
+      ? 'nur wo Jum mit darf'
+      : String(D.places.filter(function (p) { return p.dog === true; }).length) + ' Orte mit Hund';
+  }
+
+  function toggleJum() {
+    S.jum = !S.jum;
+    S.pick = 0;
+    lsSet(LS_JUM, S.jum);
+    applyJum();
+    render();
+  }
+
   /* ------------------------------------------------------------------ Tabs */
 
   var TABS = [
+    { id: 'heute', label: 'Heute', icon: ICON.sun },
     { id: 'orte', label: 'Orte', icon: ICON.list },
     { id: 'gemerkt', label: 'Gemerkt', icon: ICON.star },
     { id: 'info', label: 'Info', icon: ICON.info }
@@ -309,6 +340,7 @@
 
   function setView(v) {
     if (v === S.view) return;
+    if (v === 'heute') S.pick = 0;
     S.view = v;
     syncTabs();
     render();
@@ -327,18 +359,19 @@
   }
 
   function buildFlagChips() {
-    var dogs = D.places.filter(function (p) { return p.dog === true; }).length;
     var walks = D.places.filter(function (p) { return has(p.walk_min) && p.walk_min <= WALK_MAX; }).length;
     var shorts = D.places.filter(function (p) { return has(p.time_min) && p.time_min <= SHORT_MAX; }).length;
+    /* "Hund erlaubt" fehlt hier mit Absicht: der Hund ist keine Filterfrage,
+       die man taeglich neu beantwortet, sondern ein Dauerschalter im Kopf. */
     $('flag-row').innerHTML =
-      '<button type="button" class="chip chip--dog" id="chip-dog" aria-pressed="false">'
-      + ICON.dog + 'Hund erlaubt<span class="chip__n">' + dogs + '</span></button>'
-      + '<button type="button" class="chip chip--walk" id="chip-walk" aria-pressed="false">'
+      '<button type="button" class="chip chip--walk" id="chip-walk" aria-pressed="false">'
       + ICON.walk + 'Zu Fuß<span class="chip__n">' + walks + '</span></button>'
       + '<button type="button" class="chip chip--unseen" id="chip-unseen" aria-pressed="false">'
       + ICON.checkRound + 'Noch offen<span class="chip__n" id="chip-unseen-n"></span></button>'
       + '<button type="button" class="chip chip--short" id="chip-short" aria-pressed="false">'
-      + ICON.hourglass + 'Unter 1 h<span class="chip__n">' + shorts + '</span></button>';
+      + ICON.hourglass + 'Unter 1 h<span class="chip__n">' + shorts + '</span></button>'
+      + '<button type="button" class="chip chip--tags" id="chip-tags" aria-pressed="false">'
+      + ICON.tags + 'Tags<span class="chip__n" id="chip-tags-n"></span></button>';
   }
 
   function allTags() {
@@ -351,23 +384,23 @@
     }).map(function (t) { return { tag: t, n: count[t] }; });
   }
 
-  function buildTagChips() {
+  /* Ueber achtzig Tags passen in keine Chip-Reihe. Sie stehen deshalb im
+     Sheet — im selben, das auch den Ort zeigt, nicht in einem zweiten. */
+  function filterSheetHtml() {
     var tags = allTags();
-    var shown = S.tagsOpen ? tags : tags.slice(0, TAGS_SHOWN);
-    var html = shown.map(function (t) {
-      return '<button type="button" class="chip chip--tag" data-tag="' + esc(t.tag) + '"'
-        + ' aria-pressed="' + (S.tags.indexOf(t.tag) >= 0 ? 'true' : 'false') + '">'
-        + esc(t.tag) + '<span class="chip__n">' + t.n + '</span></button>';
-    }).join('');
-    if (tags.length > TAGS_SHOWN) {
-      html += '<button type="button" class="chip chip--ghost" id="tags-more">'
-        + (S.tagsOpen ? 'weniger' : 'alle ' + tags.length + ' Tags') + '</button>';
-    }
-    $('tag-row').innerHTML = html;
-    /* Eingeklappt einzeilig und horizontal scrollbar, aufgeklappt umbrechend —
-       so bleibt der Header in der Standardansicht flach. */
-    $('tag-row').classList.toggle('chiprow--wrap', S.tagsOpen);
-    measureBar();
+    return '<p class="sheet__cat">Filter</p>'
+      + '<h2 class="sheet__name" id="sheet-name">Tags</h2>'
+      + '<p class="sheet__note">Mehrere Tags sind ODER-verknüpft: ein Ort muss nur einem davon entsprechen.</p>'
+      + '<p class="sheet__count" id="filter-count"></p>'
+      + '<div class="tagpick">' + tags.map(function (t) {
+          return '<button type="button" class="chip chip--tag" data-tag="' + esc(t.tag) + '"'
+            + ' aria-pressed="' + (S.tags.indexOf(t.tag) >= 0 ? 'true' : 'false') + '">'
+            + esc(t.tag) + '<span class="chip__n">' + t.n + '</span></button>';
+        }).join('') + '</div>'
+      + '<div class="sheet__acts">'
+      + '<button type="button" class="btn btn--wide" id="tags-clear">Alle Tags abwählen</button>'
+      + '<button type="button" class="btn btn--wide btn--primary" id="tags-done">Fertig</button>'
+      + '</div>';
   }
 
   /* Höhe des Sticky-Headers für scroll-padding-top bereitstellen. */
@@ -382,12 +415,14 @@
     for (var i = 0; i < cats.length; i++) {
       cats[i].setAttribute('aria-pressed', S.cats.indexOf(cats[i].getAttribute('data-cat')) >= 0 ? 'true' : 'false');
     }
-    $('chip-dog').setAttribute('aria-pressed', S.dog ? 'true' : 'false');
     $('chip-walk').setAttribute('aria-pressed', S.walk ? 'true' : 'false');
     $('chip-unseen').setAttribute('aria-pressed', S.unseen ? 'true' : 'false');
     $('chip-short').setAttribute('aria-pressed', S.short ? 'true' : 'false');
     $('chip-unseen-n').textContent = String(D.places.length - S.seen.length);
-    var tags = $('tag-row').querySelectorAll('[data-tag]');
+    $('chip-tags').setAttribute('aria-pressed', S.tags.length ? 'true' : 'false');
+    $('chip-tags-n').textContent = S.tags.length ? String(S.tags.length) : '';
+    /* Tag-Chips liegen im Sheet und existieren nur, solange es offen ist. */
+    var tags = $('sheet-body').querySelectorAll('[data-tag]');
     for (var j = 0; j < tags.length; j++) {
       tags[j].setAttribute('aria-pressed', S.tags.indexOf(tags[j].getAttribute('data-tag')) >= 0 ? 'true' : 'false');
     }
@@ -404,16 +439,20 @@
   }
 
   function anyFilter() {
-    return !!S.q || S.cats.length > 0 || S.dog || S.walk || S.unseen || S.short || S.tags.length > 0;
+    /* S.jum fehlt hier bewusst: eine Dauereinstellung wird nicht
+       mitzurueckgesetzt, sonst waere Jum nach jedem Reset wieder weg. */
+    return !!S.q || S.cats.length > 0 || S.walk || S.unseen || S.short || S.tags.length > 0;
   }
 
   function resetFilters() {
-    S.q = ''; S.cats = []; S.dog = false; S.walk = false; S.unseen = false; S.short = false; S.tags = [];
+    S.q = ''; S.cats = []; S.walk = false; S.unseen = false; S.short = false; S.tags = [];
     $('q').value = '';
     render();
   }
 
   /* --------------------------------------------------------------- Auswahl */
+
+  var jumHidden = 0;          // wie viele Orte der Jum-Schalter zuletzt ausblendete
 
   function selected() {
     var pool = S.view === 'gemerkt'
@@ -424,7 +463,6 @@
 
     var out = pool.filter(function (p) {
       if (S.cats.length && S.cats.indexOf(p.category) < 0) return false;
-      if (S.dog && p.dog !== true) return false;
       if (S.walk && !(has(p.walk_min) && p.walk_min <= WALK_MAX)) return false;
       if (S.unseen && S.seen.indexOf(p.id) >= 0) return false;
       if (S.short && !(has(p.time_min) && p.time_min <= SHORT_MAX)) return false;
@@ -436,6 +474,16 @@
       for (var t = 0; t < terms.length; t++) if (p._h.indexOf(terms[t]) < 0) return false;
       return true;
     });
+
+    /* Jum greift zuletzt, damit die Zaehlzeile sagen kann, wie viele Orte
+       der Dauerschalter gerade kostet — und nicht nur, wie viele bleiben. */
+    if (S.jum) {
+      var withJum = out.filter(function (p) { return p.dog === true; });
+      jumHidden = out.length - withJum.length;
+      out = withJum;
+    } else {
+      jumHidden = 0;
+    }
 
     return out.sort(S.sort === 'rating' ? byRating : byDistance);
   }
@@ -465,23 +513,31 @@
 
   function render() {
     syncChips();
-    $('filters').hidden = S.view === 'info';
-    $('search-wrap').hidden = S.view === 'info';
-    $('meta-row').hidden = S.view === 'info';
+    var bare = S.view === 'info' || S.view === 'heute';
+    $('filters').hidden = bare;
+    $('search-wrap').hidden = bare;
+    $('meta-row').hidden = bare;
     renderShareBar();
     measureBar();
 
-    if (S.view === 'info') {
+    if (bare) {
       $('list').innerHTML = '';
       $('list').hidden = true;
       $('empty').hidden = true;
-      $('info').hidden = false;
-      $('info').innerHTML = infoHtml();
+      if (S.view === 'info') {
+        $('today').hidden = true; $('today').innerHTML = '';
+        $('info').hidden = false; $('info').innerHTML = infoHtml();
+      } else {
+        $('info').hidden = true; $('info').innerHTML = '';
+        $('today').hidden = false; $('today').innerHTML = todayHtml();
+      }
       return;
     }
 
     $('info').hidden = true;
     $('info').innerHTML = '';
+    $('today').hidden = true;
+    $('today').innerHTML = '';
 
     var items = selected();
     var total = S.view === 'gemerkt' ? S.saved.length : D.places.length;
@@ -498,7 +554,11 @@
         $('empty-reset').hidden = true;
       } else {
         $('empty-h').textContent = 'Nichts gefunden';
-        $('empty-p').textContent = 'Kein Ort passt zu dieser Kombination aus Suche und Filtern.';
+        /* "Filter zurücksetzen" räumt den Jum-Schalter absichtlich nicht mit
+           ab. Wenn er der Grund ist, muss das hier stehen — sonst drückt man
+           auf Zurücksetzen und es bleibt leer. */
+        $('empty-p').textContent = 'Kein Ort passt zu dieser Kombination aus Suche und Filtern.'
+          + (S.jum ? ' Der Schalter „Mit Jum“ oben blendet zusätzlich alle Orte ohne geklärte Hundregel aus.' : '');
         $('empty-reset').hidden = false;
       }
       return;
@@ -515,32 +575,44 @@
     if (shown === undefined) { shown = lastCount.shown; total = lastCount.total; }
     lastCount = { shown: shown, total: total };
     var seenHere = S.seen.length;
-    $('count').textContent = (anyFilter()
+    /* Der Jum-Schalter blendet still aus. Damit das nie unbemerkt passiert,
+       steht hier, wie viele Orte er gerade kostet. Bei 58 von 101 Orten ist
+       die Hundregel ungeklärt — das ist viel, und man muss es sehen. */
+    var unclear = S.jum ? jumHidden : 0;
+    $('count').textContent = (anyFilter() || S.jum
       ? shown + ' von ' + total + (total === 1 ? ' Ort' : ' Orten')
       : total + (total === 1 ? ' Ort' : ' Orte'))
+      + (S.jum ? ' · mit Jum' : '')
+      + (unclear ? ' · ' + unclear + ' ohne Jum ausgeblendet' : '')
       + (seenHere ? ' · ' + seenHere + ' gesehen' : '');
+
+    if (!$('count')) return;
+
+    var live = $('filter-count');
+    if (live) {
+      live.textContent = shown === 1 ? '1 Ort passt' : shown + ' Orte passen';
+    }
   }
 
   function factsHtml(p) {
     var f = [];
     if (has(p.rating)) {
-      f.push('<span class="fact fact--rating">' + ICON.rating + nf1.format(p.rating)
-        + (has(p.reviews) ? ' <span style="font-weight:400;opacity:.8">(' + nf0.format(p.reviews) + ')</span>' : '')
-        + '</span>');
+      f.push('<span class="fact fact--rating">' + ICON.rating + nf1.format(p.rating) + '</span>');
     }
     if (has(p.walk_min)) {
-      f.push('<span class="fact">' + ICON.walk + p.walk_min + ' Min'
-        + (has(p.distance_km) ? ' · ' + km(p.distance_km) : '') + '</span>');
+      f.push('<span class="fact">' + ICON.walk + p.walk_min + ' Min</span>');
     } else if (has(p.bike_min)) {
-      f.push('<span class="fact">' + ICON.bike + p.bike_min + ' Min'
-        + (has(p.distance_km) ? ' · ' + km(p.distance_km) : '') + '</span>');
+      f.push('<span class="fact">' + ICON.bike + p.bike_min + ' Min</span>');
     } else if (has(p.distance_km)) {
       f.push('<span class="fact">' + ICON.pin + km(p.distance_km) + '</span>');
     }
     if (has(p.time_min)) {
       f.push('<span class="fact fact--time">' + ICON.hourglass + esc(dur(p.time_min)) + '</span>');
     }
-    if (has(p.hours)) f.push('<span class="fact">' + ICON.clock + esc(p.hours) + '</span>');
+    if (has(p.hours)) {
+      f.push('<span class="fact">' + ICON.clock
+        + esc(String(p.hours).replace(/^ge\u00f6ffnet\s+/i, '')) + '</span>');
+    }
     if (p.dog === true) f.push('<span class="fact fact--dog">' + ICON.dog + 'Jum ok</span>');
     else if (p.dog === false) f.push('<span class="fact fact--nodog">' + ICON.dog + 'ohne Jum</span>');
     return f.length ? '<div class="facts">' + f.join('') + '</div>' : '';
@@ -560,8 +632,6 @@
       + '</p>'
       + (has(p.note) ? '<p class="card__note">' + esc(p.note) + '</p>' : '')
       + factsHtml(p)
-      + (p.tags.length ? '<p class="card__tags">' + p.tags.slice(0, 4).map(function (t) {
-          return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</p>' : '')
       + '<button type="button" class="card__open" data-open="' + esc(p.id) + '"'
       + ' aria-label="' + esc(p.name) + ' — Details"></button>'
       + '<span class="card__marks">'
@@ -573,6 +643,311 @@
       + ICON.checkRound + '</button>'
       + '</span>'
       + '</article>';
+  }
+
+
+  /* ------------------------------------------------------------- Heute */
+
+  /* Tagesabschnitte. "until" ist das Ende in Minuten seit Mitternacht und
+     dient zugleich als Frage "geht sich das heute noch aus?". */
+  var MOMENTS = [
+    { id: 'frueh',      label: 'Morgen',     until: 11 * 60,      kicker: 'Für den Morgen' },
+    { id: 'mittag',     label: 'Mittag',     until: 14 * 60 + 30, kicker: 'Für den Mittag' },
+    { id: 'nachmittag', label: 'Nachmittag', until: 18 * 60,      kicker: 'Für den Nachmittag' },
+    { id: 'abend',      label: 'Abend',      until: 23 * 60,      kicker: 'Für heute Abend' }
+  ];
+
+  var BADGE_MOMENT = {
+    'Früh morgens': ['frueh'],
+    'Mittags': ['mittag'],
+    'Nur mittags': ['mittag'],
+    'Nur Sa/So mittags': ['mittag'],
+    'Nachmittags': ['nachmittag'],
+    'Der Abend': ['abend'],
+    'Der zweite grosse Abend': ['abend'],
+    'Sonnenuntergang': ['abend'],
+    'Abendlicht': ['abend'],
+    'Livemusik': ['abend'],
+    'Cocktails': ['abend'],
+    'Ganzer Tag': ['frueh']
+  };
+
+  var INDOOR_YES = ['museum', 'kirche', 'supermarkt', 'notfall', 'regen'];
+  var INDOOR_NO  = ['strand', 'natur', 'wandern', 'rad', 'park', 'festung', 'seeblick',
+                    'schiff', 'wasser', 'markt'];
+
+  /* Öffnungszeiten stehen als Freitext da ("geöffnet bis 22:30", "täglich
+     18–23, Ruhetag Mittwoch"). Was sich sicher lesen lässt, wird gelesen;
+     alles andere bleibt null. Daraus wird nie "hat offen" abgeleitet —
+     nur "schließt gleich", und das auch nur, wenn eine Zeit dasteht. */
+  function hoursWindow(h) {
+    if (!has(h)) return { open: null, close: null };
+    var t = String(h), open = null, close = null, m;
+    m = t.match(/(?:^|[\s·,])(?:ab|öffnet)\s*(\d{1,2})[:.](\d{2})/i);
+    if (m) open = (+m[1]) * 60 + (+m[2]);
+    m = t.match(/bis\s*(?:ca\.\s*)?(\d{1,2})[:.](\d{2})/i);
+    if (m) close = (+m[1]) * 60 + (+m[2]);
+    if (open === null && close === null) {
+      m = t.match(/(\d{1,2})(?:[:.](\d{2}))?\s*[–-]\s*(\d{1,2})(?:[:.](\d{2}))?/);
+      if (m) {
+        open = (+m[1]) * 60 + (+(m[2] || 0));
+        close = (+m[3]) * 60 + (+(m[4] || 0));
+        if (close <= open) close = null;
+      }
+    }
+    return { open: open, close: close };
+  }
+
+  /* Reihenfolge: was im JSON steht, gilt. Erst wenn dort nichts steht, wird
+     hergeleitet — aus badge, Öffnungszeit, Kategorie und Aufenthaltsdauer. */
+  function momentsOf(p) {
+    if (Array.isArray(p.moment) && p.moment.length) return p.moment;
+    if (p._m) return p._m;
+
+    var m = {};
+    var b = has(p.badge) && BADGE_MOMENT[p.badge];
+    if (b) b.forEach(function (x) { m[x] = true; });
+
+    var w = hoursWindow(p.hours);
+    if (w.close !== null && w.close >= 21 * 60) m.abend = true;
+    if (w.open !== null && w.open <= 8 * 60 + 30) m.frueh = true;
+    if (w.open !== null && w.open >= 17 * 60) m.abend = true;
+    if (w.open !== null && w.close !== null && w.open <= 12 * 60 + 30 && w.close >= 14 * 60) m.mittag = true;
+
+    if (p.category === 'cafe') { m.frueh = true; m.nachmittag = true; }
+    if (has(p.time_min) && p.time_min >= 240) m.frueh = true;   // Tagesausflug beginnt morgens
+
+    var out = Object.keys(m);
+    if (!out.length) {
+      /* Nichts abzuleiten: Sehenswertes und Ausflüge passen grundsätzlich
+         in jeden hellen Abschnitt, Essen mittags und abends. Praktisches
+         (Apotheke, Supermarkt, Werkstatt) ist kein Tagesvorschlag. */
+      if (p.category === 'praktisch') out = [];
+      else if (p.category === 'essen') out = ['mittag', 'abend'];
+      else out = ['frueh', 'mittag', 'nachmittag'];
+    }
+    p._m = out;
+    return out;
+  }
+
+  function indoorOf(p) {
+    if (p.indoor === true || p.indoor === false) return p.indoor;
+    if (p.badge === 'Regentag') return true;
+    for (var i = 0; i < INDOOR_YES.length; i++) if (p.tags.indexOf(INDOOR_YES[i]) >= 0) return true;
+    for (var j = 0; j < INDOOR_NO.length; j++) if (p.tags.indexOf(INDOOR_NO[j]) >= 0) return false;
+    return null;                 // ungeklärt — und wird auch nicht behauptet
+  }
+
+  /* Badges wie "18.–20.09.", "26./27.09." oder "Di 22.09." sind Termine.
+     Fällt heute hinein, gehört der Ort nach oben. */
+  function runsToday(p, now) {
+    if (!has(p.badge)) return false;
+    var m = String(p.badge).match(/(\d{1,2})\.(?:\s*[–\/-]\s*(\d{1,2})\.)?\s*(\d{1,2})\./);
+    if (!m) return false;
+    var mon = +m[3], from = +m[1], to = m[2] ? +m[2] : from;
+    return (now.getMonth() + 1) === mon && now.getDate() >= from && now.getDate() <= to;
+  }
+
+  var LOOK_AHEAD = 45;        // Minuten Restzeit, ab denen der nächste Abschnitt dran ist
+
+  function momentNow(mins) {
+    if (mins >= 23 * 60 || mins < 5 * 60) return { m: MOMENTS[0], tomorrow: true, soon: false };
+    for (var i = 0; i < MOMENTS.length; i++) {
+      if (mins < MOMENTS[i].until) {
+        /* Kurz vor Schluss bringt der laufende Abschnitt nichts mehr: um
+           17:40 sucht man den Abend, nicht die letzten zwanzig Minuten
+           Nachmittag. */
+        if (MOMENTS[i].until - mins < LOOK_AHEAD && i < MOMENTS.length - 1) {
+          return { m: MOMENTS[i + 1], tomorrow: false, soon: true };
+        }
+        return { m: MOMENTS[i], tomorrow: false, soon: false };
+      }
+    }
+    return { m: MOMENTS[3], tomorrow: false, soon: false };
+  }
+
+  /* Reicht die Zeit noch? Nur dort gefragt, wo eine Dauer gemeint ist —
+     beim Essen entscheidet nicht die Restzeit des Abschnitts. */
+  function fitsLeft(p, mins, until) {
+    if (p.category === 'essen' || p.category === 'cafe') return true;
+    if (!has(p.time_min)) return true;
+    return mins + (has(p.walk_min) ? p.walk_min : 0) + p.time_min <= until;
+  }
+
+  function unverified(p) {
+    if (has(p.hours) && /ungeprüft|unbestätigt|prüfen/i.test(p.hours)) return true;
+    return p.badge === 'Zeiten prüfen' || p.badge === 'Erst anrufen';
+  }
+
+  function closingSoon(p, mins) {
+    var w = hoursWindow(p.hours);
+    return w.close !== null && w.close - mins < 30 && w.close > mins - 60;
+  }
+
+  function todayList(mid, mins, until, now) {
+    var out = D.places.filter(function (p) {
+      if (momentsOf(p).indexOf(mid) < 0) return false;
+      if (S.jum && p.dog !== true) return false;
+      if (S.wet && indoorOf(p) !== true) return false;
+      if (closingSoon(p, mins)) return false;
+      return true;
+    });
+
+    return out.sort(function (a, b) {
+      var fa = fitsLeft(a, mins, until) ? 0 : 1, fb = fitsLeft(b, mins, until) ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+      var ua = unverified(a) ? 1 : 0, ub = unverified(b) ? 1 : 0;
+      if (ua !== ub) return ua - ub;
+      var ea = runsToday(a, now) ? 1 : 0, eb = runsToday(b, now) ? 1 : 0;
+      if (ea !== eb) return eb - ea;
+      var sa = S.seen.indexOf(a.id) >= 0 ? 1 : 0, sb = S.seen.indexOf(b.id) >= 0 ? 1 : 0;
+      if (sa !== sb) return sa - sb;
+      /* Ohne diese Stufe gewinnt die beste Bewertung, auch wenn sie 51
+         Minuten entfernt liegt. Erst das Erreichbare, dann das Beste darin —
+         dieselbe Schwelle wie der Chip "Zu Fuß". */
+      var na = has(a.walk_min) && a.walk_min <= WALK_MAX ? 0 : 1;
+      var nb = has(b.walk_min) && b.walk_min <= WALK_MAX ? 0 : 1;
+      if (na !== nb) return na - nb;
+      if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
+      return byDistance(a, b);
+    });
+  }
+
+  /* "Tag 5 von 15" steht nirgends in den Daten, lässt sich aber aus dem
+     Untertitel lesen. Passt das Muster nicht, entfällt die Zeile. */
+  var MONTHS = ['januar', 'februar', 'märz', 'april', 'mai', 'juni', 'juli',
+                'august', 'september', 'oktober', 'november', 'dezember'];
+
+  function tripDay(now) {
+    var t = has(D.meta.subtitle) ? String(D.meta.subtitle) : '';
+    var m = t.match(/(\d{1,2})\.\s*[–-]\s*(\d{1,2})\.\s*([A-Za-zÄÖÜäöüß]+)\s*(\d{4})/);
+    if (!m) return null;
+    var mon = MONTHS.indexOf(m[3].toLowerCase());
+    if (mon < 0) return null;
+    var from = new Date(+m[4], mon, +m[1]), to = new Date(+m[4], mon, +m[2]);
+    var day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (day0 < from || day0 > to) return null;
+    var oneDay = 86400000;
+    return { n: Math.round((day0 - from) / oneDay) + 1, of: Math.round((to - from) / oneDay) + 1 };
+  }
+
+
+  /* --------------------------------------------------------- Heute-Ansicht */
+
+  var WEEKDAYS = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  var MONTHS_LONG = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli',
+                     'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+  function hhmm(mins) {
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return h + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  /* Der Satz unter dem Namen wird aus Daten gebaut, nicht erfunden: Weg,
+     Dauer, Hund, Termin. Was nicht dasteht, steht auch nicht da. */
+  function whyLine(p, mins, until, ref, tomorrow) {
+    var bits = [];
+    if (runsToday(p, ref)) bits.push((tomorrow ? 'läuft morgen' : 'läuft heute') + ' (' + esc(p.badge) + ')');
+    if (has(p.rating)) bits.push('★ ' + nf1.format(p.rating));
+    if (has(p.walk_min)) bits.push(p.walk_min + ' Min zu Fuß');
+    else if (has(p.bike_min)) bits.push(p.bike_min + ' Min mit dem Rad');
+    else if (has(p.distance_km)) bits.push(km(p.distance_km));
+    if (has(p.time_label)) bits.push(esc(p.time_label));
+    else if (has(p.time_min)) bits.push(esc(dur(p.time_min)));
+    if (p.dog === true) bits.push('Jum darf mit');
+    if (unverified(p)) bits.push('Zeiten ungeprüft, vorher anrufen');
+    var out = bits.join(' · ');
+    if (!fitsLeft(p, mins, until)) {
+      out += '<span class="today__late"> — dafür ist es heute zu spät</span>';
+    }
+    return out;
+  }
+
+  function pickHtml(p, mins, until, ref, tomorrow) {
+    var on = S.saved.indexOf(p.id) >= 0;
+    return '<p class="today__cat ' + accentClass(p.category) + '">' + esc(catLabel(p.category))
+      + (has(p.hours) ? '<span class="today__hours">' + esc(String(p.hours).replace(/^geöffnet\s+/i, '')) + '</span>' : '')
+      + '</p>'
+      + '<h3 class="today__name">' + esc(p.name) + '</h3>'
+      + (has(p.note) ? '<p class="today__note">' + esc(p.note) + '</p>' : '')
+      + '<p class="today__why">' + whyLine(p, mins, until, ref, tomorrow) + '</p>'
+      + '<div class="today__acts">'
+      + '<button type="button" class="btn btn--primary" data-open="' + esc(p.id) + '">Ansehen</button>'
+      + '<button type="button" class="btn" data-save="' + esc(p.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
+      + ICON.star + (on ? 'Gemerkt' : 'Merken') + '</button>'
+      + '<button type="button" class="btn" id="today-next">' + ICON.shuffle + 'Anderer</button>'
+      + '</div>';
+  }
+
+  function smallHtml(p) {
+    return '<button type="button" class="today__small" data-open="' + esc(p.id) + '">'
+      + '<span class="today__small-n">' + esc(p.name) + '</span>'
+      + '<span class="today__small-m">' + esc(catLabel(p.category))
+      + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min' : '')
+      + (p.dog === true ? ' · Jum ok' : '') + '</span>'
+      + '</button>';
+  }
+
+  function todayHtml() {
+    var now = new Date();
+    var mins = now.getHours() * 60 + now.getMinutes();
+    var mn = momentNow(mins);
+    var until = mn.m.until;
+    var trip = tripDay(now);
+    var ref = mn.tomorrow
+      ? new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      : now;
+
+    /* Beim Vorausschauen rechnet die Restzeit ab dem Beginn des nächsten
+       Abschnitts — sonst fällt alles durch, was "jetzt" nicht mehr passt. */
+    var from = mn.tomorrow ? 0 : (mn.soon ? until - 180 : mins);
+    var list = todayList(mn.m.id, from, until, ref);
+    var pick = list.length ? list[S.pick % list.length] : null;
+    var others = list.filter(function (p) { return !pick || p.id !== pick.id; }).slice(0, 2);
+
+    var head = '<p class="today__date">' + WEEKDAYS[now.getDay()] + ', ' + now.getDate() + '. '
+      + MONTHS_LONG[now.getMonth()]
+      + (trip ? ' · Tag ' + trip.n + ' von ' + trip.of : '') + '</p>'
+      + '<h2 class="today__now">' + (mn.tomorrow ? 'Morgen früh' : (mn.soon ? 'Gleich: ' : '') + mn.m.label)
+      + '<span class="today__clock">' + hhmm(mins) + '</span></h2>';
+
+    /* Das Wetter weiß die App nicht und holt es auch nicht — sie fragt. */
+    var weather = '<div class="today__weather">'
+      + '<span>Draußen ist es</span>'
+      + '<button type="button" class="chip" id="wx-dry" aria-pressed="' + (S.wet ? 'false' : 'true') + '">schön</button>'
+      + '<button type="button" class="chip" id="wx-wet" aria-pressed="' + (S.wet ? 'true' : 'false') + '">nass</button>'
+      + '</div>';
+
+    var body;
+    if (pick) {
+      body = '<div class="today__pick">'
+        + '<p class="today__kicker">' + (mn.tomorrow ? 'Für morgen früh' : mn.m.kicker)
+        + (S.jum ? ' · mit Jum' : '') + '</p>'
+        + pickHtml(pick, from, until, ref, mn.tomorrow)
+        + '</div>'
+        + (others.length
+            ? '<p class="today__lead">Sonst noch</p><div class="today__smalls">'
+              + others.map(smallHtml).join('') + '</div>'
+            : '');
+    } else {
+      /* Lieber zugeben, dass nichts Passendes dasteht, als etwas Schwaches
+         vorschlagen. Der Weg in die Liste steht direkt darunter. */
+      var why;
+      if (S.wet) {
+        var unknown = D.places.filter(function (p) { return indoorOf(p) === null; }).length;
+        why = 'Bei ' + unknown + ' von ' + D.places.length + ' Orten ist nicht hinterlegt, '
+            + 'ob man dort im Trockenen sitzt. Ungeprüft wird hier nichts vorgeschlagen.';
+      } else {
+        why = 'Für diesen Tagesabschnitt ist nichts hinterlegt.';
+      }
+      body = '<div class="today__none"><h3>Heute steht hier nichts</h3><p>' + why
+        + (S.jum ? ' Der Schalter „Mit Jum“ schränkt zusätzlich ein.' : '') + '</p></div>';
+    }
+
+    return head + weather + body
+      + '<button type="button" class="today__all" id="today-all">'
+      + 'Alle ' + D.places.length + ' Orte durchsuchen'
+      + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>';
   }
 
   /* ----------------------------------------------------------- Info-Ansicht */
@@ -693,17 +1068,15 @@
   }
 
 
-  function openSheet(id) {
-    var p = null;
-    for (var i = 0; i < D.places.length; i++) if (D.places[i].id === id) { p = D.places[i]; break; }
-    if (!p) return;
-
-    S.openId = id;
+  /* Gemeinsamer Unterbau fuer Ort und Filter: Body-Fixierung, Scrim, Fokus,
+     Wischen nach unten und die iOS-Eigenheiten stecken hier — und nur hier.
+     Ein zweites Sheet daneben wuerde die Haertung ein zweites Mal brauchen. */
+  function showSheet(html, cls) {
+    var sheet = $('sheet');
     lastFocus = document.activeElement;
 
-    var sheet = $('sheet');
-    sheet.className = 'sheet ' + accentClass(p.category);
-    $('sheet-body').innerHTML = sheetHtml(p);
+    sheet.className = 'sheet' + (cls ? ' ' + cls : '');
+    $('sheet-body').innerHTML = html;
 
     lockBody();
 
@@ -718,6 +1091,23 @@
     });
 
     $('sheet-close').focus({ preventScroll: true });
+  }
+
+  function openSheet(id) {
+    var p = null;
+    for (var i = 0; i < D.places.length; i++) if (D.places[i].id === id) { p = D.places[i]; break; }
+    if (!p) return;
+
+    S.openId = id;
+    S.filterOpen = false;
+    showSheet(sheetHtml(p), accentClass(p.category));
+  }
+
+  function openFilterSheet() {
+    S.openId = null;
+    S.filterOpen = true;
+    showSheet(filterSheetHtml(), 'sheet--filter');
+    renderCount();          // die Trefferzahl steht sonst erst nach dem ersten Tipp da
   }
 
   function closeSheet() {
@@ -735,9 +1125,12 @@
     }, 260);
 
     var id = S.openId;
+    var wasFilter = S.filterOpen;
     S.openId = null;
+    S.filterOpen = false;
 
     var back = id ? document.querySelector('[data-open="' + id.replace(/"/g, '\\"') + '"]') : null;
+    if (wasFilter) back = $('chip-tags');
     if (back) back.focus({ preventScroll: true });
     else if (lastFocus && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
   }
@@ -1086,6 +1479,7 @@
 
   function bind() {
     $('theme-btn').addEventListener('click', cycleTheme);
+    $('jum-btn').addEventListener('click', toggleJum);
 
     if (window.matchMedia) {
       var mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1119,19 +1513,10 @@
     $('flag-row').addEventListener('click', function (e) {
       var b = e.target.closest('.chip');
       if (!b) return;
-      if (b.id === 'chip-dog') S.dog = !S.dog;
+      if (b.id === 'chip-tags') { openFilterSheet(); return; }
       if (b.id === 'chip-walk') S.walk = !S.walk;
       if (b.id === 'chip-unseen') S.unseen = !S.unseen;
       if (b.id === 'chip-short') S.short = !S.short;
-      render();
-    });
-
-    $('tag-row').addEventListener('click', function (e) {
-      var more = e.target.closest('#tags-more');
-      if (more) { S.tagsOpen = !S.tagsOpen; buildTagChips(); syncChips(); return; }
-      var b = e.target.closest('[data-tag]');
-      if (!b) return;
-      toggleIn(S.tags, b.getAttribute('data-tag'));
       render();
     });
 
@@ -1173,10 +1558,33 @@
       var save = e.target.closest('[data-save]');
       if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); return; }
       var seen = e.target.closest('[data-seen]');
-      if (seen) { e.preventDefault(); toggleSeen(seen.getAttribute('data-seen')); }
+      if (seen) { e.preventDefault(); toggleSeen(seen.getAttribute('data-seen')); return; }
+
+      /* Filter-Sheet: die Liste dahinter zieht sofort nach, das Sheet bleibt
+         offen. Die Zahl am Tag-Knopf zeigt, wie viele Tags aktiv sind. */
+      var tag = e.target.closest('[data-tag]');
+      if (tag) {
+        e.preventDefault();
+        toggleIn(S.tags, tag.getAttribute('data-tag'));
+        render();
+        return;
+      }
+      if (e.target.closest('#tags-clear')) { S.tags = []; render(); return; }
+      if (e.target.closest('#tags-done')) { closeSheet(); }
     });
 
     $('empty-reset').addEventListener('click', resetFilters);
+
+    $('today').addEventListener('click', function (e) {
+      if (e.target.closest('#today-all')) { setView('orte'); return; }
+      if (e.target.closest('#today-next')) { S.pick += 1; render(); return; }
+      if (e.target.closest('#wx-dry')) { if (S.wet) { S.wet = false; S.pick = 0; render(); } return; }
+      if (e.target.closest('#wx-wet')) { if (!S.wet) { S.wet = true; S.pick = 0; render(); } return; }
+      var save = e.target.closest('[data-save]');
+      if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); render(); return; }
+      var open = e.target.closest('[data-open]');
+      if (open) openSheet(open.getAttribute('data-open'));
+    });
 
     onTap($('scrim'), closeSheet);
     onTap($('sheet-close'), closeSheet);
