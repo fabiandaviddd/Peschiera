@@ -611,11 +611,49 @@ const appSrc = readFileSync(join(root, 'app.js'), 'utf8');
 const swSrc = readFileSync(join(root, 'sw.js'), 'utf8');
 const appV = (appSrc.match(/var VERSION = '([^']+)'/) || [])[1];
 const swV = (swSrc.match(/var CACHE = 'peschiera-([^']+)'/) || [])[1];
-const swF = (swSrc.match(/var FONTS = 'peschiera-fonts-([^']+)'/) || [])[1];
 truthy('VERSION steht in app.js', !!appV);
 truthy('CACHE steht in sw.js', !!swV);
 ok('CACHE passt zu VERSION', swV, appV ? appV.split(/[\s·]/)[0] : null);
-ok('FONTS passt zu VERSION', swF, appV ? appV.split(/[\s·]/)[0] : null);
+/* Der zweite Cache FONTS ist mit v23 entfallen: die Schriften liegen im Repo
+   und stehen in SHELL, also raeumt CACHE sie mit ab. Bliebe die Ausnahme in
+   activate() stehen, truege jedes Bestandsgeraet den alten Google-Cache
+   dauerhaft mit sich herum. */
+truthy('kein zweiter Schriften-Cache mehr in sw.js', !/FONTS/.test(swSrc));
+
+group('Schriften liegen im Repo');
+
+/* Bis v22 kam das Schriften-Stylesheet von fonts.googleapis.com und
+   blockierte das erste Rendern (gemessen 229 ms). Wer es zurueckholt, soll
+   hier stolpern. */
+for (const datei of ['index.html', 'selbsttest.html', 'koordinaten.html']) {
+  let html = '';
+  try { html = readFileSync(join(root, datei), 'utf8'); } catch { continue; }
+  const verweise = (html.match(/(?:href|src)="https:\/\/fonts\.(?:googleapis|gstatic)\.com[^"]*"/g) || []);
+  ok(datei + ' laedt keine Schrift von Google', verweise, []);
+}
+
+/* Jede Datei, die style.css als Schrift anzieht, muss es auch geben --
+   ein Tippfehler im Pfad faellt sonst erst auf dem Geraet auf, und zwar
+   als stiller Rueckfall auf Georgia. */
+const cssSrc = readFileSync(join(root, 'style.css'), 'utf8');
+const schriften = [...cssSrc.matchAll(/src:\s*url\('(\.[^']+)'\)/g)].map((m) => m[1]);
+truthy('style.css zieht Schriften aus dem Repo an', schriften.length === 4);
+const schriftFehlt = schriften.filter((rel) => {
+  try { return readFileSync(join(root, rel)).subarray(0, 4).toString() !== 'wOF2'; }
+  catch { return true; }
+});
+ok('jede angezogene Schrift liegt da und ist woff2', schriftFehlt, []);
+
+/* Vorgeladen werden darf nur, was auch angezogen wird -- ein preload auf eine
+   Datei, die keine Regel nutzt, laedt sie umsonst. */
+const idx = readFileSync(join(root, 'index.html'), 'utf8');
+const vorab = [...idx.matchAll(/rel="preload"[^>]*href="(\.[^"]+)"/g)].map((m) => m[1]);
+ok('jede vorgeladene Schrift wird auch angezogen',
+  vorab.filter((v) => schriften.indexOf(v) < 0), []);
+truthy('preload traegt crossorigin', vorab.length === 0
+  || (idx.match(/rel="preload"[^>]*crossorigin[^>]*>/g) || []).length === vorab.length);
+
+group('app.js und sw.js — dieselbe Fassung (Fortsetzung)');
 
 /* Jede Datei in SHELL muss es auch geben, sonst fehlt sie offline. */
 /* Kommentare vorher heraus: ein Blockkommentar im Array hat den Parser am

@@ -3,6 +3,65 @@
    Mobile first, Spalte max. 32rem, Touch-Ziele ≥ 44px, Kontrast AA.
    ========================================================================== */
 
+/* --- Schriften ----------------------------------------------------------
+   Lagen bis v22 bei Google. Das Stylesheet von fonts.googleapis.com blockiert
+   das erste Rendern und brauchte gemessen 229 ms, waehrend alle eigenen
+   Dateien in 3 bis 8 ms da waren -- bis dahin blieb die Seite weiss. Dazu
+   meldete jeder Start die IP des Geraets an einen Dritten. Leaflet liegt aus
+   demselben Grund schon im Repo.
+
+   Vier Dateien, nicht sechs: Google liefert fuer Fraunces 500/600 und fuer
+   Karla 400/500/700 jeweils dieselbe URL -- es sind variable Schriften, eine
+   Datei deckt den ganzen Bereich ab. Deshalb hier font-weight als Spanne.
+   Die Achse opsz von Fraunces bleibt erhalten; Safari waehlt ueber
+   font-optical-sizing (Vorgabe: auto) selbst die Schnittgroesse.
+
+   unicode-range bleibt stehen, damit latin-ext nur geladen wird, wenn ein
+   Zeichen daraus vorkommt. Genau einer der 101 Orte braucht es
+   ("BASE by Garage Coffee Bros" mit U+018E). Die Bereiche sind woertlich die
+   von Google -- eigene Grenzen zu erfinden hiesse raten, welche Zeichen in
+   welcher Datei liegen.
+
+   Die Zeichen ohne Deckung (Stern, Haken, Kreuz, >=, Durchmesser) fielen auch
+   vorher schon auf die Systemschrift zurueck: sie stehen in keinem der beiden
+   Bereiche. Kein Rueckschritt, nur jetzt nachweisbar.
+
+   Beim Austausch einer Schriftdatei CACHE in sw.js hochzaehlen -- die
+   Dateinamen tragen keine Fassung.
+   ------------------------------------------------------------------------ */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url('./fonts/fraunces-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url('./fonts/fraunces-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Karla';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./fonts/karla-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Karla';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./fonts/karla-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 /* --- Tokens: Light (v1-Palette) ----------------------------------------- */
 :root {
   --bg:    #F4F0E6;
@@ -50,7 +109,13 @@
   --t-name:    1.0625rem;  /* Fraunces 600 — Ortsname in der Zeile */
   --t-body:    .9375rem;   /* Karla 400 — Notiz, Fliesstext */
   --t-meta:    .8125rem;   /* Karla 500 — Fakten, Chips, Labels */
-  --t-micro:   .6875rem;   /* Karla 700 — Marken, Zaehler, Tableiste */
+  /* Stand bis v22 auf .6875rem = 11px. Das trug nicht nur Marken, sondern
+     auch die Beschriftung der Tableiste -- also ein Bedienelement, das
+     dauerhaft sichtbar ist. 11px ist darunter zu klein; iOS' Textvergroesserung
+     greift auf rem nicht durch, es bleibt bei 11px, egal was im System steht.
+     Die Leiste als Ganzes bleibt sechsstufig, nur die unterste Stufe rueckt
+     um 1px hoch. */
+  --t-micro:   .75rem;     /* Karla 700 — Marken und Zaehler */
 
   --t: 160ms;
   --ease: cubic-bezier(.2,.7,.3,1);
@@ -783,7 +848,10 @@ body.is-typing .tabs { transform: translateY(110%); }
 .tab {
   flex: 1; min-height: 3.6rem; padding: .45rem .2rem;
   display: grid; justify-items: center; gap: .1rem;
-  font-size: var(--t-micro); font-weight: 500; color: var(--soft);
+  /* Eine Stufe ueber den Marken: die Reiter sind Beschriftung, keine Marke.
+     Bei 402px Breite bleiben je Reiter rund 80px -- "Gemerkt" als laengstes
+     Wort braucht bei 13px etwa 55px, es bricht also nichts um. */
+  font-size: var(--t-meta); font-weight: 500; color: var(--soft);
   cursor: pointer;
   transition: color var(--t) var(--ease);
   -webkit-tap-highlight-color: transparent;
@@ -1010,6 +1078,30 @@ body.is-typing .tabs { transform: translateY(110%); }
     animation-duration: .01ms !important; animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
   }
+
+  /* Der pauschale Riegel darueber traf bis v22 auch das Sheet, und das ist
+     zu viel: die 260 ms, in denen es von unten hereinfaehrt, sind keine
+     Zierde. Sie sagen, dass das Detail UEBER der Liste liegt und man dorthin
+     zurueckkommt. Ohne sie tauscht der Bildschirm einfach seinen Inhalt aus,
+     und man weiss nicht mehr, wo man ist.
+
+     WCAG 2.3.3 verlangt, nicht wesentliche Bewegung abschaltbar zu machen --
+     nicht jede. Deshalb hier: Bewegung raus, Uebergang bleibt. Statt zu
+     fahren blendet das Sheet ein. 160 ms, weil kuerzer nicht mehr als
+     Uebergang gelesen wird.
+
+     transform muss !important tragen: waehrend des Wischens setzt app.js
+     translateY per Inline-Stil, und nur !important sticht den. Die
+     Zuweisung selbst bleibt unangetastet, der Code liest style.transform
+     und nicht den berechneten Wert -- Schliessen per Wisch funktioniert
+     also weiter, es bewegt sich dabei nur nichts. */
+  .scrim, .sheet { transition-duration: 160ms !important; }
+  .sheet {
+    transform: none !important;
+    opacity: 0;
+    transition-property: opacity !important;
+  }
+  .sheet.is-on { opacity: 1; }
 }
 
 /* --- Druck -------------------------------------------------------------- */

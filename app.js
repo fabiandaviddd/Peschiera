@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v22 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v23 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';

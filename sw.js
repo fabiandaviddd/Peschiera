@@ -1,17 +1,15 @@
 /* ==========================================================================
    Peschiera kompakt — Service Worker
 
-   App-Shell und places.json werden vorgehalten, damit nach einmaligem Laden
-   alles offline funktioniert. Google Fonts werden beim ersten Abruf
-   mitgespeichert.
+   App-Shell, Schriften und places.json werden vorgehalten, damit nach
+   einmaligem Laden alles offline funktioniert.
 
    Beim Ändern von Dateien CACHE hochzählen — dann räumt activate() die alte
    Version ab und der neue Stand übernimmt beim nächsten Start.
    ========================================================================== */
 'use strict';
 
-var CACHE = 'peschiera-v22';
-var FONTS = 'peschiera-fonts-v22';
+var CACHE = 'peschiera-v23';
 var TIMEOUT = 2500;   // ms, danach greift der Cache
 
 /* Leaflet liegt im Repo, nicht auf einem fremden Server -- sonst waere die
@@ -33,7 +31,11 @@ var SHELL = [
   './icons/apple-touch-icon.png',
   './icons/favicon-32.png',
   './vendor/leaflet/leaflet.js',
-  './vendor/leaflet/leaflet.css'
+  './vendor/leaflet/leaflet.css',
+  './fonts/fraunces-latin.woff2',
+  './fonts/fraunces-latin-ext.woff2',
+  './fonts/karla-latin.woff2',
+  './fonts/karla-latin-ext.woff2'
 ];
 
 self.addEventListener('install', function (e) {
@@ -51,7 +53,9 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(keys.map(function (k) {
-        if (k !== CACHE && k !== FONTS) return caches.delete(k);
+        /* Ohne Ausnahme -- das raeumt auch den alten peschiera-fonts-*
+           Cache ab, den Bestandsgeraete von der Google-Fassung noch haben. */
+        if (k !== CACHE) return caches.delete(k);
       }));
     }).then(function () { return self.clients.claim(); })
   );
@@ -68,10 +72,6 @@ self.addEventListener('message', function (e) {
   else if (e.source && e.source.postMessage) e.source.postMessage(reply);
 });
 
-function isFont(url) {
-  return url.host === 'fonts.googleapis.com' || url.host === 'fonts.gstatic.com';
-}
-
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET') return;
@@ -79,26 +79,13 @@ self.addEventListener('fetch', function (e) {
   var url;
   try { url = new URL(req.url); } catch (err) { return; }
 
-  /* Google Fonts: erst Cache, dann Netz — Schriften ändern sich nicht. */
-  if (isFont(url)) {
-    e.respondWith(
-      caches.open(FONTS).then(function (c) {
-        return c.match(req).then(function (hit) {
-          if (hit) return hit;
-          return fetch(req).then(function (res) {
-            if (res && res.ok) c.put(req, res.clone());
-            return res;
-          });
-        });
-      }).catch(function () { return fetch(req); })
-    );
-    return;
-  }
-
   if (url.origin !== self.location.origin) return;
 
-  /* Bilder und Icons ändern sich praktisch nie: erst Cache. */
-  if (req.destination === 'image') {
+  /* Bilder, Icons und Schriften ändern sich praktisch nie: erst Cache.
+     Für die Schriften ist das der Ersatz des alten Google-Zweiges. Sie dürfen
+     nicht in den Netz-zuerst-Zweig unten fallen — sonst wartete jeder Start
+     bis zu TIMEOUT auf 163 kB, die sich nie ändern. */
+  if (req.destination === 'image' || req.destination === 'font') {
     e.respondWith(
       caches.open(CACHE).then(function (c) {
         return c.match(req, { ignoreSearch: true }).then(function (hit) {

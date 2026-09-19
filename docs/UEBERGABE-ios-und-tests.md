@@ -147,6 +147,10 @@ bevor die Dateien im Repo liegen.
 
 Google Fonts ist erreichbar.
 
+> **Nachtrag 19.09.2026, v23:** irrelevant geworden — die Schriften liegen
+> jetzt unter `fonts/` im Repo, genau wie Leaflet. Nichts lädt mehr von
+> einem fremden Server.
+
 ---
 
 ## 6. Offen, mit Zuständigkeit
@@ -156,7 +160,7 @@ Google Fonts ist erreichbar.
 | 1 Ort ohne Koordinate | Benutzer: `koordinaten.html` öffnen, **Starten** |
 | Leaflet vendoren | Benutzer: drei `curl`-Befehle auf dem Mac |
 | `dog` bei 58 von 101 Orten ungeklärt | Recherche. Größte inhaltliche Lücke — betrifft jede Entscheidung mit dem Hund |
-| Schriften laden auf dem iPhone? | Ungeprüft. `selbsttest.html` beantwortet es |
+| Schriften laden auf dem iPhone? | Seit v23 aus dem Repo statt von Google. `selbsttest.html` zeigt es weiterhin an |
 | Kartenansicht | Erst wenn Koordinaten und Leaflet da sind |
 
 ---

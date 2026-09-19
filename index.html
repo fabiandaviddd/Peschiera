@@ -26,10 +26,14 @@
 <link rel="apple-touch-startup-image" href="./icons/splash-828x1792.png" media="(device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2)">
 <link rel="apple-touch-startup-image" href="./icons/splash-750x1334.png" media="(device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2)">
 
-<!-- Einzige externe Quelle: Google Fonts. crossorigin, damit der Service Worker die Antworten cachen kann. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" crossorigin href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Karla:wght@400;500;700&display=swap">
+<!-- Keine externe Quelle mehr. Die Schriften liegen seit v23 unter ./fonts/;
+     das Stylesheet von fonts.googleapis.com blockierte das erste Rendern.
+     Vorgeladen wird nur, was sicher gebraucht wird: die beiden latin-Dateien.
+     latin-ext holt der Browser selbst, sobald ein Zeichen daraus vorkommt.
+     crossorigin ist auch bei eigenen Schriften Pflicht -- ohne das Attribut
+     laedt der Browser die Datei ein zweites Mal. -->
+<link rel="preload" as="font" type="font/woff2" crossorigin href="./fonts/fraunces-latin.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="./fonts/karla-latin.woff2">
 
 <link rel="stylesheet" href="./style.css">
 </head>

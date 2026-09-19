@@ -56,9 +56,28 @@ schreibt die Fassung dazu, für die es gilt.
 | **Detailansicht (Rest)** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. Solange es offen ist, liegt der Rest der Seite still: `inert` plus `aria-hidden`, dazu ein Tab-Ring im Sheet als Rückfallebene für Engines ohne `inert`. Ohne das führt `aria-modal` nur in die Irre — der Tabulator lief vorher hinter dem Sheet weiter durch die Liste. |
 | **Info** | „Gut zu wissen" (die 17 Hinweise aus `merken`), „Offene Punkte" (die 18 aus `open_questions`, mit Telefonnummer als Link) und der Faktencheck (13 Korrekturen). |
 | **Dark Mode** | Über `prefers-color-scheme`, mit manuellem Override. Der Knopf oben rechts schaltet automatisch → hell → dunkel. |
-| **Farbe und Schrift** | Fünf Kategoriefarben, je eine pro Kategorie (`praktisch` hat seit v8 ein eigenes, entsättigtes Stein statt des Seeblaus der Ausflüge). Gold heißt Merkliste, Verde heißt Jum, Ziegel heißt Achtung, Seeblau heißt „hier ist etwas an". Sechs Schriftgrößen als Tokens (`--t-display` bis `--t-micro`); Versalien gibt es nur noch an drei Stellen, alle in „Heute". Alle Textfarben ≥ 4,5:1 in hell und dunkel, im gerenderten DOM gemessen. |
+| **Farbe und Schrift** | Fünf Kategoriefarben, je eine pro Kategorie (`praktisch` hat seit v8 ein eigenes, entsättigtes Stein statt des Seeblaus der Ausflüge). Gold heißt Merkliste, Verde heißt Jum, Ziegel heißt Achtung, Seeblau heißt „hier ist etwas an". Sechs Schriftgrößen als Tokens (`--t-display` bis `--t-micro`, unterste Stufe
+seit v23 12px statt 11px, die Tableiste eine Stufe darüber); Versalien gibt es nur noch an drei Stellen, alle in „Heute". Alle Textfarben ≥ 4,5:1 in hell und dunkel, im gerenderten DOM gemessen. |
 
-Keine Cookies, kein Tracking, keine externen Requests außer Google Fonts.
+Keine Cookies, kein Tracking, **keine externen Requests.** Seit v23 gilt das
+ohne Einschränkung: die Schriften lagen bis dahin bei Google und sind jetzt
+unter `fonts/` im Repo. Das Stylesheet von `fonts.googleapis.com` blockierte
+das erste Rendern und meldete bei jedem Start die IP des Geräts an einen
+Dritten.
+
+Gemessen am 19.09.2026, gleicher Server, gleicher Browser, einmal mit und
+einmal ohne die Änderung:
+
+| | v22 (Google) | v23 (lokal) |
+|---|---|---|
+| First Contentful Paint | 284 ms | **56 ms** |
+| Requests | 5, davon 1 fremd | 7, davon 0 fremd |
+
+Die 228 ms sind fast genau die Zeit, die das fremde Stylesheet allein brauchte
+(229 ms). Dass es jetzt zwei Requests mehr sind, kostet nichts: die
+Schriftdateien liegen auf demselben Server und sind in 8 bis 9 ms da,
+vorgeladen parallel zum CSS. Vier Dateien statt sechs, weil Fraunces und Karla
+variable Schriften sind — Google liefert für 500 und 600 dieselbe Datei.
 
 ## Bedienung in zehn Sekunden
 
@@ -385,6 +404,9 @@ Wahrheit aufzumachen.
   nicht, von wo die Entfernungen in der Liste gelten.
 - **Nadel antippen öffnet dasselbe Sheet** wie eine Listenzeile.
 - **Leaflet 1.9.4 liegt unter `vendor/leaflet/`** im Repo, BSD-2-Clause.
+- **Fraunces und Karla liegen unter `fonts/`** im Repo, SIL Open Font
+  License 1.1. Lizenztext und Herkunft stehen in `fonts/LICENSE.md`; die
+  OFL erlaubt das Mitliefern ausdrücklich.
   Kein CDN zur Laufzeit. Geladen wird es trotzdem erst beim ersten Öffnen der
   Karte: 162 kB beim Start zu zahlen für eine Ansicht, die man vielleicht nie
   aufmacht, wäre die falsche Reihenfolge.
@@ -399,7 +421,8 @@ Abhängigkeit — bewusst noch nicht gebaut.
 
 **Hinweis für Tests in dieser Umgebung:** das hier verwendete Chromium traut
 dem MITM-Zertifikat des Agent-Proxys nicht, alle fremden Anfragen enden in
-`ERR_ABORTED` — deshalb laden weder Kartenkacheln noch Google Fonts. Mit
+`ERR_ABORTED` — deshalb laden die Kartenkacheln nicht. (Die Schriften waren
+bis v23 derselbe Fall; sie liegen jetzt im Repo und laden hier normal.) Mit
 `ignoreHTTPSErrors: true` laden sie (am 19.09.2026 nachgestellt, 200er von
 `tile.openstreetmap.org`). Das ist eine Eigenheit der Umgebung, kein Fehler
 der App. `scripts/browser/karte.mjs` prüft deshalb alles außer den Kacheln.
@@ -420,11 +443,12 @@ python3 scripts/make-icons.py
 index.html              Shell
 selbsttest.html         Diagnoseseite für echte Geräte (nicht Teil der App)
 koordinaten.html        Einmalige Koordinatensuche im Browser (nicht Teil der App)
-style.css               Tokens, Light und Dark, Layout
+style.css               Tokens, Light und Dark, Layout, @font-face
 app.js                  Laden, Zustand, Filter, Sortierung, Sheet, Merkliste
-sw.js                   Service Worker: App-Shell, places.json, Google Fonts
+sw.js                   Service Worker: App-Shell, Schriften, places.json
 manifest.webmanifest
 data/places.json        Alle Inhalte
+fonts/                  Fraunces und Karla als woff2 (latin, latin-ext)
 icons/                  App-Icons und iOS-Startbilder
 scripts/test-logic.mjs  Prüfstand für die Freitext-Logik und die Daten (node)
 scripts/add-coords.mjs  einmaliges Geocoding für die Karte
@@ -444,9 +468,11 @@ Kontrast richtig messen, was iOS anders macht) und was offen ist.
 Sortierung kombiniert, Merkliste über einen Reload, Detail-Sheet ohne
 Layout-Shift, Dark Mode samt Override und Systempräferenz, Touch-Ziele,
 Flugmodus-Test (offline laden, suchen, Merkliste), Fehlerzustand mit Retry und
-der `file://`-Fall. Google Fonts waren in der Build-Umgebung nicht erreichbar —
-die Fallback-Stacks (Georgia, `system-ui`) sind geprüft, Fraunces und Karla
-selbst nicht.
+der `file://`-Fall. Seit v23 prüft die Abnahme auch die Schriften selbst: dass
+keine von einem fremden Server kommt, dass keine doppelt geladen wird und dass
+die variable Gewichtsachse wirkt (500 und 600 kommen aus **einer** Datei und
+müssen verschieden breit setzen). Bis v22 ging nur der Fallback-Stack, weil
+Google aus der Build-Umgebung nie antwortete.
 
 Alle Angaben ohne Gewähr. Bewertungen und Öffnungsstatus sind Google-Stände vom
 17.09.2026, Fahrpläne und Preise von Trenitalia, Navigazione Laghi, ATV und den

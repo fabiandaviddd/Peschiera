@@ -463,14 +463,50 @@ const fontUsed = await page.evaluate(() =>
 console.log('       Überschrift laeuft auf: ' + fontUsed);
 ok('Fallback-Stack greift (Fraunces oder Georgia)', /Fraunces|Georgia|serif/.test(fontUsed));
 
+/* Seit v23 liegen die Schriften im Repo. Damit ist nicht mehr nur der
+   Rueckfall pruefbar, sondern die Schrift selbst -- vorher war das hier
+   nicht moeglich, weil Google aus dieser Umgebung nie antwortete. */
+const schrift = await page.evaluate(async () => {
+  await document.fonts.ready;
+  const woff = performance.getEntriesByType('resource')
+    .filter((e) => e.name.endsWith('.woff2'));
+  const breit = (w) => {
+    const s = document.createElement('span');
+    s.style.cssText = 'position:absolute;visibility:hidden;font:' + w + ' 40px Fraunces';
+    s.textContent = 'Peschiera kompakt';
+    document.body.appendChild(s);
+    const x = s.getBoundingClientRect().width;
+    s.remove();
+    return x;
+  };
+  return {
+    fremd: woff.filter((e) => e.name.indexOf(location.origin) !== 0).map((e) => e.name),
+    doppelt: woff.map((e) => e.name).filter((n, i, a) => a.indexOf(n) !== i),
+    fuenfhundert: document.fonts.check('500 20px Fraunces'),
+    sechshundert: document.fonts.check('600 20px Fraunces'),
+    karla: document.fonts.check('700 15px Karla'),
+    achseGreift: Math.abs(breit(500) - breit(600)) > 1
+  };
+});
+ok('keine Schrift von fremdem Server', schrift.fremd, []);
+ok('keine Schrift doppelt geladen (preload mit crossorigin)', schrift.doppelt, []);
+ok('Fraunces 500 ist da', schrift.fuenfhundert);
+ok('Fraunces 600 ist da', schrift.sechshundert);
+ok('Karla 700 ist da', schrift.karla);
+/* Beweist, dass die variable Achse wirkt und nicht nur zweimal derselbe
+   Schnitt geladen wurde -- 500 und 600 kommen aus EINER Datei. */
+ok('Gewichtsachse wirkt (500 und 600 verschieden breit)', schrift.achseGreift);
+
 /* ------------------------------------------------------------------ Konsole */
 console.log('\nKonsole');
-/* Google Fonts sind aus dieser Umgebung nicht erreichbar — steht so in der
-   README. Alles andere waere ein echter Fehler. */
+/* Seit v23 laedt die App nichts mehr von fremden Servern, der Filter auf
+   fonts.googleapis.com ist damit entfallen. Was bleibt, ist das Zertifikat
+   des Proxys dieser Umgebung: Kartenkacheln laufen darueber und werden
+   abgewiesen. Das ist ein Artefakt der Umgebung, kein Fehler der App. */
 const realErrors = errors.filter((e) =>
-  !/ERR_CERT_AUTHORITY_INVALID|ERR_FAILED|fonts\.(googleapis|gstatic)\.com/.test(e));
-ok('keine Fehler in der Konsole (ausser Google Fonts)', realErrors, []);
-console.log(`       ${errors.length - realErrors.length} unterdrueckt (Google Fonts nicht erreichbar)`);
+  !/ERR_CERT_AUTHORITY_INVALID|ERR_FAILED/.test(e));
+ok('keine Fehler in der Konsole', realErrors, []);
+console.log(`       ${errors.length - realErrors.length} unterdrueckt (Proxy-Zertifikat)`);
 
 /* ----------------------------------------------------------------- Ergebnis */
 await browser.close();

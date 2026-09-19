@@ -79,6 +79,12 @@ Alternative samt Zahl. Beispiel aus `style.css`:
 **Keine Laufzeit-Requests.** Einzige externe Quelle ist Google Fonts. Keine
 Karten-Tiles, kein Geocoding zur Laufzeit, kein Tracking, keine Cookies.
 
+> **Nachtrag 19.09.2026, v23:** Google Fonts ist entfallen. Die Schriften
+> liegen als woff2 unter `fonts/` und stehen in `SHELL`. Es gibt jetzt
+> **gar keine** externe Quelle mehr. Der zweite Cache `FONTS` in `sw.js`
+> ist damit weg; `activate()` räumt ohne Ausnahme auf, sonst schleppten
+> Bestandsgeräte den alten `peschiera-fonts-*` Cache ewig mit.
+
 **Touch-Ziele ≥ 44 px, Kontrast ≥ 4,5:1** in hell und dunkel.
 
 ---
@@ -206,6 +212,12 @@ In dieser Umgebung nicht erreichbar: `fonts.googleapis.com`,
 **Konsolenfehler von Google Fonts sind hier erwartbar, kein Bug.** Die
 Fallback-Stacks (Georgia, `system-ui`) sind geprüft; Fraunces und Karla
 selbst hat noch nie jemand hier gesehen.
+
+> **Nachtrag 19.09.2026, v23:** gilt nicht mehr. Die Schriften kommen aus
+> dem Repo und sind damit hier erstmals prüfbar — `scripts/browser-abnahme.mjs`
+> belegt, dass beide geladen sind und die variable Gewichtsachse wirkt.
+> Blockiert bleiben `tile.openstreetmap.org`, `nominatim.openstreetmap.org`
+> und `fabiandaviddd.github.io`.
 
 ---
 
