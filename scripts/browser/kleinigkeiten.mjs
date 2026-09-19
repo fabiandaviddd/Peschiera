@@ -110,6 +110,71 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   await B.close();
 }
 
+/* ------------------------------ "Schon gesehen" raeumt "Heute" (v20) */
+/* Bis v19 standen gesehene Orte in "Heute" nur hinten. Bei fuenfzehn
+   Reisetagen fuellt sich der Stapel damit mit Orten, an denen man schon war,
+   und "1 / 37" verspricht eine Auswahl, die es nicht mehr gibt. */
+{
+  const c = await mach(); const p = await c.newPage();
+  await p.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+  await p.waitForSelector('#app:not([hidden])');
+  await p.evaluate(() => { const b = document.getElementById('wx-dry'); if (b) b.click(); });
+  await p.waitForTimeout(200);
+  const vorher = await p.textContent('.today__pos');
+  const erster = (await p.textContent('.today__pick .card__name, .today__name')
+    .catch(() => null)) || await p.evaluate(() =>
+      (document.querySelector('.today__pick h3, .today__pick .today__name') || {}).textContent || '');
+  ok('Heute zeigt einen Vorschlag', !!erster.trim(), erster.trim());
+
+  /* Denselben Ort als gesehen markieren und neu laden. */
+  const id = await p.evaluate(() => {
+    const el = document.querySelector('.today__pick [data-open]');
+    return el ? el.getAttribute('data-open') : null;
+  });
+  ok('Vorschlag hat eine Kennung', !!id, String(id));
+  await p.evaluate((x) => {
+    try { localStorage.setItem('pk.seen', JSON.stringify([x])); } catch (e) {}
+  }, id);
+  await p.reload({ waitUntil: 'networkidle' });
+  await p.waitForSelector('#app:not([hidden])');
+  await p.evaluate(() => { const b = document.getElementById('wx-dry'); if (b) b.click(); });
+  await p.waitForTimeout(200);
+  const jetzt = await p.evaluate(() => {
+    const el = document.querySelector('.today__pick [data-open]');
+    return el ? el.getAttribute('data-open') : null;
+  });
+  ok('gesehener Ort wird nicht mehr vorgeschlagen', jetzt !== id, `${id} -> ${jetzt}`);
+  const nachher = await p.textContent('.today__pos');
+  ok('der Stapel ist um eins kleiner',
+     Number(nachher.split('/')[1]) === Number(vorher.split('/')[1]) - 1,
+     `${vorher.trim()} -> ${nachher.trim()}`);
+  await c.close();
+}
+
+/* Wird ein Abschnitt dadurch leer, sagt der Leerzustand warum und bietet
+   einen Ausweg -- still schrumpfen tut hier nichts. */
+{
+  const c = await mach(); const p = await c.newPage();
+  await p.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+  await p.waitForSelector('#app:not([hidden])');
+  const alleIds = await p.evaluate(() => window.__alle || null);
+  await p.evaluate(async () => {
+    const d = await (await fetch('./data/places.json')).json();
+    localStorage.setItem('pk.seen', JSON.stringify(d.places.map((x) => x.id)));
+  });
+  await p.reload({ waitUntil: 'networkidle' });
+  await p.waitForSelector('#app:not([hidden])');
+  await p.waitForTimeout(300);
+  ok('Leerzustand nennt den Grund',
+     (await p.textContent('.today__none')).includes('schon gesehen'),
+     (await p.textContent('.today__none')).slice(0, 60));
+  ok('… und bietet einen Ausweg', await p.locator('#today-seen').isVisible());
+  await p.click('#today-seen'); await p.waitForTimeout(300);
+  ok('„Trotzdem zeigen" bringt die Orte zurueck',
+     (await p.locator('.today__pick').count()) > 0);
+  await c.close();
+}
+
 await browser.close();
 console.log(R.map((r) => `${r[0]}  ${r[1]}${r[2] ? '  [' + r[2] + ']' : ''}`).join('\n'));
 console.log('\n' + R.filter((r) => r[0] === 'PASS').length + '/' + R.length + ' passed');

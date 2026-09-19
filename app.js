@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v19 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v20 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -37,6 +37,7 @@
     pick: 0,                // welcher Vorschlag gerade dran ist
     mid: null,              // gewaehlter Tagesabschnitt; null = aus der Uhr
     moreOpen: false,        // "Sonst noch" ausgeklappt
+    seenOk: false,          // Gesehene in "Heute" ausnahmsweise doch zeigen
     /* Der Geraetestandort. Bewusst nirgends gespeichert: eine Position ist
        nach dem naechsten Spaziergang falsch, und eine falsche Entfernung ist
        schlechter als gar keine. Wer ihn wieder will, tippt wieder. */
@@ -494,7 +495,7 @@
     if (v === 'heute') {
       /* Zurueck auf "Heute" heisst zurueck auf jetzt: eine Abschnittswahl
          von vorhin waere sonst eine stille Voreinstellung. */
-      S.pick = 0; S.mid = null; S.moreOpen = false;
+      S.pick = 0; S.mid = null; S.moreOpen = false; S.seenOk = false;
       /* "Heute" sucht nicht. Das Feld bleibt dort sichtbar, damit man den
          Bestand ueberhaupt bemerkt — dann darf darin aber kein Text stehen,
          der gar nicht wirkt. */
@@ -1263,7 +1264,11 @@
     return w.close !== null && w.close - mins < 30 && w.close > mins - 60;
   }
 
-  function todayList(mid, mins, until, now) {
+  /* Wie viele Orte der Abschnitt kennt, bevor "schon gesehen" greift.
+     Braucht der Leerzustand, um sagen zu koennen, woran es liegt. */
+  var todayGesehen = 0;
+
+  function todayList(mid, mins, until, now, mitGesehenen) {
     var out = D.places.filter(function (p) {
       if (momentsOf(p).indexOf(mid) < 0) return false;
       if (S.jum && p.dog !== true) return false;
@@ -1271,6 +1276,17 @@
       if (closingSoon(p, mins)) return false;
       return true;
     });
+
+    /* Gesehenes verschwindet aus "Heute". Bis v19 stand es nur hinten in der
+       Reihenfolge -- bei fuenfzehn Reisetagen heisst das, dass der Stapel sich
+       mit Orten fuellt, an denen man schon war, und der Zaehler "1 / 37" eine
+       Auswahl verspricht, die es so nicht mehr gibt. In der Liste bleiben sie
+       sichtbar und gedaempft; dort sucht man, hier bekommt man vorgeschlagen.
+       Der Leerzustand faengt den Fall ab, dass ein Abschnitt dadurch leer
+       wird -- still schrumpfen tut hier nichts. */
+    var ohne = out.filter(function (p) { return S.seen.indexOf(p.id) < 0; });
+    todayGesehen = out.length - ohne.length;
+    if (!mitGesehenen) out = ohne;
 
     return out.sort(function (a, b) {
       /* Vor allem anderen: wer heute Ruhetag hat, steht ganz hinten. Eine
@@ -1285,6 +1301,8 @@
       if (ua !== ub) return ua - ub;
       var ea = runsToday(a, now) ? 1 : 0, eb = runsToday(b, now) ? 1 : 0;
       if (ea !== eb) return eb - ea;
+      /* Greift nur noch im Rueckfall (mitGesehenen), wenn der Abschnitt sonst
+         leer waere -- im Normalfall sind Gesehene oben schon heraus. */
       var sa = S.seen.indexOf(a.id) >= 0 ? 1 : 0, sb = S.seen.indexOf(b.id) >= 0 ? 1 : 0;
       if (sa !== sb) return sa - sb;
       /* Ohne diese Stufe gewinnt die beste Bewertung, auch wenn sie 51
@@ -1390,7 +1408,7 @@
   function setWet(v) {
     if (S.wet === v) return;
     S.wet = v;
-    S.pick = 0; S.moreOpen = false;
+    S.pick = 0; S.moreOpen = false; S.seenOk = false;
     ssSet(SS_WET, v);
     render();
   }
@@ -1457,7 +1475,7 @@
        Abschnitts — sonst fällt alles durch, was "jetzt" nicht mehr passt. */
     var from = tomorrow ? 0 : chosen ? Math.min(mins, until - 180)
              : (mn.soon ? until - 180 : mins);
-    var list = todayList(m.id, from, until, ref);
+    var list = todayList(m.id, from, until, ref, S.seenOk);
     var pick = list.length ? list[S.pick % list.length] : null;
     var others = list.filter(function (p) { return !pick || p.id !== pick.id; });
     var shown = S.moreOpen ? others : others.slice(0, 3);
@@ -1501,9 +1519,18 @@
     } else {
       /* Lieber zugeben, dass nichts Passendes dasteht, als etwas Schwaches
          vorschlagen. Der Weg in die Liste steht direkt darunter. */
-      body = '<div class="today__none"><h3>Hier steht nichts</h3><p>'
-        + 'Für diesen Tagesabschnitt ist nichts hinterlegt.'
-        + (S.jum ? ' Der Schalter „Mit Jum“ schränkt zusätzlich ein.' : '') + '</p></div>';
+      body = todayGesehen
+        ? '<div class="today__none"><h3>Alles schon gesehen</h3><p>'
+          + 'Für diesen Tagesabschnitt ' + (todayGesehen === 1
+              ? 'ist der eine hinterlegte Ort'
+              : 'sind alle ' + todayGesehen + ' hinterlegten Orte')
+          + ' als gesehen markiert.'
+          + (S.jum ? ' Der Schalter „Mit Jum“ schränkt zusätzlich ein.' : '')
+          + '</p><button type="button" class="btn" id="today-seen">'
+          + 'Trotzdem zeigen</button></div>'
+        : '<div class="today__none"><h3>Hier steht nichts</h3><p>'
+          + 'Für diesen Tagesabschnitt ist nichts hinterlegt.'
+          + (S.jum ? ' Der Schalter „Mit Jum“ schränkt zusätzlich ein.' : '') + '</p></div>';
     }
 
     return head + weather + body + aheadHtml(m.id, ref)
@@ -2651,11 +2678,14 @@
       var seg = e.target.closest('[data-mid]');
       if (seg) {
         S.mid = seg.getAttribute('data-mid');
-        S.pick = 0; S.moreOpen = false;
+        S.pick = 0; S.moreOpen = false; S.seenOk = false;
         render(); window.scrollTo(0, 0);
         return;
       }
       if (e.target.closest('#today-more')) { S.moreOpen = true; render(); return; }
+      /* Nur fuer diesen Abschnitt und nur bis zum naechsten Wechsel --
+         eine dauerhafte Ausnahme waere eine stille Voreinstellung. */
+      if (e.target.closest('#today-seen')) { S.seenOk = true; render(); return; }
       if (e.target.closest('#today-next')) { S.pick += 1; render(); return; }
       if (e.target.closest('#today-prev')) { S.pick = S.pick > 0 ? S.pick - 1 : 0; render(); return; }
       if (e.target.closest('#wx-dry')) { setWet(false); return; }
