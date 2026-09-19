@@ -7,6 +7,27 @@ Filterkriterium.
 Vanilla HTML/CSS/JS. Kein Framework, kein Bundler, kein Build-Schritt —
 GitHub Pages liefert das Repo unverändert aus.
 
+## Zielgerät — vor jeder Änderung lesen
+
+**Ein iPhone auf iOS 27, Safari, 402×754. Die App läuft als Seite im Browser,
+nicht als installierte App.**
+
+Daraus folgt eine harte Regel: **nichts bauen, was eine Installation
+voraussetzt.** Manifest-`shortcuts` und -`screenshots` sind genau das — sie
+wirken frühestens, wenn ein Symbol auf dem Homescreen liegt, und auf iOS nicht
+einmal dann. Beide standen am 19.09.2026 kurz im Manifest und sind wieder
+heraus; die 162 kB Bilder dazu ebenso.
+
+Was stattdessen geht: alles, was eine Adresse kann. `?v=heute` und
+`?v=gemerkt` öffnen die App direkt in einer Ansicht — als Lesezeichen, als
+geteilter Link, und falls doch jemand ein Symbol anlegt, auch als zweites
+Symbol. Kein Manifest nötig.
+
+Die iOS-Eigenheiten, die die Oberfläche betreffen, stehen unten unter
+„Was für iOS Safari angepasst ist" und ausführlich in
+`docs/UEBERGABE-ios-und-tests.md`. Wer dort etwas über Safari behauptet,
+schreibt die Fassung dazu, für die es gilt.
+
 ## Was drin ist
 
 | | |
@@ -27,7 +48,7 @@ GitHub Pages liefert das Repo unverändert aus.
 | **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch nicht gesehen" blendet sie aus. Der Chip hieß bis v7 „Noch offen" und wurde neben Fakten wie „öffnet 9:30" als Öffnungszeit gelesen. Eigener Speicher, unabhängig vom Merken. |
 | **Teilen** | Im Tab „Gemerkt": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. **„Meine ersetzen" ist seit v19 umkehrbar**: der Knopf nennt vorher, was er kostet („Meine 12 ersetzen"), ist als einziger ziegelrot abgesetzt und steht zuletzt; danach steht zehn Sekunden lang „Rückgängig" im selben Kasten. Die Kopie liegt in einer Variablen, nicht im Speicher — nach dem Neuladen ist das Angebot ohnehin vorbei. Öffnet man in der Zeit einen Ort, endet es: hinter einem Sheet wäre der Knopf sichtbar, aber nicht antippbar. |
 | **Suchtreffer** | Ein Treffer über die Notiz zeigt seit v19, *warum* der Ort dasteht: die Fundstelle ist im Notiztext hervorgehoben, in Liste und Detail, jeder Begriff einzeln. Die Markierung trägt nur einen Untergrund und erbt die Textfarbe — die Browservorgabe schwarz auf gelb fiele im dunklen Schema auf 2,1:1. In der Liste ist die Notiz einzeilig gekürzt; liegt die Fundstelle dahinter, sieht man sie erst im Detail. |
-| **Homescreen-Kurzbefehle** | Langes Drücken auf das Symbol bietet „Heute" und „Plan" an (`shortcuts` im Manifest, Sprung über `?v=`). Ein Teilen-Link überstimmt sie — eine geschickte Liste ist dringender. |
+| **Ansicht in der Adresse** | `?v=heute` und `?v=gemerkt` öffnen die App direkt in einer Ansicht — als Lesezeichen oder geteilter Link, ohne Installation. Geprüft gegen die Reiterkennungen, damit ein Tippfehler keine leere App erzeugt. Ein Teilen-Link mit Merkliste überstimmt den Parameter: eine geschickte Liste ist dringender. |
 | **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail, Luftlinie nur im Detail. **Alle Zeilen sind 97 px hoch** — vorher waren es je nach Datenlage 97, 100 oder 123, und das Auge fand beim Scrollen kein Raster. Die Bewertung steht rechtsbündig auf der Namenszeile und wird damit zu einer Spalte, die man scannen kann; die Zahl der Bewertungen sitzt in einer eigenen, fest breiten Spalte, damit „(1.478)" die Note nicht weiter nach links schiebt als „(806)". Sie bleibt dabei — „4,9" aus 71 Stimmen ist nicht dasselbe wie „4,9" aus 1087. Die Faktenreihe hat feste Slots in fester Reihenfolge (Weg, Dauer, Hund, Öffnung); nur die Öffnung darf kürzen, weil sie als einzige Freitext ist. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind 6 Zeilen sichtbar statt 4, beim Scrollen 8. Steht „Mit Jum" an, entfällt die Marke „Jum ok" an jeder Zeile — sie gilt dann für alle. |
 | **Detailansicht (neu)** | Bottom Sheet, oben drei Kacheln — Weg, Aufenthalt, Öffnung: die drei Fragen, die man vor Ort stellt. Die Öffnungs-Kachel zeigt nur ein ausgeschriebenes „bis 22:30" oder „ab 9:30" (22 der 54 Angaben); wo die Zeiten mehrdeutig sind („Mi–Sa 12:30–14 und 19:30–22"), bleibt sie leer und der volle Wortlaut steht darunter — eine Kachel „bis 14:00" über einem Restaurant, das abends bis 22 Uhr offen hat, wäre falsch. Darunter die Hundregel als eigene Fläche mit drei Zuständen: grün „Jum darf mit", grau-durchgestrichen „Ohne Jum", ockerfarben-gestrichelt „Nicht geklärt — vorher fragen"; letzteres trifft auf 58 der 101 Orte zu und ist damit die häufigste Antwort. Eine Primäraktion („Route in Karten") statt vierer gleich breiter Pillen, darunter Merken, Gesehen und Anrufen als Icon-Reihe. Die Tags am Ende sind antippbar und setzen den Filter — der Weg von „das gefällt mir" zu „mehr davon". Die Systemzurück-Geste schließt das Sheet, statt die App zu verlassen. |
 | **Detailansicht (Rest)** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. Solange es offen ist, liegt der Rest der Seite still: `inert` plus `aria-hidden`, dazu ein Tab-Ring im Sheet als Rückfallebene für Engines ohne `inert`. Ohne das führt `aria-modal` nur in die Irre — der Tabulator lief vorher hinter dem Sheet weiter durch die Liste. |

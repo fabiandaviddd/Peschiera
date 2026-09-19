@@ -34,49 +34,5 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "Heute",
-      "short_name": "Heute",
-      "description": "Der Vorschlag fuer den laufenden Tagesabschnitt",
-      "url": "./index.html?v=heute",
-      "icons": [
-        {
-          "src": "./icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Plan",
-      "short_name": "Plan",
-      "description": "Die gemerkten Orte in ihrer Reihenfolge",
-      "url": "./index.html?v=gemerkt",
-      "icons": [
-        {
-          "src": "./icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "./screenshots/01-heute.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Der Tagesvorschlag mit Abschnittsleiste"
-    },
-    {
-      "src": "./screenshots/02-orte.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Die Liste aller Orte mit Filterzeile"
-    }
   ]
 }

@@ -4,7 +4,7 @@ Bestandsaufnahme einer vierten Hand am selben Repo. Alle Zahlen sind aus
 `data/places.json` gerechnet, nicht geschätzt; die Rechenwege stehen jeweils
 dabei. Die Befunde beschreiben den Stand `v13`.
 
-**Vorschlag 1, 2, 4, 5, 7 und 8 sind umgesetzt** (`v15`, `v17`, `v19`) — siehe
+**Vorschlag 1, 2, 4, 5 und 8 sind umgesetzt** (`v15`, `v17`, `v19`), **Vorschlag 7 ist zurückgenommen** — siehe
 „Umsetzungsstand" unten. Die Vorschläge 3 und 6 stehen weiter offen
 und sind absichtlich so beschrieben, dass sie jede Hand einzeln aufgreifen
 kann.
@@ -467,23 +467,32 @@ Eine Falle steckte im Zusammenspiel: `setInert()` legt `#app` still, sobald
 ein Sheet öffnet, und `#inbox` liegt darin. Ein offenes Angebot wäre sichtbar,
 aber nicht mehr antippbar gewesen. `showSheet()` beendet es deshalb.
 
-### Vorschlag 7 — umgesetzt in `v19`
+### Vorschlag 7 — zurückgenommen am 19.09.2026
 
-`shortcuts` für „Heute" und „Plan", die über `?v=` in die Ansicht springen;
-`start()` liest den Parameter und prüft ihn gegen `TABS`, damit eine getippte
-Kennung keine leere App erzeugt. Ein Teilen-Link überstimmt das — `showInbox()`
-läuft später und setzt auf „Orte".
+Umgesetzt und noch am selben Tag wieder entfernt. Der Vorschlag ist gegen eine
+Plattform geschrieben, die dieses Projekt nicht hat.
 
-`screenshots`: zwei Bilder, erzeugt von `scripts/make-screenshots.mjs` mit
-fester Uhr (Mittwoch 12:30) und fester Fenstergröße, sonst rauscht jeder Lauf
-einen Diff. Einfache Auflösung statt doppelter — 162 kB statt 378 bei einem
-Dialog, der die Bilder klein zeigt. Nicht in `SHELL`: sie kosten sonst
-Offline-Gewicht für etwas, das nur einmal vor der Installation zu sehen ist.
+**Die App läuft als Seite in Safari, nicht als installierte App.** `shortcuts`
+und `screenshots` wirken frühestens ab einem Symbol auf dem Homescreen — und
+auf iOS nach allem, was die Release Notes von Safari 26.0 bis 27.0 hergeben,
+nicht einmal dann: dort kommt das Web-App-Manifest in einem ganzen Jahr nur im
+Zusammenhang mit Browser-Erweiterungen vor. Die zwei Bilder wogen 162 kB für
+einen Dialog, den niemand zu sehen bekommt.
 
-Neu dazu eine Prüfgruppe im Prüfstand: bis `v18` fasste **keine einzige**
-Prüfung das Manifest an. Jetzt wird geprüft, dass jede genannte Bilddatei
-existiert, dass `sizes` mit dem PNG-Kopf übereinstimmt und dass jeder
-Kurzbefehl auf eine Ansicht zeigt, die es gibt.
+Geblieben ist der brauchbare Teil: **`?v=` in der Adresse.** `?v=heute` und
+`?v=gemerkt` öffnen die App direkt in einer Ansicht, als Lesezeichen oder
+geteilter Link, ohne Installation. `start()` prüft den Wert gegen `TABS`, damit
+ein Tippfehler keine leere App erzeugt; ein Teilen-Link überstimmt ihn.
+
+Ebenfalls geblieben: die Prüfgruppe fürs Manifest. Bis `v18` fasste **keine
+einzige** Prüfung es an. Sie prüft jetzt, dass jede genannte Bilddatei
+existiert und `sizes` mit dem PNG-Kopf übereinstimmt — und dass ein Kurzbefehl,
+falls ihn jemand wieder einträgt, wenigstens auf eine Ansicht zeigt, die es
+gibt.
+
+**Die Lehre steht jetzt ganz oben in der README:** vor jeder Änderung das
+Zielgerät lesen. Sie stand vorher dreimal im Repo verstreut und wurde trotzdem
+übersehen.
 
 ### Vorschlag 8 — umgesetzt in `v19`
 

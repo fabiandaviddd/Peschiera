@@ -88,6 +88,22 @@ streichen, die eine der Zeilen aus Abschnitt 2 absichert**.
 
 ---
 
+## 3a. Die Regel, die am 19.09.2026 dazukam
+
+**Die App laeuft als Seite in Safari, nicht als installierte App. Nichts
+bauen, was eine Installation voraussetzt.**
+
+An dem Tag sind `shortcuts` und `screenshots` ins Manifest gewandert und noch
+am selben Tag wieder heraus. Beide wirken frueheste ab einem Symbol auf dem
+Homescreen; auf iOS nach allem, was die Release Notes von Safari 26.0 bis 27.0
+hergeben, nicht einmal dann — dort taucht das Web-App-Manifest in einem ganzen
+Jahr nur im Zusammenhang mit Browser-Erweiterungen auf. Nachgeprueft am
+19.09.2026 gegen developer.apple.com; Schweigen in Release Notes ist ein
+Hinweis, kein Beweis. Der Beweis ist das Geraet.
+
+Was stattdessen traegt: alles, was eine Adresse kann. `?v=heute` und
+`?v=gemerkt` oeffnen eine Ansicht direkt, als Lesezeichen oder geteilter Link.
+
 ## 4. Koordinaten
 
 **Stand: 100 von 101.** Der eine offene steht mit Begründung in

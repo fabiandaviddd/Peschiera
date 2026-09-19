@@ -563,8 +563,10 @@ const falscheMasse = bilder
   .map((b) => `${b.src}: steht ${b.sizes}, ist ${pngMasse(b.src)}`);
 ok('sizes stimmen mit dem Bild überein', falscheMasse, []);
 
-/* Die Kurzbefehle springen ueber ?v= in eine Ansicht. Eine Kennung, die es
-   in app.js nicht gibt, oeffnet beim Nutzer eine leere App. */
+/* Kurzbefehle und Screenshots stehen bewusst NICHT im Manifest: sie wirken nur
+   in einer installierten App, und diese hier laeuft in Safari. Die Pruefung
+   bleibt trotzdem stehen -- traegt sie jemand wieder ein, muss wenigstens die
+   Zielansicht existieren. */
 const tabIds = [...(readFileSync(join(root, 'app.js'), 'utf8')
   .match(/var TABS = \[([\s\S]*?)\];/) || [, ''])[1]
   .matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
@@ -572,7 +574,6 @@ const zieleUnbekannt = (mani?.shortcuts || [])
   .map((s) => (/[?&]v=([a-z]+)/.exec(s.url || '') || [])[1])
   .filter((v) => v && tabIds.indexOf(v) < 0);
 ok('jeder Kurzbefehl zeigt auf eine echte Ansicht', zieleUnbekannt, []);
-truthy('es gibt überhaupt Kurzbefehle', (mani?.shortcuts || []).length > 0);
 
 group('app.js und sw.js — dieselbe Fassung');
 
