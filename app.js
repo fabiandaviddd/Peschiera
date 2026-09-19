@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v18 · 2026-09-18';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v19 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -545,7 +545,11 @@
 
     var h = '<p class="sheet__cat">Filter</p>'
       + '<h2 class="sheet__name" id="sheet-name">Eingrenzen</h2>'
-      + '<p class="sheet__count" id="filter-count"></p>';
+      /* role+aria-live wie bei #count in der Liste: die Zahl aendert sich bei
+         jedem Tipp im Sheet, und ohne das hoert sie niemand. Der Container
+         wird genau einmal gebaut und danach nur ueber textContent beschrieben
+         -- wuerde er je Aktualisierung neu entstehen, bliebe aria-live wirkungslos. */
+      + '<p class="sheet__count" id="filter-count" role="status" aria-live="polite"></p>';
 
     h += '<p class="fgroup__h">Kategorie</p><div class="tagpick">'
       + D.categories.map(function (c) {
@@ -883,12 +887,17 @@
 
     var live = $('filter-count');
     if (live) {
-      live.textContent = shown === 1 ? '1 Ort passt' : shown + ' Orte passen';
+      /* Nur schreiben, wenn sich etwas geaendert hat. Ein erneutes Setzen
+         desselben Textes ist fuer das Auge folgenlos, kann aber vorgelesen
+         werden -- und renderCount() laeuft bei jedem Tipp im Sheet. */
+      var txt = shown === 1 ? '1 Ort passt' : shown + ' Orte passen';
+      if (live.textContent !== txt) live.textContent = txt;
     }
     /* Man tippt nie "Fertig" ins Ungewisse — der Knopf nennt das Ergebnis. */
     var done = $('filter-done');
     if (done) {
-      done.textContent = shown === 1 ? '1 Ort zeigen' : shown + ' Orte zeigen';
+      var dtxt = shown === 1 ? '1 Ort zeigen' : shown + ' Orte zeigen';
+      if (done.textContent !== dtxt) done.textContent = dtxt;
     }
   }
 
