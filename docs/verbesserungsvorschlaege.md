@@ -4,8 +4,8 @@ Bestandsaufnahme einer vierten Hand am selben Repo. Alle Zahlen sind aus
 `data/places.json` gerechnet, nicht geschätzt; die Rechenwege stehen jeweils
 dabei. Die Befunde beschreiben den Stand `v13`.
 
-**Vorschlag 1, 2, 4, 5 und 8 sind umgesetzt** (`v15`, `v17`, `v19`), **Vorschlag 7 ist zurückgenommen** — siehe
-„Umsetzungsstand" unten. Die Vorschläge 3 und 6 stehen weiter offen
+**Vorschlag 1–6 und 8 sind umgesetzt** (`v15`, `v17`, `v19`, `v22`), **Vorschlag 7 ist zurückgenommen** — siehe
+„Umsetzungsstand" unten. Damit steht kein Vorschlag aus dieser Liste mehr offen
 und sind absichtlich so beschrieben, dass sie jede Hand einzeln aufgreifen
 kann.
 

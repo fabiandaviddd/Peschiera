@@ -7,10 +7,11 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v21 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v22 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
+  var LS_NOTES = 'pk.notes';
   var LS_THEME = 'pk.theme';
   var LS_JUM   = 'pk.jum';
   var SS_WET   = 'pk.wet';    // Wetter gilt fuer diesen Besuch, nicht fuer immer
@@ -38,6 +39,15 @@
     mid: null,              // gewaehlter Tagesabschnitt; null = aus der Uhr
     moreOpen: false,        // "Sonst noch" ausgeklappt
     seenOk: false,          // Gesehene in "Heute" ausnahmsweise doch zeigen
+    /* Was man vor Ort erfaehrt, passt in keines der zwei Bits (gemerkt,
+       gesehen): "Tisch Donnerstag 20 Uhr bestellt", "Jum durfte doch mit
+       rein", "Parkplatz war voll, mit dem Rad besser". Bei 58 Orten mit
+       ungeklaerter Hundregel sagt die App zu Recht "vorher fragen" -- wer
+       gefragt hat, konnte die Antwort bis v21 nirgends hinschreiben und las
+       am naechsten Tag wieder "nicht geklaert".
+       Notizen sind persoenlich und gehoeren NICHT in places.json. Wird aus
+       einer Notiz eine Tatsache, fuehrt der Weg ueber die offenen Punkte. */
+    notes: {},              // { id: text }, nur im Geraet
     map: false,             // Liste oder Karte in der Ortsansicht
     /* Der Geraetestandort. Bewusst nirgends gespeichert: eine Position ist
        nach dem naechsten Spaziergang falsch, und eine falsche Entfernung ist
@@ -265,6 +275,7 @@
     tags: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 11.2V4.8a1.2 1.2 0 0 1 1.2-1.2h6.4l8.4 8.4a1.4 1.4 0 0 1 0 2l-5.6 5.6a1.4 1.4 0 0 1-2 0z"/><path d="M7.6 7.6h.01"/></svg>',
     /* Schieberegler fuer den Filterknopf, Pfeilpaar fuer die Sortierung. */
     filter: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+    note: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14v15H5z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/></svg>',
     map: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"/><path d="M9 4.5v12.7M15 6.8v12.7"/></svg>',
     sort: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>',
     /* Die vier Marken des Badge-Kanons. Termin und Kuratiert sind gefuellt,
@@ -351,6 +362,11 @@
     D.places.forEach(function (p) { ids[p.id] = true; });
     S.saved = (lsGet(LS_SAVED, []) || []).filter(function (id) { return ids[id]; });
     S.seen  = (lsGet(LS_SEEN,  []) || []).filter(function (id) { return ids[id]; });
+    var rohNotes = lsGet(LS_NOTES, {}) || {};
+    S.notes = {};
+    Object.keys(rohNotes).forEach(function (id) {
+      if (ids[id] && String(rohNotes[id] || '').trim()) S.notes[id] = String(rohNotes[id]);
+    });
 
     S.theme = lsGet(LS_THEME, 'auto');
     if (['auto', 'light', 'dark'].indexOf(S.theme) < 0) S.theme = 'auto';
@@ -379,7 +395,16 @@
        showInbox() setzt auf "Orte", und eine geschickte Liste ist
        dringender als ein Kurzbefehl. */
     var wunsch = (/[?&]v=([a-z]+)/.exec(location.search || '') || [])[1];
-    if (wunsch && TABS.some(function (t) { return t.id === wunsch; })) S.view = wunsch;
+    if (wunsch && TABS.some(function (t) { return t.id === wunsch; })) {
+      /* S.view direkt zu setzen reicht NICHT: die Reiterleiste bekommt ihr
+         aria-current aus syncTabs(), und ohne den Aufruf stand die App in der
+         gewuenschten Ansicht, waehrend die Leiste weiter "Heute" anzeigte.
+         Aufgefallen ist das erst, als eine falsch-gruene Pruefung in
+         kleinigkeiten.mjs repariert wurde -- sie prueft jetzt den Wert und
+         nicht nur, dass ueberhaupt etwas zurueckkommt. */
+      S.view = wunsch;
+      syncTabs();
+    }
 
     render();
 
@@ -1074,6 +1099,9 @@
       /* Die Notiz ist einzeilig gekuerzt: liegt die Fundstelle hinter dem
          Schnitt, sieht man die Markierung erst im Detail. Besser als gar
          kein Hinweis, warum der Ort dasteht. */
+      /* Die eigene Notiz steht VOR der Beschreibung: sie ist das, was man
+         selbst herausgefunden hat, und schlaegt damit den Katalogtext. */
+      + (S.notes[p.id] ? '<p class="card__mine">' + ICON.note + esc(S.notes[p.id]) + '</p>' : '')
       + (has(p.note) ? '<p class="card__note">' + markiere(p.note) + '</p>' : '')
       + factsHtml(p)
       + '<button type="button" class="card__open" data-open="' + esc(p.id) + '"'
@@ -1241,12 +1269,40 @@
 
   /* Badges wie "18.–20.09.", "26./27.09." oder "Di 22.09." sind Termine.
      Fällt heute hinein, gehört der Ort nach oben. */
-  function runsToday(p, now) {
-    if (!has(p.badge)) return false;
+  /* Zerlegt einen Datumsbadge in seine Spanne. Eine Stelle statt zweier:
+     runsToday und daysUntil lasen bis v21 denselben Ausdruck getrennt, und
+     ein Ausdruck, der an zwei Stellen steht, wandert irgendwann auseinander. */
+  function badgeSpanne(p, now) {
+    if (!has(p.badge)) return null;
     var m = String(p.badge).match(/(\d{1,2})\.(?:\s*[–\/-]\s*(\d{1,2})\.)?\s*(\d{1,2})\./);
-    if (!m) return false;
-    var mon = +m[3], from = +m[1], to = m[2] ? +m[2] : from;
-    return (now.getMonth() + 1) === mon && now.getDate() >= from && now.getDate() <= to;
+    if (!m) return null;
+    var jahr = now.getFullYear(), mon = +m[3] - 1;
+    var von = new Date(jahr, mon, +m[1]);
+    var bis = new Date(jahr, mon, m[2] ? +m[2] : +m[1]);
+    return { von: von, bis: bis };
+  }
+
+  function runsToday(p, now) {
+    var sp = badgeSpanne(p, now);
+    if (!sp) return false;
+    var heute = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return heute >= sp.von && heute <= sp.bis;
+  }
+
+  /* Wie viele Tage bis der Termin anfaengt. 0 = laeuft heute, null = kein
+     Termin oder schon vorbei.
+
+     Der Anlass: "laeuft heute" ist beim Wochenmarkt am Dienstag zu spaet --
+     wer morgens davon liest, packt keine Kuehltasche mehr. Und die
+     Rievocazione beschreibt sich selbst als das ergiebigste Fotomotiv der
+     Woche; die braucht einen Vormittag Vorlauf. */
+  function daysUntil(p, now) {
+    var sp = badgeSpanne(p, now);
+    if (!sp) return null;
+    var heute = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (heute > sp.bis) return null;                 // vorbei
+    if (heute >= sp.von) return 0;                   // laeuft
+    return Math.round((sp.von - heute) / 86400000);
   }
 
   var LOOK_AHEAD = 45;        // Minuten Restzeit, ab denen der nächste Abschnitt dran ist
@@ -1506,9 +1562,34 @@
       + (trip ? ' · Tag ' + trip.n + ' von ' + trip.of : '') + '</p>'
       + '<h2 class="today__now">' + (tomorrow ? 'Morgen früh' : (!chosen && mn.soon ? 'Gleich: ' : '') + m.label)
       + '<span class="today__clock">' + hhmm(mins) + '</span></h2>'
-      + segbarHtml(mn.m.id, m.id, mn.tomorrow);
+      + segbarHtml(mn.m.id, m.id, mn.tomorrow)
+      + terminHtml(now);
 
-    /* Das Wetter weiß die App nicht und holt es auch nicht — sie fragt. */
+    /* Was in den naechsten Tagen anfaengt. Ein Satz ueber dem Vorschlag, keine
+     neue Ansicht: die vier Termine im Bestand laufen ein bis drei Tage, und
+     wer erst am Morgen davon liest, hat die Planung schon verpasst.
+
+     Drei Tage Vorlauf. Verworfen: sieben -- dann steht die Zeile fast jeden
+     Tag da und wird zur Tapete; bei fuenfzehn Reisetagen und vier Terminen
+     waere sie an neun Tagen sichtbar. Mit drei sind es fuenf. */
+  var VORLAUF_TAGE = 3;
+
+  function terminHtml(now) {
+    var bald = D.places.map(function (p) { return { p: p, d: daysUntil(p, now) }; })
+      .filter(function (t) { return t.d !== null && t.d > 0 && t.d <= VORLAUF_TAGE; })
+      .sort(function (a, b) { return a.d - b.d; });
+    if (!bald.length) return '';
+    return '<div class="today__soon">' + bald.map(function (t) {
+      var wann = t.d === 1 ? 'Morgen' : 'In ' + t.d + ' Tagen';
+      return '<button type="button" class="today__soon-row" data-open="' + esc(t.p.id) + '">'
+        + '<span class="today__soon-when">' + wann + '</span>'
+        + '<span class="today__soon-what">' + esc(t.p.name) + '</span>'
+        + '<span class="today__soon-badge">' + esc(t.p.badge) + '</span>'
+        + '</button>';
+    }).join('') + '</div>';
+  }
+
+  /* Das Wetter weiß die App nicht und holt es auch nicht — sie fragt. */
     var weather = '<div class="today__weather">'
       + '<span>Draußen ist es</span>'
       + '<button type="button" class="chip" id="wx-dry" aria-pressed="' + (S.wet ? 'false' : 'true') + '">schön</button>'
@@ -1816,6 +1897,10 @@
 
   function closeSheet(fromPop) {
     var sheet = $('sheet');
+    /* Wer ueber den Hintergrund oder die Zurueck-Geste schliesst, hat das
+       Notizfeld nie verlassen -- change waere nie gefeuert. */
+    var feld = sheet.querySelector('[data-notiz]');
+    if (feld) setzeNotiz(feld.getAttribute('data-notiz'), feld.value);
     /* popSheetState() ruft history.back(), das popstate ausloest — und zwar
        waehrend das Sheet noch sichtbar ist. Ohne diese Sperre laeuft der
        ganze Schliessvorgang ein zweites Mal. */
@@ -1944,6 +2029,27 @@
       + '</span></p>';
   }
 
+  /* Direkt unter der Hundzeile, weil das die haeufigste offene Frage ist.
+     Ein einzeiliges Feld, kein Speichernknopf: es sichert beim Verlassen und
+     beim Schliessen des Sheets. Ein Knopf waere ein zweiter Schritt fuer
+     etwas, das man im Vorbeigehen tippt. */
+  function notizHtml(p) {
+    var wert = S.notes[p.id] || '';
+    return '<div class="notiz">'
+      + '<label class="notiz__l" for="notiz-feld">Eigene Notiz</label>'
+      + '<input type="text" class="notiz__f" id="notiz-feld" data-notiz="' + esc(p.id) + '"'
+      + ' maxlength="140" autocomplete="off" enterkeyhint="done"'
+      + ' placeholder="Was du hier erfahren hast"'
+      + ' value="' + esc(wert) + '">'
+      + '</div>';
+  }
+
+  function setzeNotiz(id, text) {
+    var t = String(text == null ? '' : text).trim().slice(0, 140);
+    if (t) S.notes[id] = t; else delete S.notes[id];
+    lsSet(LS_NOTES, S.notes);
+  }
+
   function sheetHtml(p) {
     var on = S.saved.indexOf(p.id) >= 0;
     var wasSeen = S.seen.indexOf(p.id) >= 0;
@@ -1965,6 +2071,7 @@
           : '')
       + tilesHtml(p)
       + dogHtml(p)
+      + notizHtml(p)
       + (has(p.note) ? '<p class="sheet__note">' + markiere(p.note) + '</p>' : '');
 
     /* Ein Primaer statt vierer gleich breiter Pillen; der Rest als Icon-Reihe
@@ -2144,7 +2251,11 @@
   }
 
   function shareLink() {
+    /* Nur Orte mit Notiz, sonst waechst der Link um 101 leere Eintraege.
+       v bleibt 1: ein Empfaenger mit aelterer Fassung ignoriert n einfach,
+       statt den ganzen Link zu verwerfen. */
     var payload = { v: 1, m: S.saved.slice(), g: S.seen.slice() };
+    if (Object.keys(S.notes).length) payload.n = S.notes;
     var base = location.origin + location.pathname;
     return base + '#liste=' + b64url(JSON.stringify(payload));
   }
@@ -2160,7 +2271,13 @@
       var keep = function (arr) {
         return (Array.isArray(arr) ? arr : []).filter(function (id) { return known[id]; });
       };
-      return { m: keep(data.m), g: keep(data.g),
+      var notizen = {};
+      Object.keys(data.n || {}).forEach(function (id) {
+        if (known[id] && String(data.n[id] || '').trim()) {
+          notizen[id] = String(data.n[id]).slice(0, 140);
+        }
+      });
+      return { m: keep(data.m), g: keep(data.g), n: notizen,
                dropped: ((data.m || []).length + (data.g || []).length)
                         - (keep(data.m).length + keep(data.g).length) };
     } catch (e) { return null; }
@@ -2210,7 +2327,7 @@
     $('inbox-cancel').hidden = false;
     $('inbox-replace').hidden = false;
     /* Der destruktive Knopf nennt, was er kostet. */
-    var eigene = S.saved.length + S.seen.length;
+    var eigene = S.saved.length + S.seen.length + Object.keys(S.notes).length;
     $('inbox-replace').textContent = eigene ? 'Meine ' + eigene + ' ersetzen' : 'Meine ersetzen';
     setView('orte');
     window.scrollTo(0, 0);
@@ -2218,16 +2335,23 @@
 
   function applyIncoming(mode) {
     if (!incoming) return;
+    var fremd = incoming.n || {};
     if (mode === 'replace') {
-      rueck = { saved: S.saved.slice(), seen: S.seen.slice() };
+      rueck = { saved: S.saved.slice(), seen: S.seen.slice(),
+                notes: JSON.parse(JSON.stringify(S.notes)) };
       S.saved = incoming.m.slice();
       S.seen = incoming.g.slice();
+      S.notes = JSON.parse(JSON.stringify(fremd));
     } else {
       incoming.m.forEach(function (id) { if (S.saved.indexOf(id) < 0) S.saved.push(id); });
       incoming.g.forEach(function (id) { if (S.seen.indexOf(id) < 0) S.seen.push(id); });
+      /* Beim Zusammenfuehren gewinnt die eigene Notiz: sie steht fuer etwas,
+         das man selbst vor Ort erfahren hat. */
+      Object.keys(fremd).forEach(function (id) { if (!S.notes[id]) S.notes[id] = fremd[id]; });
     }
     lsSet(LS_SAVED, S.saved);
     lsSet(LS_SEEN, S.seen);
+    lsSet(LS_NOTES, S.notes);
     var zumRuecknehmen = rueck;
     dismissInbox();
     if (zumRuecknehmen) zeigeRueckgaengig(zumRuecknehmen);
@@ -2259,8 +2383,10 @@
     if (!rueck) return;
     S.saved = rueck.saved.slice();
     S.seen = rueck.seen.slice();
+    S.notes = JSON.parse(JSON.stringify(rueck.notes || {}));
     lsSet(LS_SAVED, S.saved);
     lsSet(LS_SEEN, S.seen);
+    lsSet(LS_NOTES, S.notes);
     endeRueckgaengig();
     $('inbox').hidden = true;
     syncTabs();
@@ -2725,6 +2851,14 @@
     onTap($('scrim'), function () { closeSheet(); });
     onTap($('sheet-close'), function () { closeSheet(); });
 
+    /* change feuert beim Verlassen des Feldes, auch wenn iOS die Tastatur
+       ueber "Fertig" schliesst. Zusaetzlich beim Schliessen des Sheets --
+       wer ueber den Hintergrund schliesst, hat das Feld nie verlassen. */
+    $('sheet-body').addEventListener('change', function (e) {
+      var f = e.target.closest && e.target.closest('[data-notiz]');
+      if (f) { setzeNotiz(f.getAttribute('data-notiz'), f.value); render(); }
+    });
+
     window.addEventListener('popstate', function () {
       if (!$('sheet').hidden) closeSheet(true);
     });
@@ -2888,7 +3022,7 @@
       hoursWindow: hoursWindow, closedOn: closedOn, closedToday: closedToday,
       airKmPoint: airKmPoint,
       momentsOf: momentsOf, momentNow: momentNow,
-      runsToday: runsToday, tripDay: tripDay, unverified: unverified,
+      runsToday: runsToday, daysUntil: daysUntil, tripDay: tripDay, unverified: unverified,
       closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,
       dur: dur, km: km, norm: norm, haystack: haystack,
       byDistance: byDistance, byRating: byRating,

@@ -10,8 +10,8 @@
    ========================================================================== */
 'use strict';
 
-var CACHE = 'peschiera-v21';
-var FONTS = 'peschiera-fonts-v21';
+var CACHE = 'peschiera-v22';
+var FONTS = 'peschiera-fonts-v22';
 var TIMEOUT = 2500;   // ms, danach greift der Cache
 
 /* Leaflet liegt im Repo, nicht auf einem fremden Server -- sonst waere die

@@ -489,6 +489,36 @@ if (head) {
 
 /* Die Fassung in app.js und der Cache in sw.js müssen zusammenpassen — sonst
    läuft die App still auf altem Stand weiter. */
+group('daysUntil — Termine mit Vorlauf');
+
+/* "Laeuft heute" ist beim Wochenmarkt am Dienstag zu spaet. */
+const termin = (badge) => ({ badge });
+const amTag = (t, d) => pk.daysUntil(t, new Date(2026, 8, d));   // September 2026
+ok('laeuft heute', amTag(termin('25.–27.09.'), 26), 0);
+ok('erster Tag zaehlt als laufend', amTag(termin('25.–27.09.'), 25), 0);
+ok('letzter Tag zaehlt als laufend', amTag(termin('25.–27.09.'), 27), 0);
+ok('einen Tag vorher', amTag(termin('25.–27.09.'), 24), 1);
+ok('drei Tage vorher', amTag(termin('25.–27.09.'), 22), 3);
+ok('danach ist es vorbei', amTag(termin('25.–27.09.'), 28), null);
+ok('Einzeltermin', amTag(termin('Di 22.09.'), 20), 2);
+ok('Schraegstrich-Spanne', amTag(termin('26./27.09.'), 25), 1);
+ok('ohne Badge kein Termin', pk.daysUntil({}, new Date(2026, 8, 20)), null);
+ok('Badge ohne Datum ist kein Termin', amTag(termin('Der Abend'), 20), null);
+
+/* runsToday und daysUntil lesen denselben Ausdruck -- sie muessen sich einig
+   sein, sonst steht "in 0 Tagen" ueber einem Ort, der laut Liste nicht laeuft. */
+const einig = [20, 22, 25, 26, 27, 28].every((d) => {
+  const n = new Date(2026, 8, d);
+  return pk.runsToday(termin('25.–27.09.'), n) === (pk.daysUntil(termin('25.–27.09.'), n) === 0);
+});
+truthy('runsToday und daysUntil sind sich einig', einig);
+
+/* Die vier echten Termine im Bestand, gegen den Reisezeitraum gerechnet. */
+const mitTermin = data.places
+  .map((p) => ({ id: p.id, d: pk.daysUntil(p, new Date(2026, 8, 19)) }))
+  .filter((t) => t.d !== null);
+console.log('    ' + 'Termine ab dem 19.09.'.padEnd(38) + (mitTermin.map((t) => `${t.id} ${t.d}`).join(' · ') || 'keine'));
+
 group('grundmenge und markiere — ohne Browser');
 
 /* grundmenge() ist die einzige Quelle fuer selected() UND fuer die Zaehler an

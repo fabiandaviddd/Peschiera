@@ -13,7 +13,17 @@ const SHOT = process.argv[2] || null;
 const { chromium } = createRequire(import.meta.url)(
   process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright');
 const DATEN = createRequire(import.meta.url)('../../data/places.json');
-const R = []; const ok = (n, p, x = '') => { R.push([p ? 'PASS' : 'FAIL', n, x]); if (!p) process.exitCode = 1; };
+const R = []; /* Dieselbe Signatur wie scripts/browser-abnahme.mjs: (Name, bekommen,
+   erwartet). Die Suiten unter scripts/browser/ prueften urspruenglich nur auf
+   Wahrheit -- wer dabei ok('...', wert, 'erwartet') schreibt, bekommt eine
+   Pruefung, die immer besteht. Genau das ist mir am 19.09. bei mehreren
+   Zeilen passiert und erst aufgefallen, als zwei RICHTIGE Zeilen
+   fehlschlugen, weil ihr Wert leer bzw. 0 war. */
+const ok = (n, got, want = true) => {
+  const a = JSON.stringify(got), b = JSON.stringify(want);
+  R.push([a === b ? 'PASS' : 'FAIL', n, a === b ? '' : `erwartet ${b}, bekommen ${a}`]);
+  if (a !== b) process.exitCode = 1;
+};
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE' });
 const page = await ctx.newPage();
@@ -75,7 +85,7 @@ for (const [tab, name] of [['heute', 'Heute'], ['gemerkt', 'Plan'], ['info', 'In
   ok(`Umschalter ist in „${name}" weg`, await page.locator('#map-btn').isHidden());
 }
 
-ok('Keine JS-Fehler', errs.length === 0, errs.join(' | '));
+ok('Keine JS-Fehler', errs.length ? errs.join(' | ') : 0, 0);
 await browser.close();
 console.log(R.map((r) => `${r[0]}  ${r[1]}${r[2] ? '  [' + r[2] + ']' : ''}`).join('\n'));
 console.log('\n' + R.filter((r) => r[0] === 'PASS').length + '/' + R.length + ' passed');

@@ -6,7 +6,17 @@ const BASE = process.env.PK_BASE || 'http://localhost:8765';
 const SHOT = process.argv[2] || null;
 const { chromium } = createRequire(import.meta.url)(
   process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright');
-const R = []; const ok = (n, p, x = '') => { R.push([p ? 'PASS' : 'FAIL', n, x]); if (!p) process.exitCode = 1; };
+const R = []; /* Dieselbe Signatur wie scripts/browser-abnahme.mjs: (Name, bekommen,
+   erwartet). Die Suiten unter scripts/browser/ prueften urspruenglich nur auf
+   Wahrheit -- wer dabei ok('...', wert, 'erwartet') schreibt, bekommt eine
+   Pruefung, die immer besteht. Genau das ist mir am 19.09. bei mehreren
+   Zeilen passiert und erst aufgefallen, als zwei RICHTIGE Zeilen
+   fehlschlugen, weil ihr Wert leer bzw. 0 war. */
+const ok = (n, got, want = true) => {
+  const a = JSON.stringify(got), b = JSON.stringify(want);
+  R.push([a === b ? 'PASS' : 'FAIL', n, a === b ? '' : `erwartet ${b}, bekommen ${a}`]);
+  if (a !== b) process.exitCode = 1;
+};
 const browser = await chromium.launch();
 const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, hasTouch: true,
   locale: 'de-DE', permissions: ['clipboard-read', 'clipboard-write'] });
@@ -55,8 +65,7 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   await p.waitForSelector('#app:not([hidden])');
   await p.fill('#q', 'pasta'); await p.waitForTimeout(250);
   ok('Treffer in der Notiz ist hervorgehoben',
-     (await p.locator('.card__note mark').count()) > 0,
-     String(await p.locator('.card__note mark').count()));
+     (await p.locator('.card__note mark').count()) > 0);
   ok('hervorgehoben ist der gesuchte Text',
      (await p.locator('.card__note mark').first().textContent()).toLowerCase(), 'pasta');
   /* norm() macht aus "ß" zwei Zeichen — ab dort verschieben sich die Indizes.
@@ -65,7 +74,7 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   await p.fill('#q', 'strasse'); await p.waitForTimeout(250);
   const treffer = await p.locator('.card__note mark').allTextContents();
   ok('Diakritika verschieben die Markierung nicht',
-     treffer.every((t) => /stra(ß|ss)e/i.test(t)), JSON.stringify(treffer.slice(0, 3)));
+     treffer.every((t) => /stra(ß|ss)e/i.test(t)));
   ok('keine JS-Fehler durch die Markierung', true);
   if (SHOT) await p.screenshot({ path: SHOT + '/treffer.png' });
   await c.close();
@@ -82,7 +91,7 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   await a.click('#share-btn'); await a.waitForTimeout(400);
   const link = await a.evaluate(() => navigator.clipboard.readText());
   await A.close();
-  ok('Teilen-Link erzeugt', link.includes('#liste='), link.slice(0, 50));
+  ok('Teilen-Link erzeugt', link.includes('#liste='));
 
   const hash = link.slice(link.indexOf('#'));
   const B = await mach(); const b = await B.newPage();
@@ -124,14 +133,14 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   const erster = (await p.textContent('.today__pick .card__name, .today__name')
     .catch(() => null)) || await p.evaluate(() =>
       (document.querySelector('.today__pick h3, .today__pick .today__name') || {}).textContent || '');
-  ok('Heute zeigt einen Vorschlag', !!erster.trim(), erster.trim());
+  ok('Heute zeigt einen Vorschlag', !!erster.trim());
 
   /* Denselben Ort als gesehen markieren und neu laden. */
   const id = await p.evaluate(() => {
     const el = document.querySelector('.today__pick [data-open]');
     return el ? el.getAttribute('data-open') : null;
   });
-  ok('Vorschlag hat eine Kennung', !!id, String(id));
+  ok('Vorschlag hat eine Kennung', !!id);
   await p.evaluate((x) => {
     try { localStorage.setItem('pk.seen', JSON.stringify([x])); } catch (e) {}
   }, id);
@@ -143,11 +152,10 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
     const el = document.querySelector('.today__pick [data-open]');
     return el ? el.getAttribute('data-open') : null;
   });
-  ok('gesehener Ort wird nicht mehr vorgeschlagen', jetzt !== id, `${id} -> ${jetzt}`);
+  ok('gesehener Ort wird nicht mehr vorgeschlagen', jetzt !== id);
   const nachher = await p.textContent('.today__pos');
   ok('der Stapel ist um eins kleiner',
-     Number(nachher.split('/')[1]) === Number(vorher.split('/')[1]) - 1,
-     `${vorher.trim()} -> ${nachher.trim()}`);
+     Number(nachher.split('/')[1]) === Number(vorher.split('/')[1]) - 1);
   await c.close();
 }
 
@@ -166,8 +174,7 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   await p.waitForSelector('#app:not([hidden])');
   await p.waitForTimeout(300);
   ok('Leerzustand nennt den Grund',
-     (await p.textContent('.today__none')).includes('schon gesehen'),
-     (await p.textContent('.today__none')).slice(0, 60));
+     (await p.textContent('.today__none')).includes('schon gesehen'));
   ok('… und bietet einen Ausweg', await p.locator('#today-seen').isVisible());
   await p.click('#today-seen'); await p.waitForTimeout(300);
   ok('„Trotzdem zeigen" bringt die Orte zurueck',

@@ -1067,3 +1067,57 @@ body.is-typing .tabs { transform: translateY(110%); }
 }
 .leaflet-bar a { color: var(--ink); }
 .leaflet-control-attribution a { color: var(--lake); }
+
+/* Was in den naechsten Tagen anfaengt. Steht ueber dem Vorschlag, weil es
+   die Planung betrifft und nicht das Jetzt -- aber zurueckhaltend, sonst
+   uebertoent ein Termin in drei Tagen die Frage, wo man gleich isst. */
+.today__soon {
+  display: grid; gap: .3rem;
+  margin: .1rem 0 .7rem;
+}
+.today__soon-row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: .5rem;
+  align-items: baseline;
+  min-height: 44px; padding: .35rem .6rem;
+  text-align: left;
+  border: 1px dashed var(--line); border-radius: var(--r-pill);
+  background: var(--wash);
+  cursor: pointer;
+}
+.today__soon-when {
+  font-size: var(--t-micro); font-weight: 700;
+  color: var(--brick-ink);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.today__soon-what { font-size: var(--t-meta); color: var(--ink); }
+.today__soon-badge { font-size: var(--t-micro); color: var(--soft); white-space: nowrap; }
+
+/* ------------------------------------------------------- Eigene Notizen */
+/* Die eigene Notiz steht vor der Beschreibung: sie ist das, was man selbst
+   herausgefunden hat, und schlaegt den Katalogtext. Verde, weil es dieselbe
+   Farbe ist wie alles, was zu Jum gehoert -- die haeufigste offene Frage. */
+.card__mine {
+  display: flex; align-items: flex-start; gap: .3rem;
+  margin: .1rem 0 .15rem;
+  font-size: var(--t-meta); color: var(--verde-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card__mine svg {
+  width: 13px; height: 13px; flex: 0 0 auto; margin-top: .15rem;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+.notiz { margin: .7rem 0 .2rem; }
+.notiz__l {
+  display: block; margin-bottom: .25rem;
+  font-size: var(--t-micro); font-weight: 700; color: var(--soft);
+}
+.notiz__f {
+  width: 100%; min-height: 44px; padding: .5rem .7rem;
+  /* 1rem ist die Grenze, unter der iOS beim Fokus hineinzoomt. */
+  font: inherit; font-size: 1rem; color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+}
+.notiz__f:focus-visible { outline: 2px solid var(--lake); outline-offset: 1px; }
