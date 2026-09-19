@@ -1,6 +1,6 @@
 # Koordinaten — Stand und Prüfregeln
 
-101 Orte · 72 mit Koordinaten · 29 offen
+101 Orte · 73 mit Koordinaten · 28 offen
 
 ## Wie geprüft wird
 
@@ -69,10 +69,9 @@ Ein Zahlendreher beim Abtippen fällt damit auf, bevor er auf der Karte landet.
 
 ## Offene Punkte
 
-### Sollten eine Koordinate bekommen (10)
+### Sollten eine Koordinate bekommen (9)
 
 - **Famila** (`famila`) — Via Campanello 1/a, Peschiera del Garda
-- **S'Aligusta** (`saligusta`) — Via Bell'Italia 12, Peschiera del Garda
 - **La Taverna da Oreste** (`oreste`) — Via F. Fontana 32, Lazise
 - **Jamaica Beach & Schwefelquelle** (`jamaica-beach`) — Spitze der Halbinsel, Sirmione
 - **Forte Ardietti & Monte della Guardia** (`ponti-sul-mincio`) — Ponti sul Mincio
@@ -95,9 +94,9 @@ Lauf denselben Ortspunkt und beide Regeln nicken ihn durch:
   Festung liegt bei 10,69 Ost, der geliefert Punkt bei 10,68
 - **Bahnhof Peschiera del Garda** (`bahnhof`) — dito, braucht die Via Venezia
 - **Imbarcadero Peschiera** (`imbarcadero`) — dito, braucht das Lungolago
-- **Ammazza Caffè** (`ammazza-verona`) — Adresse ist nur „Verona", das Café bekam
-  den Stadtpunkt. Zum Vergleich: *BASƎ* hat mit *Vicolo San Silvestro 29* eine
-  eigene Koordinate
+- **Ammazza Caffè** (`ammazza-verona`) — trug nur „Verona" und bekam den
+  Stadtpunkt. Seit 19.09. steht dort *Vicolo Volto Cittadella 12/A* — die
+  Adresse reicht jetzt, der Ort wartet nur noch auf einen Lauf
 
 Zwei haben eine brauchbare Adresse und sollten beim nächsten Lauf durchgehen:
 
@@ -109,6 +108,36 @@ nicht entscheiden, also sind beide leer.
 
 Nicht geleert wurde **Verona** (`verona`): für einen Städteausflug ist der
 Stadtpunkt die richtige Nadel. Er teilte ihn nur mit dem Café.
+
+### Was der Lauf vom 19.09. ergeben hat
+
+Neun Orte kamen mit einer Koordinate zurück, **eine** davon war belastbar:
+
+- **S'Aligusta** übernommen. Gegenprobe: derselbe Straßenzug wie der
+  Tierarzt in der *Via Bell'Italia 49*, 800 m auseinander bei Hausnummer 12
+  gegen 49; 1,25 km Luftlinie bei 1,5 km Straße.
+- **Sechs** trugen wieder genau die Ortsmittelpunkte, die oben geleert worden
+  waren — Festung, Bahnhof und Anleger auf einem Punkt, Trattoria und Lago del
+  Frassino auf einem zweiten, das Ammazza auf dem Stadtpunkt von Verona. Der
+  Prüfstand hat alle sechs abgefangen; ohne die beiden Punkt-Regeln wären sie
+  unbemerkt zurückgekehrt.
+- **Zwei** lagen in der falschen Gemeinde und kamen trotzdem durch:
+  *La Taverna da Oreste* (Adresse Lazise) landete 6,4 km südlich von Lazise,
+  *Forte Ardietti* (Adresse Ponti sul Mincio) 3,1 km vom Zeltplatz statt der
+  11 km, die die Straße misst. Beide sind exakt die Punkte, die schon Lauf 1
+  als Fehltreffer verworfen hatte und die in `scripts/browser/koord2.mjs` als
+  nachgestellte Fehlerfälle stehen.
+
+**Daraus folgt:** die Ortsprüfung liest den Namen aus der Antwort des
+Dienstes, nicht die Lage. Nennt die Antwort „Lazise", gilt der Ort als
+bestätigt, auch wenn der Punkt 6 km daneben liegt. Die Entfernungsregel greift
+dort nicht, weil sie nur nach oben begrenzt — und eine Untergrenze ist oben aus
+guten Gründen verworfen.
+
+Für die verbleibenden Orte ist der Dienst damit ausgereizt. Der verlässliche
+Weg ist der, den dieser Abschnitt von Anfang an für die schwierigen Fälle
+vorsieht: Koordinate in Google Maps ablesen (Rechtsklick auf die Nadel) und
+von Hand eintragen. Der Prüfstand prüft sie danach wie jede andere.
 
 ### Ohne sinnvollen Einzelpunkt (13)
 

@@ -569,7 +569,7 @@
       "name": "Ammazza Caffè",
       "category": "cafe",
       "note": "Specialty Coffee in Verona.",
-      "address": "Verona",
+      "address": "Vicolo Volto Cittadella 12/A, Verona",
       "phone": null,
       "rating": 4.9,
       "reviews": 902,
@@ -1666,7 +1666,10 @@
         "meeresfrüchte",
         "sardisch"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.441677,
+        "lon": 10.675898
+      },
       "time_min": 120,
       "moment": [
         "mittag",
