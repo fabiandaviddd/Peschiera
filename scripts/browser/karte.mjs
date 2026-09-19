@@ -43,9 +43,40 @@ await page.waitForTimeout(2500);
 ok('Karte erscheint', await page.locator('#map').isVisible());
 ok('Liste ist weg', await page.locator('#list').isHidden());
 ok('… und der Knopf heißt jetzt „Liste"', (await page.textContent('#map-btn')).trim(), 'Liste');
-/* Eine Nadel je verortetem Ort, plus der Zeltplatz als Bezugspunkt. */
-ok('eine Nadel je Ort plus Zeltplatz', await page.locator('.mk').count(), MIT_GEO + 1);
+/* Seit v25 wird gebuendelt -- "eine Nadel je Ort" gilt nicht mehr, und das
+   ist der Punkt: 96 der 102 Nadeln lagen so dicht, dass sich ihre Punkte
+   beruehrten. Die Zusicherung wird dadurch nicht schwaecher, sondern
+   staerker: jeder verortete Ort muss vertreten sein, entweder als eigene
+   Nadel oder in der Zahl auf einem Buendel. Geht dabei einer verloren,
+   faellt es hier auf und nicht erst am See. */
+const vertretung = async () => page.evaluate(() => {
+  const mk = [...document.querySelectorAll('.leaflet-marker-icon.mk')];
+  const bund = mk.filter((m) => m.classList.contains('mk--bund'));
+  const einzeln = mk.filter((m) =>
+    !m.classList.contains('mk--bund') && !m.classList.contains('mk--base'));
+  return einzeln.length + bund.reduce((a, m) => a + Number(m.textContent.trim() || 0), 0);
+});
+ok('jeder verortete Ort ist vertreten', await vertretung(), MIT_GEO);
 ok('der Zeltplatz ist dabei', await page.locator('.mk--base').count(), 1);
+
+/* Und keine zwei Nadeln liegen naeher beieinander als eine Fingerkuppe --
+   genau das war vorher der Fehler. Der Zeltplatz zaehlt nicht mit: er ist
+   kein Bedienelement, sondern ein Bezugspunkt. */
+const engsterAbstand = async () => page.evaluate(() => {
+  const pos = [...document.querySelectorAll('.leaflet-marker-icon.mk')]
+    .filter((m) => !m.classList.contains('mk--base'))
+    .map((m) => { const r = m.getBoundingClientRect();
+      return [r.left + r.width / 2, r.top + r.height / 2]; });
+  let min = Infinity;
+  for (let i = 0; i < pos.length; i++) {
+    for (let j = i + 1; j < pos.length; j++) {
+      min = Math.min(min, Math.max(Math.abs(pos[i][0] - pos[j][0]),
+                                   Math.abs(pos[i][1] - pos[j][1])));
+    }
+  }
+  return min === Infinity ? 999 : Math.round(min);
+});
+ok('keine zwei Nadeln liegen naeher als 34 px', (await engsterAbstand()) >= 34);
 if (SHOT) await page.screenshot({ path: SHOT + '/karte.png' });
 
 /* Die Karte hoert auf dieselben Filter wie die Liste -- sonst zeigt sie etwas
@@ -53,7 +84,8 @@ if (SHOT) await page.screenshot({ path: SHOT + '/karte.png' });
 await page.click('#jum-btn');
 await page.waitForTimeout(1200);
 const mitJum = DATEN.places.filter((p) => p.geo && p.dog === true).length;
-ok('„Mit Jum" wirkt auch auf der Karte', await page.locator('.mk').count(), mitJum + 1);
+ok('„Mit Jum" wirkt auch auf der Karte', await vertretung(), mitJum);
+ok('… und auch dann ueberlappt nichts', (await engsterAbstand()) >= 34);
 await page.click('#jum-btn');
 await page.waitForTimeout(1200);
 
@@ -64,16 +96,69 @@ ok('… und der Leerzustand steht da', await page.locator('#empty').isVisible())
 await page.fill('#q', '');
 await page.waitForTimeout(1000);
 
-/* Eine Nadel antippen oeffnet dasselbe Sheet wie eine Listenzeile.
-   force, weil sich die Nadeln im Ortskern ueberlappen -- Playwright weigert
-   sich sonst, auf ein teilweise verdecktes Element zu klicken. Das Ueberlappen
-   ist real und steht als offener Punkt in der README; hier geht es um den
-   Weg von der Nadel ins Sheet, nicht um die Treffsicherheit. */
-await page.locator('.mk:not(.mk--base)').first().click({ force: true });
+/* Eine einzelne Nadel antippen oeffnet dasselbe Sheet wie eine Listenzeile.
+   Ohne force: seit der Buendelung verdeckt nichts mehr etwas, und genau das
+   soll die Zusicherung mitpruefen. Bis v24 stand hier force, weil sich die
+   Nadeln im Ortskern ueberlappten -- der offene Punkt aus der README. */
+await page.locator('.mk:not(.mk--base):not(.mk--bund)').first().click();
 await page.waitForTimeout(700);
-ok('Nadel öffnet das Detail-Sheet', await page.locator('#sheet').isVisible());
+ok('einzelne Nadel öffnet das Detail-Sheet', await page.locator('#sheet').isVisible());
 await page.keyboard.press('Escape');
 await page.waitForTimeout(500);
+
+/* Ein Buendel antippen zoomt hinein und teilt es. Nachgemessen brach die
+   Altstadt damit in drei Tipps von 72 auf 33 auf 9 auf 4 auf -- mit der
+   zuerst gebauten Regel "zerfaellt in mindestens zwei" waren es 72, 61, 50,
+   43, also drei Tipps fuer nicht einmal die Haelfte. */
+const groesstesBuendel = async () => page.evaluate(() =>
+  Math.max(0, ...[...document.querySelectorAll('.mk--bund')].map((m) => Number(m.textContent.trim()))));
+const vorTipp = await groesstesBuendel();
+ok('es gibt ueberhaupt ein Buendel', vorTipp > 1);
+await page.evaluate(() => {
+  const b = [...document.querySelectorAll('.mk--bund')]
+    .sort((a, c) => Number(c.textContent) - Number(a.textContent))[0];
+  b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+});
+await page.waitForTimeout(1200);
+const nachTipp = await groesstesBuendel();
+ok('ein Tipp halbiert das groesste Buendel mindestens', nachTipp <= Math.ceil(vorTipp / 2));
+ok('dabei geht kein Ort verloren', await vertretung(), MIT_GEO);
+ok('und es ueberlappt weiterhin nichts', (await engsterAbstand()) >= 34);
+
+/* Neun Punkte in den Daten tragen mehr als einen Ort -- dieselbe Adresse,
+   dieselbe Koordinate: "Osteria sugli Scavi" und "Dom San Martino" etwa.
+   Dort hilft kein Zoom, auch bei maxZoom bleiben sie ein Buendel. Statt den
+   Benutzer ins Leere tippen zu lassen, zeigt das Buendel dann die Namen. */
+await page.evaluate(() => {
+  const k = window.__karte;
+  if (k) k.setView([45.43799, 10.695114], k.getMaxZoom());
+});
+await page.waitForTimeout(1200);
+const aufPunkt = await page.evaluate(() => {
+  const b = [...document.querySelectorAll('.mk--bund')];
+  if (!b.length) return null;
+  b[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  return b[0].textContent.trim();
+});
+if (aufPunkt === null) {
+  ok('bei maxZoom bleibt ein Buendel auf gemeinsamem Punkt', 'kein Buendel gefunden', 'ein Buendel');
+} else {
+  await page.waitForTimeout(600);
+  ok('auf gemeinsamem Punkt bleibt ein Buendel', Number(aufPunkt) > 1);
+  ok('… und zeigt beim Tippen die Namen statt zu zoomen',
+    await page.locator('.bundpop').count() > 0);
+  const namen = await page.evaluate(() =>
+    [...document.querySelectorAll('.bund__b .bund__n')].map((x) => x.textContent.trim()));
+  ok('die Namensliste nennt so viele Orte wie das Buendel', namen.length, Number(aufPunkt));
+  ok('jeder Eintrag ist gross genug zum Tippen', await page.evaluate(() =>
+    [...document.querySelectorAll('.bund__b')].every((x) => x.getBoundingClientRect().height >= 44)));
+  await page.locator('.bund__b').first().click();
+  await page.waitForTimeout(700);
+  ok('ein Name im Buendel oeffnet sein Detail', await page.locator('#sheet').isVisible());
+  ok('… und die Namensliste ist danach zu', await page.locator('.bundpop').count(), 0);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+}
 
 /* In Heute, Plan und Info hat die Karte nichts zu suchen. */
 for (const [tab, name] of [['heute', 'Heute'], ['gemerkt', 'Plan'], ['info', 'Info']]) {

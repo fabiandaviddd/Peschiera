@@ -1203,6 +1203,45 @@ body.is-typing .tabs { transform: translateY(110%); }
   box-shadow: 0 1px 3px rgba(0,0,0,.45);
 }
 .mk--seen span { opacity: .45; }
+
+/* Die Nadel bleibt 16 px, ihre Trefferflaeche misst 30. Erst die Buendelung
+   schafft dafuer Platz -- vorher lagen 100 von 102 Nadeln naeher als 34 px
+   beieinander, groessere Flaechen haetten sich gegenseitig verdeckt. */
+.mk { display: grid; place-items: center; }
+
+/* Ein Buendel. Stein statt einer Kategoriefarbe: es steht fuer mehrere
+   Kategorien zugleich, und eine davon zu waehlen waere gelogen. */
+.mk--bund span {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  background: var(--stein); color: var(--card);
+  font-family: var(--font-body); font-size: var(--t-meta); font-weight: 700;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.mk--bund-gross span { width: 38px; height: 38px; font-size: var(--t-name); }
+
+/* Die Namen, wenn Hineinzoomen nicht mehr hilft: neun Punkte in den Daten
+   tragen mehr als einen Ort. */
+.bundpop .leaflet-popup-content-wrapper {
+  background: var(--card); color: var(--ink);
+  border-radius: var(--r-card); box-shadow: var(--shadow-lift);
+}
+.bundpop .leaflet-popup-tip { background: var(--card); }
+.bundpop .leaflet-popup-content { margin: .7rem .8rem; }
+.bund__h {
+  font-size: var(--t-micro); font-weight: 700; color: var(--soft);
+  text-transform: none; margin-bottom: .4rem;
+}
+.bund__l { display: grid; gap: .15rem; max-height: 14rem; overflow-y: auto; }
+.bund__b {
+  display: grid; gap: .05rem; justify-items: start; text-align: left;
+  min-height: 44px; padding: .35rem .4rem;
+  background: none; border: 0; border-radius: 8px; cursor: pointer;
+  font: inherit; color: var(--ink);
+}
+.bund__b:hover { background: var(--wash); }
+.bund__n { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name); }
+.bund__k { font-size: var(--t-micro); font-weight: 700; color: var(--soft); }
 .mk--base span {
   width: 18px; height: 18px;
   background: var(--ink); border-color: var(--card);

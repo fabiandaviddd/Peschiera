@@ -402,7 +402,11 @@ Wahrheit aufzumachen.
   Gesehene Orte sind gedämpft.
 - **Der Zeltplatz ist als eigene, dunkle Nadel dabei** — ohne ihn weiß man
   nicht, von wo die Entfernungen in der Liste gelten.
-- **Nadel antippen öffnet dasselbe Sheet** wie eine Listenzeile.
+- **Nadel antippen öffnet dasselbe Sheet** wie eine Listenzeile. Die
+  Trefferfläche misst 30 px, der sichtbare Punkt bleibt 16 px.
+- **Nadeln, die näher als 34 px beieinander lägen, werden gebündelt** — ein
+  Kreis mit der Zahl darin. Antippen zoomt so weit hinein, dass sich das
+  Bündel mindestens halbiert.
 - **Leaflet 1.9.4 liegt unter `vendor/leaflet/`** im Repo, BSD-2-Clause.
 - **Fraunces und Karla liegen unter `fonts/`** im Repo, SIL Open Font
   License 1.1. Lizenztext und Herkunft stehen in `fonts/LICENSE.md`; die
@@ -414,10 +418,37 @@ Wahrheit aufzumachen.
   zur Laufzeit und lassen sich nicht sinnvoll vorhalten. Ohne Netz zeigt die
   Karte die Nadeln ohne Untergrund.
 
-**Offen: die Nadeln überlappen im Ortskern.** Bei 101 Orten auf engem Raum
-wird aus dem Zentrum ein Klumpen; man muss hineinzoomen, um einzelne Nadeln zu
-treffen. Ein Cluster-Aufsatz wäre die übliche Antwort und eine weitere
-Abhängigkeit — bewusst noch nicht gebaut.
+**Erledigt in v25: die Nadeln überlappten im Ortskern.** Gemessen bei 402 px
+Breite im Übersichtszustand: **96 von 102 Nadeln** lagen so dicht, dass sich
+ihre Punkte berührten, 100 von 102 näher als 34 px. Die Karte zeigte einen
+Fleck, und die verdeckten Nadeln waren gar nicht zu treffen.
+
+Gebündelt wird **ohne Fremdpaket** — der übliche Cluster-Aufsatz für Leaflet
+wäre die zweite externe Abhängigkeit gewesen, und bei 101 Punkten rechnet die
+naive Schleife in unter einer Millisekunde. Nach Pixelabstand im aktuellen
+Zoom, nicht nach einem Gitter über die Koordinaten: ein Gitter trennt zwei
+Nadeln, die 2 px auseinanderliegen, wenn zufällig eine Zellgrenze dazwischen
+läuft.
+
+| | vorher | nachher |
+|---|---|---|
+| Nadeln im Übersichtszustand | 102 | 9 |
+| davon überlappend | 96 | 0 |
+| vertretene Orte | 101 | 101 |
+
+Drei Details, die aus Messungen kamen und nicht aus dem Entwurf:
+
+1. **Der Schwerpunkt wandert beim Einsammeln.** Dadurch konnten zwei fertige
+   Bündel doch wieder näher als 34 px beieinander liegen. Ein Nachlauf legt
+   solche Paare zusammen. Gefunden, weil die Zusicherung fehlschlug.
+2. **„Bricht in mindestens zwei auf" war zu wenig.** Damit ging die Altstadt
+   72 → 61 → 50 → 43: drei Tipps für nicht einmal die Hälfte. Jetzt springt
+   ein Tipp auf den Zoom, bei dem sich das größte Bündel halbiert — 72 → 33 →
+   9 → 4.
+3. **Neun Punkte in den Daten tragen mehr als einen Ort** (gleiche Adresse,
+   gleiche Koordinate — etwa *Osteria sugli Scavi* und *Dom San Martino*).
+   Dort hilft kein Zoom. Das Bündel zeigt dann die Namen zum Antippen, statt
+   den Benutzer ins Leere tippen zu lassen.
 
 **Hinweis für Tests in dieser Umgebung:** das hier verwendete Chromium traut
 dem MITM-Zertifikat des Agent-Proxys nicht, alle fremden Anfragen enden in

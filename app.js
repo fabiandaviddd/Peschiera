@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v24 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v25 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -3090,6 +3090,180 @@
     el.hidden = !txt;
   }
 
+  /* ------------------------------------------------------ Nadeln buendeln */
+  /* Im Uebersichtszustand lagen 96 von 102 Nadeln so dicht, dass sich ihre
+     16-px-Punkte beruehrten, und 100 von 102 naeher als 34 px beieinander --
+     gemessen bei 402 px Breite. Die Karte zeigte damit einen Fleck, keine
+     Orte, und tippen konnte man die verdeckten gar nicht.
+
+     Gebuendelt wird nach Pixelabstand im aktuellen Zoom, nicht nach einem
+     Gitter ueber die Koordinaten. Ein Gitter trennt zwei Nadeln, die 2 px
+     auseinanderliegen, wenn zufaellig eine Zellgrenze dazwischen laeuft --
+     genau der Fall, den man sehen wuerde.
+
+     Kein Fremdpaket: das uebliche Buendel-Plugin fuer Leaflet waere die
+     zweite externe Abhaengigkeit im Projekt, und bei 101 Punkten rechnet die
+     naive Schleife (101 x Gruppenzahl) in unter einer Millisekunde.
+
+     34 px, weil eine Fingerkuppe mit 44 px angesetzt wird und zwei Nadeln,
+     die naeher liegen, nicht mehr einzeln zu treffen sind. */
+  var KACHEL = 34;
+  var letzteOrte = [];
+
+  function buendel(orte, zoom) {
+    var gruppen = [];
+    orte.forEach(function (p) {
+      var pt = karte.project([p.geo.lat, p.geo.lon], zoom);
+      for (var i = 0; i < gruppen.length; i++) {
+        var g = gruppen[i];
+        if (Math.abs(g.x - pt.x) < KACHEL && Math.abs(g.y - pt.y) < KACHEL) {
+          g.orte.push(p);
+          /* Schwerpunkt nachziehen, sonst haengt das Buendel am ersten Ort
+             und wandert bei drei Nachbarn sichtbar aus der Mitte. */
+          g.x += (pt.x - g.x) / g.orte.length;
+          g.y += (pt.y - g.y) / g.orte.length;
+          return;
+        }
+      }
+      gruppen.push({ x: pt.x, y: pt.y, orte: [p] });
+    });
+
+    /* Nachlauf. Der Schwerpunkt wandert beim Einsammeln, und dadurch koennen
+       zwei fertige Gruppen naeher beieinander liegen als KACHEL, obwohl beim
+       Einsortieren keine zu nah war. Ohne diesen Durchgang ueberlappten nach
+       einem Tipp auf ein Buendel wieder zwei Nadeln -- gefunden nicht durch
+       Nachdenken, sondern weil die Zusicherung "keine zwei naeher als 34 px"
+       fehlschlug.
+
+       Terminiert: jede Zusammenlegung verringert die Zahl der Gruppen. */
+    var nochmal = true;
+    while (nochmal) {
+      nochmal = false;
+      for (var i = 0; i < gruppen.length && !nochmal; i++) {
+        for (var j = i + 1; j < gruppen.length; j++) {
+          var a = gruppen[i], b = gruppen[j];
+          if (Math.abs(a.x - b.x) < KACHEL && Math.abs(a.y - b.y) < KACHEL) {
+            var n = a.orte.length + b.orte.length;
+            a.x = (a.x * a.orte.length + b.x * b.orte.length) / n;
+            a.y = (a.y * a.orte.length + b.y * b.orte.length) / n;
+            a.orte = a.orte.concat(b.orte);
+            gruppen.splice(j, 1);
+            nochmal = true;
+            break;
+          }
+        }
+      }
+    }
+    return gruppen;
+  }
+
+  /* Groesster Pixelabstand innerhalb einer Gruppe bei gegebenem Zoom. Sagt,
+     ob Hineinzoomen die Gruppe ueberhaupt noch aufteilen kann. */
+  function spreizung(orte, zoom) {
+    var pts = orte.map(function (p) { return karte.project([p.geo.lat, p.geo.lon], zoom); });
+    var max = 0;
+    for (var i = 0; i < pts.length; i++) {
+      for (var j = i + 1; j < pts.length; j++) {
+        max = Math.max(max, Math.abs(pts[i].x - pts[j].x), Math.abs(pts[i].y - pts[j].y));
+      }
+    }
+    return max;
+  }
+
+  /* Der naechste Zoom, bei dem das groesste Teilbuendel hoechstens halb so
+     gross ist wie die Gruppe jetzt.
+
+     "Zerfaellt in mindestens zwei" war zu wenig: gemessen ging die Altstadt
+     damit 72 -> 61 -> 50 -> 43, drei Tipps fuer weniger als die Haelfte. Der
+     Grund steckt in den Daten, nicht im Code -- 72 der 101 Orte liegen in
+     einem Ortskern von wenigen hundert Metern.
+
+     Hoechstens bis maxZ; mehr ist nicht zu holen. */
+  function trennZoom(orte, vonZoom, maxZ) {
+    var ziel = Math.max(2, Math.ceil(orte.length / 2));
+    for (var z = vonZoom + 1; z <= maxZ; z++) {
+      var groesste = 0;
+      buendel(orte, z).forEach(function (g) {
+        if (g.orte.length > groesste) groesste = g.orte.length;
+      });
+      if (groesste <= ziel) return z;
+    }
+    return maxZ;
+  }
+
+  function buendelListe(g) {
+    return '<p class="bund__h">' + g.orte.length + ' Orte an dieser Stelle</p>'
+      + '<div class="bund__l">'
+      + g.orte.map(function (p) {
+          return '<button type="button" class="bund__b" data-bopen="' + esc(p.id) + '">'
+            + '<span class="bund__n">' + esc(p.name) + '</span>'
+            + '<span class="bund__k">' + esc(catLabel(p.category)) + '</span>'
+            + '</button>';
+        }).join('')
+      + '</div>';
+  }
+
+  function zeichneNadeln(orte) {
+    marker.forEach(function (m) { karte.removeLayer(m); });
+    marker = [];
+    if (!orte.length) return;
+
+    var zoom = karte.getZoom();
+    var maxZ = karte.getMaxZoom();
+
+    buendel(orte, zoom).forEach(function (g) {
+      var m;
+      if (g.orte.length === 1) {
+        var p = g.orte[0];
+        m = window.L.marker([p.geo.lat, p.geo.lon], {
+          icon: window.L.divIcon({
+            className: 'mk ' + accentClass(p.category)
+              + (S.seen.indexOf(p.id) >= 0 ? ' mk--seen' : ''),
+            /* 30 statt 16: der Punkt bleibt 16 px gross, die Trefferflaeche
+               waechst. Erst durch die Buendelung ist dafuer ueberhaupt Platz
+               -- vorher haetten sich die groesseren Flaechen gegenseitig
+               verdeckt. */
+            html: '<span></span>', iconSize: [30, 30], iconAnchor: [15, 15]
+          }),
+          title: p.name
+        });
+        m.on('click', function () { openSheet(p.id); });
+      } else {
+        var mitte = karte.unproject([g.x, g.y], zoom);
+        var alleGesehen = g.orte.every(function (o) { return S.seen.indexOf(o.id) >= 0; });
+        var gross = g.orte.length > 9;
+        m = window.L.marker(mitte, {
+          icon: window.L.divIcon({
+            className: 'mk mk--bund' + (gross ? ' mk--bund-gross' : '')
+              + (alleGesehen ? ' mk--seen' : ''),
+            html: '<span>' + g.orte.length + '</span>',
+            iconSize: gross ? [38, 38] : [32, 32],
+            iconAnchor: gross ? [19, 19] : [16, 16]
+          }),
+          title: g.orte.length + ' Orte'
+        });
+        m.on('click', function () {
+          /* Kann Hineinzoomen die Gruppe ueberhaupt trennen? Neun Punkte in
+             den Daten tragen mehr als einen Ort -- dieselbe Adresse, dieselbe
+             Koordinate. Dort hilft kein Zoom, dort muessen die Namen her.
+             Ohne diese Frage tippte man erst zweimal ins Leere. */
+          if (spreizung(g.orte, maxZ) < KACHEL) {
+            m.bindPopup(buendelListe(g), { className: 'bundpop', maxWidth: 260 }).openPopup();
+            return;
+          }
+          /* Nicht auf die Ausdehnung der Gruppe zoomen, sondern auf den
+             Zoom, bei dem sie aufbricht. Gemessen mit fitBounds brauchte die
+             Altstadt drei Tipps fuer 72 -> 61 -> 43 -> 33: die Gruppe passte
+             danach immer noch in 34 px, man tippte und es tat sich fast
+             nichts. So teilt jeder Tipp wirklich. */
+          karte.setView(mitte, trennZoom(g.orte, zoom, maxZ));
+        });
+      }
+      m.addTo(karte);
+      marker.push(m);
+    });
+  }
+
   function zeigeKarte(orte) {
     ladeLeaflet().then(function (da) {
       if (!da) {
@@ -3105,6 +3279,11 @@
           attribution: '© OpenStreetMap'
         }).addTo(karte);
         karte.setView(base ? [base.lat, base.lon] : [45.44, 10.69], 13);
+        /* Nur fuer den Pruefstand: ohne einen Griff auf die Karte laesst sich
+           von aussen kein Zoom setzen, und der Fall "mehrere Orte auf einem
+           Punkt" ist sonst nicht anzusteuern. Kostet nichts und verraet
+           nichts. */
+        window.__karte = karte;
         /* Der Zeltplatz als fester Bezugspunkt -- ohne ihn weiss man nicht,
            von wo die Entfernungen in der Liste gelten. */
         if (base) {
@@ -3113,30 +3292,43 @@
                                      iconSize: [18, 18] })
           }).addTo(karte).bindTooltip('Zeltplatz');
         }
+
+        /* Nach jedem Zoom neu buendeln: was bei Zoom 13 ein Punkt ist, sind
+           bei 17 acht. Nur zoomend, nicht moveend -- beim Verschieben bleiben
+           die Abstaende gleich, ein Neuzeichnen waere reine Arbeit. */
+        karte.on('zoomend', function () {
+          if (letzteOrte.length) zeichneNadeln(letzteOrte);
+        });
+
+        /* Die Knoepfe im Buendel-Popup liegen ausserhalb der Liste, die
+           Klicks sonst abfaengt -- hier eigens verdrahtet. */
+        karte.on('popupopen', function (e) {
+          var el = e.popup.getElement();
+          if (!el) return;
+          el.querySelectorAll('[data-bopen]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              var id = b.getAttribute('data-bopen');
+              karte.closePopup();
+              openSheet(id);
+            });
+          });
+        });
       }
 
-      marker.forEach(function (m) { karte.removeLayer(m); });
-      marker = [];
       var mitGeo = orte.filter(function (p) { return p.geo; });
-      mitGeo.forEach(function (p) {
-        var m = window.L.marker([p.geo.lat, p.geo.lon], {
-          icon: window.L.divIcon({
-            className: 'mk ' + accentClass(p.category)
-              + (S.seen.indexOf(p.id) >= 0 ? ' mk--seen' : ''),
-            html: '<span></span>', iconSize: [16, 16]
-          }),
-          title: p.name
-        });
-        m.on('click', function () { openSheet(p.id); });
-        m.addTo(karte);
-        marker.push(m);
-      });
+      letzteOrte = mitGeo;
 
       if (mitGeo.length) {
         karte.fitBounds(window.L.latLngBounds(mitGeo.map(function (p) {
           return [p.geo.lat, p.geo.lon];
         })).pad(0.15), { maxZoom: 16 });
       }
+      /* Nach fitBounds, nicht davor: gebuendelt wird nach Pixelabstand, und
+         der haengt am Zoom. Vorher gezeichnet waere die Buendelung die des
+         alten Ausschnitts. Aendert fitBounds den Zoom, zeichnet zoomend
+         ohnehin noch einmal -- zeichneNadeln raeumt zuerst ab, doppelt
+         schadet also nicht. */
+      zeichneNadeln(mitGeo);
       karte.invalidateSize();
 
       var ohne = orte.length - mitGeo.length;

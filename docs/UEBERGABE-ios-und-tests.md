@@ -161,7 +161,7 @@ Google Fonts ist erreichbar.
 | Leaflet vendoren | Benutzer: drei `curl`-Befehle auf dem Mac |
 | `dog` bei 58 von 101 Orten ungeklärt | Recherche. Größte inhaltliche Lücke — betrifft jede Entscheidung mit dem Hund |
 | Schriften laden auf dem iPhone? | Seit v23 aus dem Repo statt von Google. `selbsttest.html` zeigt es weiterhin an |
-| Kartenansicht | Erst wenn Koordinaten und Leaflet da sind |
+| Kartenansicht | Gebaut (v21), Nadeln gebündelt seit v25 |
 
 ---
 
