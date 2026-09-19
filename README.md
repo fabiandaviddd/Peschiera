@@ -35,7 +35,7 @@ schreibt die Fassung dazu, für die es gilt.
 | **PWA** | `manifest.webmanifest` + `sw.js`. App-Shell und `places.json` liegen im Cache, nach einmaligem Laden läuft alles offline — Merkliste inklusive. Auf dem iPhone-Homescreen installierbar, mit Icon und Startbild. |
 | **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. Das Feld steht auch auf „Heute" — sonst ist von der Startansicht aus nicht zu sehen, dass hinter dem einen Vorschlag 101 Orte liegen. Hineingreifen wechselt in die Liste. |
 | **Heute** | Tagesblatt statt Einzelvorschlag. Datum, Reisetag, Tagesabschnitt aus der Geräteuhr — darunter eine Leiste über alle vier Abschnitte: vergangene sind gestrichelt umrandet, der laufende trägt eine Unterkante, jeder ist antippbar. Der Vorschlag nennt seine Position im Stapel („3 / 35") und hat Knöpfe vor und zurück; am Anfang ist der Zurück-Knopf deaktiviert. „Sonst noch" zeigt drei Alternativen mit der Gesamtzahl daneben und lässt sich ausklappen. Darunter ein Blick auf den nächsten Abschnitt („Abends dann"). Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert. Bei Regen ohne Treffer nennt der Leerzustand die Orte, die sicher im Trockenen sind; schränkt der Jum-Schalter ein, sagt er das und zeigt, was ohne ihn ginge. |
-| **Plan** | Hieß bis v13 „Gemerkt". Die Reihenfolge steckte immer schon in `pk.saved` — das Feld ist ein Array und wird beim Merken hinten angehängt —, wurde aber nie benutzt, weil die Ansicht nach Entfernung sortierte. Jetzt: nummerierte Stationen, Pfeile zum Umstellen (keine Wischgeste — zwei Knöpfe sind bei einer Handvoll Stationen treffsicherer und lassen sich ohne echtes iOS prüfen), und darüber das Zeitbudget aus `time_min` und `walk_min`. Die Summe sagt dazu, auf wie viele Orte sie sich stützt, wenn Werte fehlen. Zwischen zwei Stationen mit `geo` steht ab 1,2 km die Luftlinie als Warnung; fehlt `geo` bei einer der beiden, bleibt die Zeile weg. Suche, Filter und Sortierung sind dort ausgeblendet — sie würden die Reihenfolge zerschießen, um die es gerade geht. Der Teilen-Link trägt die Reihenfolge automatisch mit. |
+| **Plan** | Hieß bis v13 „Gemerkt". Die Reihenfolge steckte immer schon in `pk.saved` — das Feld ist ein Array und wird beim Merken hinten angehängt —, wurde aber nie benutzt, weil die Ansicht nach Entfernung sortierte. Seit v28 gehört jede Station **einem Reisetag** — Wähler je Zeile, Gruppierung nach Tagen, Zeitsumme je Tag; ausführlich im Abschnitt „Plan" weiter unten. Dazu: nummerierte Stationen, Pfeile zum Umstellen innerhalb des Tages (keine Wischgeste — zwei Knöpfe sind bei einer Handvoll Stationen treffsicherer und lassen sich ohne echtes iOS prüfen), und darüber das Zeitbudget aus `time_min` und `walk_min`. Die Summe sagt dazu, auf wie viele Orte sie sich stützt, wenn Werte fehlen. Zwischen zwei Stationen mit `geo` steht ab 1,2 km die Luftlinie als Warnung; fehlt `geo` bei einer der beiden, bleibt die Zeile weg. Suche, Filter und Sortierung sind dort ausgeblendet — sie würden die Reihenfolge zerschießen, um die es gerade geht. Der Teilen-Link trägt die Reihenfolge automatisch mit. |
 | **Ruhetage** | Steht der Ruhetag wörtlich in `hours` („Ruhetag Mittwoch", „Mi geschlossen", „Mo zu"), wird er gelesen: 14 der 101 Orte tragen einen, verteilt auf Mo 4, Di 4, Mi 6. In „Heute" sinken sie an ihrem Ruhetag ans Ende der Liste — vor jedem anderen Kriterium, eine gute Bewertung hilft an einem geschlossenen Mittwoch nicht. Herausgefiltert werden sie nicht, sonst schrumpfte die Liste still; wer weiterblättert, bekommt den Grund dazugeschrieben („heute Ruhetag"). In der Liste und im Detail ersetzt „heute zu" die Öffnungsangabe — derselbe Slot, dieselbe Zeilenhöhe. Gelesen wird nur `hours`, nie `note`: dort steht bei einem Ort eine Faustregel über italienische Fischläden allgemein, keine Angabe über diesen Laden. |
 | **Von hier** | Alle Entfernungen gelten ab dem Zeltplatz — richtig für „gehen wir heute Abend hin?", falsch, wenn man gerade in Sirmione steht. Im Filter-Sheet unter „Standort" misst ein Knopf ab dem Gerätestandort: Luftlinie, keine Gehzeit. Der Standort kommt vom Gerät, nicht von einem Dienst — er funktioniert im Flugmodus, verlässt das Gerät nicht und wird nirgends gespeichert; gefragt wird erst auf Tippen. Ist er an, misst die Sortierung „Entfernung" ab hier, die Faktenzeile zeigt im selben Slot „286 m von hier", und im Kopf steht ein Chip mit Kreuz. Orte ohne `geo` stünden hinten — seit 19.09. gibt es keine mehr. Im Detail bleibt die Angabe ab dem Zeltplatz als eigene Zeile stehen. |
 | **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". Die Zählzeile sagt immer, wie viele Orte er gerade ausblendet. |
@@ -386,9 +386,43 @@ Die Seite gehört nicht zur App, ist aus ihr nicht verlinkt und stört nichts.
 - **Laufende Synchronisierung** statt Teilen auf Zuruf. Bräuchte einen Dienst
   dazwischen (etwa Supabase) und damit ein Backend — entgegen dem bisherigen
   Grundsatz, und es muss bei schlechtem Netz trotzdem offline funktionieren.
-- **Tagesrouten**: Orte einem Datum zuordnen, eigener Reiter, Sortierung nach
-  kürzester Runde ab dem Zeltplatz. Setzt die Koordinaten voraus (siehe unten),
-  weil sich sonst keine Entfernungen zwischen zwei Orten rechnen lassen.
+- **Sortierung nach kürzester Runde** ab dem Zeltplatz. Die Tageszuordnung
+  ist seit `v28` gebaut (siehe „Plan"); was noch fehlt, ist das automatische
+  Legen einer sinnvollen Reihenfolge innerhalb eines Tages.
+
+## Plan
+
+Der Plan war bis `v27` eine Liste, die man nur umsortieren konnte — für
+vierzehn Tage Reise ist das kein Plan, sondern ein Stapel. Seit `v28` gehört
+jeder gemerkte Ort **einem Reisetag**.
+
+- **Ein Tageswähler je Zeile.** Ein natives `<select>`, kein eigenes Menü: auf
+  dem Zielgerät öffnet iOS sein Wählrad — vertraut, treffsicher, und ohne eine
+  Zeile eigenen Menü-Codes, den `close.mjs` dann absichern müsste. Die Auswahl
+  sind die Reisetage aus `meta.subtitle`, plus „Tag offen". Der heutige Tag ist
+  in der Liste als solcher markiert.
+- **Die Ansicht gruppiert nach Tagen**, mit Wochentag, Datum und der Summe der
+  eingeplanten Zeit. Mehr als 10 h an einem Tag wird **genannt, nicht
+  bewertet** („— mehr als 10 h"): die Summe ist ohne An- und Abfahrt gerechnet,
+  die Grenze ist eine Annahme und steht deshalb wörtlich da.
+- **Gruppen erscheinen erst mit der ersten Zuordnung.** Wer den Plan nur als
+  Liste nutzt, bekommt keine leeren Köpfe vorgesetzt.
+- **Die Pfeile verschieben innerhalb des Tages**, nicht global. Seit der
+  Gruppierung wäre ein globaler Nachbar oft unsichtbar in einer anderen
+  Gruppe — man tippte und sähe nichts passieren.
+- **Die Warnung „x km Luftlinie" gilt Nachbarn desselben Tages.** Zwischen dem
+  letzten Ort von Dienstag und dem ersten von Mittwoch liegt eine Nacht, keine
+  Wanderung.
+- **Die Zuordnung ist eine Zutat der Merkliste, kein eigener Zustand.** Fliegt
+  ein Ort aus dem Plan, bleibt sein Tag gespeichert und gilt wieder, wenn man
+  ihn erneut merkt — ein Fehltipp auf den Stern kostet keine Planung.
+- **Der Teilen-Link trägt die Tage mit** (`d` im Payload). `v` bleibt `1`: eine
+  ältere Fassung ignoriert das Feld einfach, statt den ganzen Link zu
+  verwerfen. Beim Zusammenführen gewinnt die **eigene** Planung; ein fremder
+  Tag füllt nur Lücken — dieselbe Regel wie bei den Notizen.
+
+Gespeichert unter `pk.days` als `{ ortId: 'JJJJ-MM-TT' }`. Eine Zuordnung
+außerhalb des Reisezeitraums zählt als „offen" statt als Tag.
 
 ## Karte
 

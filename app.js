@@ -7,13 +7,14 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v27 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v28 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
   var LS_NOTES = 'pk.notes';
   var LS_THEME = 'pk.theme';
   var LS_JUM   = 'pk.jum';
+  var LS_DAYS  = 'pk.days';  // { ortId: 'JJJJ-MM-TT' } — die Tageszuordnung im Plan
   var SS_WET   = 'pk.wet';    // Wetter gilt fuer diesen Besuch, nicht fuer immer
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
   var SHORT_MAX = 60;         // Schwelle für den Filter "Unter 1 h"
@@ -56,6 +57,13 @@
     hereState: 'off',       // off | wait | on | denied | failed
     saved: [],
     seen: [],
+    /* Welcher Ort an welchem Reisetag drankommt. Bis v27 konnte der Plan nur
+       eine Reihenfolge — fuer vierzehn Tage Reise ist eine einzige lange
+       Liste kein Plan, sondern ein Stapel. Die Zuordnung bleibt eine ZUTAT
+       der Merkliste, kein eigener Zustand: fliegt ein Ort aus dem Plan,
+       bleibt sein Tag gespeichert und gilt wieder, wenn man ihn erneut
+       merkt — ein Fehltipp auf den Stern kostet so keine Planung. */
+    days: {},               // { id: 'JJJJ-MM-TT' }
     theme: 'auto',
     openId: null
   };
@@ -409,6 +417,14 @@
     D.places.forEach(function (p) { ids[p.id] = true; });
     S.saved = (lsGet(LS_SAVED, []) || []).filter(function (id) { return ids[id]; });
     S.seen  = (lsGet(LS_SEEN,  []) || []).filter(function (id) { return ids[id]; });
+    var rohTage = lsGet(LS_DAYS, {}) || {};
+    S.days = {};
+    Object.keys(rohTage).forEach(function (id) {
+      if (ids[id] && /^\d{4}-\d{2}-\d{2}$/.test(String(rohTage[id] || ''))) {
+        S.days[id] = String(rohTage[id]);
+      }
+    });
+
     var rohNotes = lsGet(LS_NOTES, {}) || {};
     S.notes = {};
     Object.keys(rohNotes).forEach(function (id) {
@@ -1035,8 +1051,8 @@
         $('list').innerHTML = ''; $('list').setAttribute('data-voll', '1');
         $('empty').hidden = false;
         $('empty-h').textContent = 'Noch nichts im Plan';
-        $('empty-p').textContent = 'Auf einer Zeile den Stern antippen — der Plan bleibt auch offline erhalten '
-          + 'und lässt sich in der Reihenfolge umstellen.';
+        $('empty-p').textContent = 'Auf einer Zeile den Stern antippen — der Plan bleibt auch offline erhalten, '
+          + 'lässt sich den Reisetagen zuordnen und in der Reihenfolge umstellen.';
         $('empty-reset').hidden = true;
         return;
       }
@@ -1543,17 +1559,48 @@
   var MONTHS = ['januar', 'februar', 'märz', 'april', 'mai', 'juni', 'juli',
                 'august', 'september', 'oktober', 'november', 'dezember'];
 
-  function tripDay(now) {
+  /* Der Reisezeitraum, aus dem Untertitel gelesen ("14.–28. September 2026").
+     Eine zweite Quelle dafuer anzulegen hiesse, zwei Wahrheiten zu pflegen. */
+  function tripSpan() {
     var t = has(D.meta.subtitle) ? String(D.meta.subtitle) : '';
     var m = t.match(/(\d{1,2})\.\s*[–-]\s*(\d{1,2})\.\s*([A-Za-zÄÖÜäöüß]+)\s*(\d{4})/);
     if (!m) return null;
     var mon = MONTHS.indexOf(m[3].toLowerCase());
     if (mon < 0) return null;
-    var from = new Date(+m[4], mon, +m[1]), to = new Date(+m[4], mon, +m[2]);
+    return { from: new Date(+m[4], mon, +m[1]), to: new Date(+m[4], mon, +m[2]) };
+  }
+
+  var WTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+  var WTAGE_LANG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+
+  function isoTag(d) {
+    var mm = String(d.getMonth() + 1), dd = String(d.getDate());
+    return d.getFullYear() + '-' + (mm.length < 2 ? '0' : '') + mm + '-' + (dd.length < 2 ? '0' : '') + dd;
+  }
+
+  /* Alle Reisetage: [{iso, kurz: "Sa 19.09.", lang: "Samstag, 19.09."}] */
+  function tripTage() {
+    var span = tripSpan();
+    if (!span) return [];
+    var aus = [], d = new Date(span.from);
+    while (d <= span.to) {
+      var t = String(d.getDate()); if (t.length < 2) t = '0' + t;
+      var mo = String(d.getMonth() + 1); if (mo.length < 2) mo = '0' + mo;
+      aus.push({ iso: isoTag(d), kurz: WTAGE[d.getDay()] + ' ' + t + '.' + mo + '.',
+                 lang: WTAGE_LANG[d.getDay()] + ', ' + t + '.' + mo + '.' });
+      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    }
+    return aus;
+  }
+
+  function tripDay(now) {
+    var span = tripSpan();
+    if (!span) return null;
     var day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (day0 < from || day0 > to) return null;
+    if (day0 < span.from || day0 > span.to) return null;
     var oneDay = 86400000;
-    return { n: Math.round((day0 - from) / oneDay) + 1, of: Math.round((to - from) / oneDay) + 1 };
+    return { n: Math.round((day0 - span.from) / oneDay) + 1,
+             of: Math.round((span.to - span.from) / oneDay) + 1 };
   }
 
 
@@ -2401,6 +2448,11 @@
        statt den ganzen Link zu verwerfen. */
     var payload = { v: 1, m: S.saved.slice(), g: S.seen.slice() };
     if (Object.keys(S.notes).length) payload.n = S.notes;
+    /* Die Tageszuordnung faehrt mit — nur fuer Orte, die im Link stehen.
+       v bleibt 1: ein Empfaenger mit aelterer Fassung ignoriert d einfach. */
+    var d = {};
+    S.saved.forEach(function (id) { if (S.days[id]) d[id] = S.days[id]; });
+    if (Object.keys(d).length) payload.d = d;
     var base = location.origin + location.pathname;
     return base + '#liste=' + b64url(JSON.stringify(payload));
   }
@@ -2422,7 +2474,12 @@
           notizen[id] = String(data.n[id]).slice(0, 140);
         }
       });
-      return { m: keep(data.m), g: keep(data.g), n: notizen,
+      var tagOk = tagKennungen();
+      var tage = {};
+      Object.keys(data.d || {}).forEach(function (id) {
+        if (known[id] && tagOk[String(data.d[id] || '')]) tage[id] = String(data.d[id]);
+      });
+      return { m: keep(data.m), g: keep(data.g), n: notizen, d: tage,
                dropped: ((data.m || []).length + (data.g || []).length)
                         - (keep(data.m).length + keep(data.g).length) };
     } catch (e) { return null; }
@@ -2481,22 +2538,29 @@
   function applyIncoming(mode) {
     if (!incoming) return;
     var fremd = incoming.n || {};
+    var fremdeTage = incoming.d || {};
     if (mode === 'replace') {
       rueck = { saved: S.saved.slice(), seen: S.seen.slice(),
-                notes: JSON.parse(JSON.stringify(S.notes)) };
+                notes: JSON.parse(JSON.stringify(S.notes)),
+                days: JSON.parse(JSON.stringify(S.days)) };
       S.saved = incoming.m.slice();
       S.seen = incoming.g.slice();
       S.notes = JSON.parse(JSON.stringify(fremd));
+      S.days = JSON.parse(JSON.stringify(fremdeTage));
     } else {
       incoming.m.forEach(function (id) { if (S.saved.indexOf(id) < 0) S.saved.push(id); });
       incoming.g.forEach(function (id) { if (S.seen.indexOf(id) < 0) S.seen.push(id); });
       /* Beim Zusammenfuehren gewinnt die eigene Notiz: sie steht fuer etwas,
          das man selbst vor Ort erfahren hat. */
       Object.keys(fremd).forEach(function (id) { if (!S.notes[id]) S.notes[id] = fremd[id]; });
+      /* Auch hier gewinnt die eigene Planung: ein fremder Tag fuellt nur
+         Luecken. */
+      Object.keys(fremdeTage).forEach(function (id) { if (!S.days[id]) S.days[id] = fremdeTage[id]; });
     }
     lsSet(LS_SAVED, S.saved);
     lsSet(LS_SEEN, S.seen);
     lsSet(LS_NOTES, S.notes);
+    lsSet(LS_DAYS, S.days);
     var zumRuecknehmen = rueck;
     dismissInbox();
     if (zumRuecknehmen) zeigeRueckgaengig(zumRuecknehmen);
@@ -2529,9 +2593,11 @@
     S.saved = rueck.saved.slice();
     S.seen = rueck.seen.slice();
     S.notes = JSON.parse(JSON.stringify(rueck.notes || {}));
+    S.days = JSON.parse(JSON.stringify(rueck.days || {}));
     lsSet(LS_SAVED, S.saved);
     lsSet(LS_SEEN, S.seen);
     lsSet(LS_NOTES, S.notes);
+    lsSet(LS_DAYS, S.days);
     endeRueckgaengig();
     $('inbox').hidden = true;
     syncTabs();
@@ -2556,13 +2622,46 @@
     }).filter(Boolean);
   }
 
+  /* Der Tag eines Orts, sofern er ein gueltiger Reisetag ist -- eine alte
+     Zuordnung ausserhalb des Zeitraums zaehlt als "offen", nicht als Tag. */
+  function planTagVon(id, gueltig) {
+    var t = S.days[id] || '';
+    return gueltig[t] ? t : '';
+  }
+
+  function tagKennungen() {
+    var g = {};
+    tripTage().forEach(function (t) { g[t.iso] = t; });
+    return g;
+  }
+
   function movePlan(id, delta) {
-    var i = S.saved.indexOf(id);
-    var j = i + delta;
-    if (i < 0 || j < 0 || j >= S.saved.length) return;
-    S.saved.splice(j, 0, S.saved.splice(i, 1)[0]);
+    /* Verschoben wird innerhalb der eigenen Gruppe (derselbe Tag oder
+       "offen"), nicht in der globalen Liste: seit die Ansicht nach Tagen
+       gruppiert, waere ein globaler Nachbar oft unsichtbar in einer anderen
+       Gruppe -- man tippte und sah nichts passieren. Getauscht werden die
+       globalen Positionen der beiden Gruppen-Nachbarn; alles dazwischen
+       bleibt unberuehrt. */
+    var gueltig = tagKennungen();
+    var meine = planTagVon(id, gueltig);
+    var gruppe = S.saved.filter(function (x) { return planTagVon(x, gueltig) === meine; });
+    var k = gruppe.indexOf(id);
+    var nachbar = gruppe[k + delta];
+    if (k < 0 || nachbar === undefined) return;
+    var i = S.saved.indexOf(id), j = S.saved.indexOf(nachbar);
+    S.saved[i] = nachbar; S.saved[j] = id;
     lsSet(LS_SAVED, S.saved);
     render();
+  }
+
+  function setDay(id, iso) {
+    if (iso) S.days[id] = iso; else delete S.days[id];
+    lsSet(LS_DAYS, S.days);
+    render();
+    /* Der Neuaufbau wirft den Fokus weg; fuer Tastaturnutzer gehoert er
+       zurueck auf den Waehler desselben Orts. */
+    var wieder = $('list').querySelector('select[data-day="' + id.replace(/"/g, '\\"') + '"]');
+    if (wieder) { try { wieder.focus({ preventScroll: true }); } catch (e) { /* egal */ } }
   }
 
   /* Luftlinie in km zwischen zwei Punkten {lat, lon}. Fehlt einer, kommt
@@ -2673,34 +2772,98 @@
           + (walkN < list.length ? ' (' + walkN + ' von ' + list.length + ')' : '') : '')
       + '</p>';
 
-    var rows = list.map(function (p, i) {
+    var gueltig = tagKennungen();
+    var tage = tripTage();
+    var heute = isoTag(new Date());
+
+    /* Der Waehler je Zeile. Ein natives select, kein eigenes Menue: auf dem
+       Zielgeraet oeffnet iOS sein Waehlrad — vertraut, treffsicher, ohne
+       eine Zeile eigenen Menue-Codes, den close.mjs dann absichern muesste. */
+    function waehler(p, tag) {
+      var o = '<option value=""' + (tag ? '' : ' selected') + '>Tag offen</option>';
+      tage.forEach(function (t) {
+        o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '') + '>'
+          + t.kurz + (t.iso === heute ? ' · heute' : '') + '</option>';
+      });
+      return '<span class="pday' + (tag ? ' pday--zu' : '') + '">'
+        + '<select data-day="' + esc(p.id) + '" aria-label="' + esc(p.name) + ' einem Tag zuordnen">'
+        + o + '</select></span>';
+    }
+
+    function zeile(p, pos, gruppe) {
       var seen = S.seen.indexOf(p.id) >= 0;
-      var h = '<div class="planrow' + (seen ? ' planrow--seen' : '') + ' ' + accentClass(p.category) + '">'
-        + '<span class="planrow__n">' + (i + 1) + '</span>'
+      return '<div class="planrow' + (seen ? ' planrow--seen' : '') + ' ' + accentClass(p.category) + '">'
+        + '<span class="planrow__n">' + (pos + 1) + '</span>'
+        + '<span class="planrow__mid">'
         + '<button type="button" class="planrow__open" data-open="' + esc(p.id) + '">'
         + '<span class="planrow__name">' + esc(p.name) + '</span>'
         + '<span class="planrow__m">' + esc(catLabel(p.category))
         + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
         + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
         + (seen ? ' · gesehen' : '') + '</span></button>'
+        + waehler(p, planTagVon(p.id, gueltig))
+        + '</span>'
         + '<span class="planrow__move">'
         + '<button type="button" class="pmove" data-up="' + esc(p.id) + '"'
-        + (i === 0 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach oben">'
+        + (pos === 0 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach oben">'
         + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>'
         + '<button type="button" class="pmove" data-down="' + esc(p.id) + '"'
-        + (i === list.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach unten">'
+        + (pos === gruppe.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach unten">'
         + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg></button>'
         + '</span></div>';
+    }
 
-      var d = airKm(p, list[i + 1]);
-      if (d !== null && d >= PLAN_FAR) {
-        h += '<p class="plan__far">' + ICON.warn + 'Zwischen ' + (i + 1) + ' und ' + (i + 2)
-          + ' liegen ' + esc(km(d)) + ' Luftlinie.</p>';
-      }
-      return h;
-    }).join('');
+    function gruppeHtml(orte) {
+      return orte.map(function (p, i) {
+        var h = zeile(p, i, orte);
+        /* Die Warnung gilt Nachbarn DESSELBEN Tages — zwischen dem letzten
+           Ort von Dienstag und dem ersten von Mittwoch liegt eine Nacht,
+           keine Wanderung. */
+        var d = airKm(p, orte[i + 1]);
+        if (d !== null && d >= PLAN_FAR) {
+          h += '<p class="plan__far">' + ICON.warn + 'Zwischen ' + (i + 1) + ' und ' + (i + 2)
+            + ' liegen ' + esc(km(d)) + ' Luftlinie.</p>';
+        }
+        return h;
+      }).join('');
+    }
 
-    return sum + '<div class="plan">' + rows + '</div>';
+    var zu = list.filter(function (p) { return planTagVon(p.id, gueltig); });
+    var offen = list.filter(function (p) { return !planTagVon(p.id, gueltig); });
+
+    /* Solange nichts zugeordnet ist, sieht der Plan aus wie immer — eine
+       Liste ohne Koepfe. Gruppen erscheinen mit der ersten Zuordnung. */
+    if (!zu.length) return sum + '<div class="plan">' + gruppeHtml(offen) + '</div>';
+
+    var h = sum + '<div class="plan">';
+    tage.forEach(function (t) {
+      var orte = zu.filter(function (p) { return planTagVon(p.id, gueltig) === t.iso; });
+      if (!orte.length) return;
+      var min = 0, minN = 0;
+      orte.forEach(function (p) { if (has(p.time_min)) { min += p.time_min; minN++; } });
+      var istHeute = t.iso === heute;
+      /* Ab 10 h wird der Tag genannt, nicht bewertet: die Summe ist ohne An-
+         und Abfahrt gerechnet, mehr als 10 h sind schlicht mehr, als ein Tag
+         mit Wegen hergibt. Die Grenze ist eine Annahme und steht deshalb
+         woertlich im Text. */
+      var voll = min > 600;
+      h += '<div class="plantag' + (istHeute ? ' plantag--heute' : '') + '">'
+        + '<span class="plantag__t">' + t.lang + '</span>'
+        + (istHeute ? '<span class="plantag__jetzt">heute</span>' : '')
+        + (minN ? '<span class="plantag__sum' + (voll ? ' plantag__sum--voll' : '') + '">'
+            + esc(dur(min)) + ' eingeplant'
+            + (minN < orte.length ? ' (' + minN + ' von ' + orte.length + ')' : '')
+            + (voll ? ' — mehr als 10 h' : '') + '</span>' : '')
+        + '</div>'
+        + gruppeHtml(orte);
+    });
+    if (offen.length) {
+      h += '<div class="plantag plantag--offen">'
+        + '<span class="plantag__t">Noch keinem Tag zugeordnet</span>'
+        + '<span class="plantag__sum">' + offen.length + '</span></div>'
+        + gruppeHtml(offen);
+    }
+    return h + '</div>';
   }
 
   function renderShareBar() {
@@ -2886,6 +3049,11 @@
       var next = btns[(i + (e.key === 'ArrowRight' ? 1 : btns.length - 1)) % btns.length];
       next.focus();
       setView(next.getAttribute('data-tab'));
+    });
+
+    $('list').addEventListener('change', function (e) {
+      var day = e.target.closest('select[data-day]');
+      if (day) setDay(day.getAttribute('data-day'), day.value);
     });
 
     $('list').addEventListener('click', function (e) {
@@ -3415,6 +3583,7 @@
       dur: dur, km: km, norm: norm, haystack: haystack,
       byDistance: byDistance, byRating: byRating,
       grundmenge: grundmenge, markiere: markiere, normStellen: normStellen,
+      tripSpan: tripSpan, tripTage: tripTage, isoTag: isoTag,
       /* Zustand von aussen setzbar, damit die Pruefungen ohne Browser laufen. */
       useState: function (teil) { for (var k in teil) S[k] = teil[k]; },
       useData: function (roh) { D = roh; },

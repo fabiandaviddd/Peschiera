@@ -535,8 +535,20 @@ body.is-compact .bar__top {
 .card__badge--moment { color: var(--soft); border-color: var(--line); }
 .card__badge--limit { color: var(--soft); border-style: dashed; }
 /* Kuratiert behaelt die Kategoriefarbe: das ist die Empfehlung des Hauses. */
-.card__cat { font-size: var(--t-micro); font-weight: 700;
-  color: var(--accent-ink, var(--soft)); }
+/* Die Kategorie als getoente Pille statt blossem Farbtext: die Flaeche macht
+   die fuenf Kategorien beim Ueberfliegen der Liste unterscheidbar, ohne dass
+   man lesen muss. Text bleibt in der Ink-Variante der Kategorie (>= 4,5:1);
+   die Flaeche traegt keine Information, die nicht auch im Wort steht.
+   Erst var(--wash) als Rueckfall, dann color-mix — ein Browser ohne
+   color-mix (vor Safari 16.2) faellt auf die neutrale Flaeche zurueck,
+   das Wort bleibt in der Kategoriefarbe. */
+.card__cat {
+  font-size: var(--t-micro); font-weight: 700;
+  color: var(--accent-ink, var(--soft));
+  padding: .1rem .5rem; border-radius: var(--r-pill);
+  background: var(--wash);
+  background: color-mix(in srgb, var(--accent, var(--soft)) 13%, transparent);
+}
 
 /* line-height 1.4 statt der geerbten 1.55: eine einzelne, ohnehin
    abgeschnittene Zeile braucht keinen Fliesstext-Durchschuss — und holt
@@ -735,8 +747,14 @@ body.is-compact .bar__top {
 }
 .sheet__body > * { max-width: var(--col); margin-inline: auto; }
 
-.sheet__cat { font-size: var(--t-micro); font-weight: 700;
-  color: var(--accent-ink, var(--soft)); }
+.sheet__cat {
+  display: inline-block;
+  font-size: var(--t-micro); font-weight: 700;
+  color: var(--accent-ink, var(--soft));
+  padding: .1rem .5rem; border-radius: var(--r-pill);
+  background: var(--wash);
+  background: color-mix(in srgb, var(--accent, var(--soft)) 13%, transparent);
+}
 .sheet__name { font-size: var(--t-display); letter-spacing: -.02em; padding-right: 3rem; margin: .1rem 0 .5rem; }
 .sheet__note { font-size: var(--t-body); margin-bottom: 1.1rem; }
 .sheet__rate { display: flex; align-items: center; gap: .25rem;
@@ -1099,10 +1117,36 @@ body.is-typing .tabs { transform: translateY(110%); }
   font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
   color: var(--soft); font-variant-numeric: tabular-nums;
 }
+.planrow__mid { display: grid; gap: .35rem; min-width: 0; justify-items: start; }
 .planrow__open {
-  display: grid; gap: .1rem; text-align: left; min-width: 0;
+  display: grid; gap: .1rem; text-align: left; min-width: 0; max-width: 100%;
   cursor: pointer; padding: .2rem 0;
 }
+
+/* Der Tageswaehler: ein natives select im Gewand eines Chips. appearance
+   weg, eigener Pfeil ueber den Wrapper -- ein select nimmt kein ::after an.
+   Hoehe 44px, wie jedes Bedienelement des Hauses. */
+.pday { position: relative; display: inline-grid; }
+.pday::after {
+  content: ''; position: absolute; right: .7rem; top: 50%;
+  width: 7px; height: 7px; pointer-events: none;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-70%) rotate(45deg);
+  color: var(--soft);
+}
+.pday select {
+  appearance: none; -webkit-appearance: none;
+  min-height: 2.75rem; padding: .3rem 1.7rem .3rem .8rem;
+  font-family: var(--font-body); font-size: var(--t-meta); font-weight: 500;
+  color: var(--soft); background: var(--wash);
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  cursor: pointer;
+}
+/* Zugeordnet: Seeblau, die Hausfarbe fuer "hier ist etwas an". */
+.pday--zu select { color: var(--lake-ink); border-color: var(--lake);
+  background: none;
+  background: color-mix(in srgb, var(--lake) 10%, transparent); }
+.pday--zu::after { color: var(--lake-ink); }
 .planrow__name { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .planrow__m { font-size: var(--t-meta); color: var(--soft);
@@ -1126,6 +1170,29 @@ body.is-typing .tabs { transform: translateY(110%); }
 .pmove svg { width: 17px; height: 17px; fill: none; stroke: currentColor;
   stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .pmove[disabled] { opacity: .25; cursor: default; }
+
+/* Der Tageskopf im gruppierten Plan. Fraunces wie jede Ueberschrift des
+   Hauses; die Summe rechts in Meta-Grau. "heute" als seeblaue Marke — die
+   Farbe, die im Haus "hier ist etwas an" heisst. */
+.plantag {
+  display: flex; align-items: baseline; gap: .5rem;
+  padding: 1.1rem 1rem .4rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.plantag__t { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name); }
+.plantag__jetzt {
+  font-size: var(--t-micro); font-weight: 700; line-height: 1;
+  color: var(--card); background: var(--lake);
+  border-radius: var(--r-pill); padding: .18rem .5rem;
+  align-self: center;
+}
+.plantag__sum { margin-left: auto; font-size: var(--t-meta); color: var(--soft);
+  font-variant-numeric: tabular-nums; text-align: right; }
+/* Mehr als 10 h: Ziegel, die Achtungsfarbe des Hauses. */
+.plantag__sum--voll { color: var(--brick-ink); font-weight: 500; }
+.plantag--offen .plantag__t { color: var(--soft); font-size: var(--t-meta);
+  font-family: var(--font-body); font-weight: 700; }
 
 /* Nur wo geo bei beiden Stationen steht — bei 23 von 101 fehlt es, dort
    bleibt die Zeile weg statt zu raten. */
