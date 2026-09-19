@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v28 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v29 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -587,10 +587,35 @@
     }
     var n = $('tab-n');
     if (n) {
-      n.textContent = String(S.saved.length);
-      n.hidden = S.saved.length === 0;
-      /* Die Zahl allein ist ohne den Reiter darunter nicht zu deuten. */
-      n.setAttribute('aria-label', S.saved.length + ' im Plan');
+      /* Steht heute etwas an, zaehlt die Marke die OFFENEN Stationen von
+         heute -- nicht die ganze Merkliste. Wer vierzehn Tage plant, hat
+         dort schnell dreissig Eintraege stehen, und "30" sagt am Dienstag
+         nichts darueber, was heute noch zu tun ist. Ohne Tagesplan bleibt
+         es bei der Gesamtzahl: dann IST die Merkliste der Plan.
+
+         Die Marke traegt in beiden Faellen ein aria-label, das die Zahl
+         benennt -- "2" allein ist ohne den Reiter darunter nicht zu deuten,
+         und "2 offen heute" meint etwas anderes als "2 im Plan". */
+      var heute = isoTag(new Date());
+      var heuteOffen = S.saved.filter(function (id) {
+        return S.days[id] === heute && S.seen.indexOf(id) < 0;
+      }).length;
+      var heuteGesamt = S.saved.filter(function (id) { return S.days[id] === heute; }).length;
+
+      var zahl = heuteGesamt ? heuteOffen : S.saved.length;
+      var text = heuteGesamt
+        ? (heuteOffen === 0 ? 'heute alles erledigt' : heuteOffen + ' heute noch offen')
+        : S.saved.length + ' im Plan';
+      n.textContent = String(zahl);
+      n.hidden = zahl === 0;
+      n.setAttribute('aria-label', text);
+      /* Alles erledigt: die Marke verschwindet, aber der Reiter sagt es dem
+         Vorleser trotzdem. */
+      var tab = $('tabs').querySelector('.tab[data-tab="gemerkt"]');
+      if (tab) {
+        if (heuteGesamt && heuteOffen === 0) tab.setAttribute('aria-description', 'heute alles erledigt');
+        else tab.removeAttribute('aria-description');
+      }
     }
   }
 
@@ -1724,6 +1749,74 @@
     return h + '</div>';
   }
 
+  /* Der Plan fuer heute, ganz oben in "Heute".
+
+     Bis v28 wussten die beiden Haelften der App nichts voneinander: man
+     ordnete abends Orte dem Samstag zu, oeffnete morgens den Bildschirm, der
+     "Heute" heisst -- und der schlug aus allen 101 Orten irgendetwas anderes
+     vor. S.days kam in der ganzen Heute-Ansicht kein einziges Mal vor. Wer
+     plant, will beim Aufwachen nicht vorgeschlagen bekommen, sondern
+     erinnert werden.
+
+     Der Block steht VOR der Abschnittsleiste: er gilt dem ganzen Tag, die
+     Leiste darunter engt auf einen Abschnitt ein. Und er steht vor dem
+     Wetter, weil er keine Empfehlung ist, die sich nach dem Wetter richtet,
+     sondern eine Verabredung mit sich selbst.
+
+     Abhaken benutzt dieselbe Gesehen-Markierung wie ueberall -- kein zweiter
+     Zustand fuer dieselbe Sache. Erledigte bleiben stehen, gedaempft: sie
+     verschwinden zu lassen hiesse, den Fortschritt zu verstecken, und genau
+     der ist der Grund, morgens hierherzuschauen. */
+  function planHeuteHtml(now) {
+    var heute = isoTag(now);
+    var orte = planList().filter(function (p) { return S.days[p.id] === heute; });
+    if (!orte.length) return '';
+
+    var fertig = orte.filter(function (p) { return S.seen.indexOf(p.id) >= 0; }).length;
+    var alles = fertig === orte.length;
+    var rest = 0, restN = 0;
+    orte.forEach(function (p) {
+      if (S.seen.indexOf(p.id) < 0 && has(p.time_min)) { rest += p.time_min; restN++; }
+    });
+
+    var kopf = '<p class="planheut__h">'
+      + '<span class="planheut__t">' + (alles ? 'Heute erledigt' : 'Dein Plan für heute') + '</span>'
+      + '<span class="planheut__n">' + fertig + ' von ' + orte.length + '</span></p>';
+
+    var zeilen = orte.map(function (p) {
+      var ab = S.seen.indexOf(p.id) >= 0;
+      return '<div class="planheut__row' + (ab ? ' planheut__row--ab' : '') + ' '
+        + accentClass(p.category) + '">'
+        + '<button type="button" class="planheut__tick" data-seen="' + esc(p.id) + '"'
+        + ' aria-pressed="' + (ab ? 'true' : 'false') + '">'
+        + '<span class="sr-only">' + esc(p.name)
+        + (ab ? ' als noch nicht erledigt markieren' : ' als erledigt abhaken') + '</span>'
+        + ICON.check + '</button>'
+        + '<button type="button" class="planheut__open" data-open="' + esc(p.id) + '">'
+        + '<span class="planheut__name">' + esc(p.name) + '</span>'
+        + '<span class="planheut__m">' + esc(catLabel(p.category))
+        + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
+        + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
+        + (closedToday(p, now) ? ' · <span class="planheut__zu">heute zu</span>' : '')
+        + '</span></button>'
+        + '</div>';
+    }).join('');
+
+    /* Der Fuss sagt, was noch vor einem liegt -- und wenn nichts mehr, dann
+       das. Die Zeitangabe zaehlt nur die offenen Stationen: die erledigten
+       sind schon vorbei, sie in der Restzeit zu fuehren waere schlicht
+       falsch. */
+    var fuss = alles
+      ? '<p class="planheut__f planheut__f--fertig">' + ICON.check
+        + 'Alle ' + orte.length + ' Stationen abgehakt.</p>'
+      : (restN ? '<p class="planheut__f">Noch ' + esc(dur(rest)) + ' eingeplant'
+          + (restN < orte.length - fertig ? ' (' + restN + ' von ' + (orte.length - fertig) + ')' : '')
+          + '</p>' : '');
+
+    return '<section class="planheut' + (alles ? ' planheut--fertig' : '') + '">'
+      + kopf + '<div class="planheut__l">' + zeilen + '</div>' + fuss + '</section>';
+  }
+
   function todayHtml() {
     var now = new Date();
     var mins = now.getHours() * 60 + now.getMinutes();
@@ -1754,6 +1847,9 @@
       + (trip ? ' · Tag ' + trip.n + ' von ' + trip.of : '') + '</p>'
       + '<h2 class="today__now">' + (tomorrow ? 'Morgen früh' : (!chosen && mn.soon ? 'Gleich: ' : '') + m.label)
       + '<span class="today__clock">' + hhmm(mins) + '</span></h2>'
+      /* Der eigene Plan vor dem Vorschlag: was man sich vorgenommen hat,
+         schlaegt, was die App anbietet. */
+      + planHeuteHtml(now)
       + segbarHtml(mn.m.id, m.id, mn.tomorrow)
       + terminHtml(now);
 
@@ -2346,6 +2442,30 @@
       } else if (!now && badge) {
         badge.remove();
       }
+    }
+
+    /* Der Tagesplan in "Heute" traegt Zaehler ("1 von 3") und Restzeit --
+       beides muss mitwandern. Nur dieser Block wird neu gebaut, nicht die
+       ganze Ansicht: ein render() liesse die Seite springen, und genau
+       deshalb faehrt diese Funktion oben ueberall von Hand nach.
+       Der Fokus kommt danach zurueck auf denselben Haken, sonst verliert
+       ihn jeder, der mit der Tastatur abhakt. */
+    var block = document.querySelector('.planheut');
+    if (block && S.view === 'heute') {
+      var frisch = planHeuteHtml(new Date());
+      var hatteFokus = document.activeElement
+        && document.activeElement.getAttribute
+        && document.activeElement.getAttribute('data-seen') === id;
+      if (frisch) {
+        block.outerHTML = frisch;
+        if (hatteFokus) {
+          var wieder = document.querySelector('.planheut [data-seen="' + id.replace(/"/g, '\\"') + '"]');
+          if (wieder) { try { wieder.focus({ preventScroll: true }); } catch (e) { /* egal */ } }
+        }
+      } else {
+        block.remove();
+      }
+      syncTabs();
     }
 
     /* Im Filter "Noch nicht gesehen" verschwindet der Eintrag sofort */
@@ -3157,6 +3277,10 @@
       if (e.target.closest('#wx-wet')) { setWet(true); return; }
       var save = e.target.closest('[data-save]');
       if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); render(); return; }
+      /* Abhaken direkt im Tagesplan. Bis v28 kannte "Heute" kein data-seen --
+         man musste den Ort erst oeffnen, um ihn als erledigt zu markieren. */
+      var seen = e.target.closest('[data-seen]');
+      if (seen) { e.preventDefault(); toggleSeen(seen.getAttribute('data-seen')); return; }
       var open = e.target.closest('[data-open]');
       if (open) openSheet(open.getAttribute('data-open'));
     });

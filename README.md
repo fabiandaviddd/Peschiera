@@ -34,7 +34,7 @@ schreibt die Fassung dazu, für die es gilt.
 |---|---|
 | **PWA** | `manifest.webmanifest` + `sw.js`. App-Shell und `places.json` liegen im Cache, nach einmaligem Laden läuft alles offline — Merkliste inklusive. Auf dem iPhone-Homescreen installierbar, mit Icon und Startbild. |
 | **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. Das Feld steht auch auf „Heute" — sonst ist von der Startansicht aus nicht zu sehen, dass hinter dem einen Vorschlag 101 Orte liegen. Hineingreifen wechselt in die Liste. |
-| **Heute** | Tagesblatt statt Einzelvorschlag. Datum, Reisetag, Tagesabschnitt aus der Geräteuhr — darunter eine Leiste über alle vier Abschnitte: vergangene sind gestrichelt umrandet, der laufende trägt eine Unterkante, jeder ist antippbar. Der Vorschlag nennt seine Position im Stapel („3 / 35") und hat Knöpfe vor und zurück; am Anfang ist der Zurück-Knopf deaktiviert. „Sonst noch" zeigt drei Alternativen mit der Gesamtzahl daneben und lässt sich ausklappen. Darunter ein Blick auf den nächsten Abschnitt („Abends dann"). Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert. Bei Regen ohne Treffer nennt der Leerzustand die Orte, die sicher im Trockenen sind; schränkt der Jum-Schalter ein, sagt er das und zeigt, was ohne ihn ginge. |
+| **Heute** | Tagesblatt statt Einzelvorschlag. Ganz oben steht seit v29 **„Dein Plan für heute"**, sofern für heute etwas geplant ist: die Stationen des Tages zum Abhaken, mit Fortschritt und Restzeit (siehe „Die Brücke zu Heute"). Darunter das Bisherige — Datum, Reisetag, Tagesabschnitt aus der Geräteuhr — darunter eine Leiste über alle vier Abschnitte: vergangene sind gestrichelt umrandet, der laufende trägt eine Unterkante, jeder ist antippbar. Der Vorschlag nennt seine Position im Stapel („3 / 35") und hat Knöpfe vor und zurück; am Anfang ist der Zurück-Knopf deaktiviert. „Sonst noch" zeigt drei Alternativen mit der Gesamtzahl daneben und lässt sich ausklappen. Darunter ein Blick auf den nächsten Abschnitt („Abends dann"). Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert. Bei Regen ohne Treffer nennt der Leerzustand die Orte, die sicher im Trockenen sind; schränkt der Jum-Schalter ein, sagt er das und zeigt, was ohne ihn ginge. |
 | **Plan** | Hieß bis v13 „Gemerkt". Die Reihenfolge steckte immer schon in `pk.saved` — das Feld ist ein Array und wird beim Merken hinten angehängt —, wurde aber nie benutzt, weil die Ansicht nach Entfernung sortierte. Seit v28 gehört jede Station **einem Reisetag** — Wähler je Zeile, Gruppierung nach Tagen, Zeitsumme je Tag; ausführlich im Abschnitt „Plan" weiter unten. Dazu: nummerierte Stationen, Pfeile zum Umstellen innerhalb des Tages (keine Wischgeste — zwei Knöpfe sind bei einer Handvoll Stationen treffsicherer und lassen sich ohne echtes iOS prüfen), und darüber das Zeitbudget aus `time_min` und `walk_min`. Die Summe sagt dazu, auf wie viele Orte sie sich stützt, wenn Werte fehlen. Zwischen zwei Stationen mit `geo` steht ab 1,2 km die Luftlinie als Warnung; fehlt `geo` bei einer der beiden, bleibt die Zeile weg. Suche, Filter und Sortierung sind dort ausgeblendet — sie würden die Reihenfolge zerschießen, um die es gerade geht. Der Teilen-Link trägt die Reihenfolge automatisch mit. |
 | **Ruhetage** | Steht der Ruhetag wörtlich in `hours` („Ruhetag Mittwoch", „Mi geschlossen", „Mo zu"), wird er gelesen: 14 der 101 Orte tragen einen, verteilt auf Mo 4, Di 4, Mi 6. In „Heute" sinken sie an ihrem Ruhetag ans Ende der Liste — vor jedem anderen Kriterium, eine gute Bewertung hilft an einem geschlossenen Mittwoch nicht. Herausgefiltert werden sie nicht, sonst schrumpfte die Liste still; wer weiterblättert, bekommt den Grund dazugeschrieben („heute Ruhetag"). In der Liste und im Detail ersetzt „heute zu" die Öffnungsangabe — derselbe Slot, dieselbe Zeilenhöhe. Gelesen wird nur `hours`, nie `note`: dort steht bei einem Ort eine Faustregel über italienische Fischläden allgemein, keine Angabe über diesen Laden. |
 | **Von hier** | Alle Entfernungen gelten ab dem Zeltplatz — richtig für „gehen wir heute Abend hin?", falsch, wenn man gerade in Sirmione steht. Im Filter-Sheet unter „Standort" misst ein Knopf ab dem Gerätestandort: Luftlinie, keine Gehzeit. Der Standort kommt vom Gerät, nicht von einem Dienst — er funktioniert im Flugmodus, verlässt das Gerät nicht und wird nirgends gespeichert; gefragt wird erst auf Tippen. Ist er an, misst die Sortierung „Entfernung" ab hier, die Faktenzeile zeigt im selben Slot „286 m von hier", und im Kopf steht ein Chip mit Kreuz. Orte ohne `geo` stünden hinten — seit 19.09. gibt es keine mehr. Im Detail bleibt die Angabe ab dem Zeltplatz als eigene Zeile stehen. |
@@ -423,6 +423,37 @@ jeder gemerkte Ort **einem Reisetag**.
 
 Gespeichert unter `pk.days` als `{ ortId: 'JJJJ-MM-TT' }`. Eine Zuordnung
 außerhalb des Reisezeitraums zählt als „offen" statt als Tag.
+
+### Die Brücke zu „Heute"
+
+Bis `v28` wussten die beiden Hälften der App **nichts voneinander**: `S.days`
+kam in der gesamten Heute-Ansicht kein einziges Mal vor. Man ordnete abends
+Orte dem Samstag zu, öffnete morgens den Bildschirm, der „Heute" heißt — und
+der schlug aus allen 101 Orten irgendetwas anderes vor. Wer plant, will beim
+Aufwachen nicht vorgeschlagen bekommen, sondern erinnert werden.
+
+Seit `v29` steht **„Dein Plan für heute"** ganz oben in „Heute":
+
+- **Vor der Abschnittsleiste.** Der Plan gilt dem ganzen Tag, die Leiste engt
+  auf einen Abschnitt ein. Und vor dem Wetter, weil er keine Empfehlung ist,
+  die sich nach dem Wetter richtet, sondern eine Verabredung mit sich selbst.
+- **Abhaken an Ort und Stelle**, mit derselben Gesehen-Markierung wie überall
+  — kein zweiter Zustand für dieselbe Sache. Bis `v28` kannte „Heute" kein
+  `data-seen`; man musste einen Ort erst öffnen, um ihn abzuhaken.
+- **Erledigte bleiben stehen**, gedämpft und durchgestrichen. Sie verschwinden
+  zu lassen hieße, den Fortschritt zu verstecken — und genau der ist der
+  Grund, morgens hierherzuschauen.
+- **Die Restzeit zählt nur die offenen Stationen.** Die erledigten sind vorbei;
+  sie in der Restzeit zu führen wäre schlicht falsch.
+- **Die Marke am Plan-Reiter zählt die heute offenen Stationen**, sobald für
+  heute etwas geplant ist — sonst die ganze Merkliste. Wer vierzehn Tage
+  plant, hat dort schnell dreißig Einträge, und „30" sagt am Dienstag nichts
+  darüber, was heute noch zu tun ist. Ist heute alles abgehakt, verschwindet
+  die Marke; für Vorleser steht es als `aria-description` am Reiter.
+
+Beim Abhaken wird **nur dieser Block** neu gebaut, nicht die ganze Ansicht —
+ein `render()` ließe die Seite springen, und der Fokus käme abhanden. Er wird
+danach auf dasselbe Kästchen zurückgesetzt.
 
 ## Karte
 

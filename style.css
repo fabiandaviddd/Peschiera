@@ -965,6 +965,95 @@ body.is-typing .tabs { transform: translateY(110%); }
   justify-items: center; text-align: center; gap: .9rem; margin-bottom: 0;
 }
 
+/* --- Der Plan fuer heute, oben in "Heute" ------------------------------- */
+/* Eine eigene Flaeche mit Rahmen: der Block ist keine Empfehlung, sondern
+   eine Verabredung mit sich selbst, und muss sich vom Vorschlag darunter
+   unterscheiden lassen, ohne lauter zu sein. Seeblau am linken Rand -- im
+   Haus die Farbe fuer "hier ist etwas an". */
+.planheut {
+  margin: .9rem 0 1.1rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--lake);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.planheut--fertig { border-left-color: var(--verde); }
+
+.planheut__h {
+  display: flex; align-items: baseline; gap: .5rem;
+  padding: .7rem .9rem .5rem;
+}
+.planheut__t { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name); }
+.planheut__n {
+  margin-left: auto; font-size: var(--t-meta); color: var(--soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.planheut__l { display: grid; }
+.planheut__row {
+  display: grid; grid-template-columns: 2.75rem minmax(0, 1fr);
+  align-items: center; gap: .1rem;
+  padding: .1rem .9rem .1rem .3rem;
+  border-top: 1px solid var(--line);
+}
+.planheut__tick {
+  /* 44 px, wie jedes Bedienelement des Hauses. */
+  width: 2.75rem; height: 2.75rem;
+  display: grid; place-items: center;
+  cursor: pointer; border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Ein leerer Kreis, kein blasser Haken. Zuerst stand hier nur ein Haken in
+   var(--line) -- auf dem Bildschirm war nicht zu erkennen, dass man dort
+   tippen kann. Ein Kastchen zum Abhaken muss aussehen wie eins, auch wenn
+   es leer ist. Der Haken darin bleibt unsichtbar (color: transparent auf
+   dem stroke: currentColor des SVG), bis abgehakt wird. */
+.planheut__tick svg {
+  width: 24px; height: 24px; box-sizing: border-box; padding: 3px;
+  border: 2px solid var(--line); border-radius: 50%;
+  fill: none; stroke: currentColor; stroke-width: 2.6;
+  stroke-linecap: round; stroke-linejoin: round;
+  color: transparent;
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.planheut__tick[aria-pressed="true"] svg {
+  border-color: var(--verde); background: var(--verde); color: var(--card);
+}
+
+.planheut__open {
+  display: grid; gap: .05rem; text-align: left; min-width: 0;
+  padding: .55rem 0; cursor: pointer;
+}
+.planheut__name { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planheut__m { font-size: var(--t-meta); color: var(--soft);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Heute Ruhetag: Ziegel, die Achtungsfarbe des Hauses -- dieselbe Rolle wie
+   bei .fact--closed in der Liste. */
+.planheut__zu { color: var(--brick-ink); font-weight: 500; }
+
+/* Abgehakt: gedaempft und durchgestrichen, aber NICHT weg. Der Fortschritt
+   ist der Grund, morgens hierherzuschauen. Durchgestrichen wird nur der
+   Name -- die Meta-Zeile bleibt lesbar, man will auch nachher noch wissen,
+   wie lange man dort war. */
+.planheut__row--ab .planheut__name { text-decoration: line-through; color: var(--soft); }
+.planheut__row--ab .planheut__m { opacity: .7; }
+
+.planheut__f {
+  padding: .55rem .9rem .7rem;
+  font-size: var(--t-meta); color: var(--soft);
+  border-top: 1px solid var(--line);
+}
+.planheut__f--fertig {
+  display: flex; align-items: center; gap: .35rem;
+  color: var(--verde-ink); font-weight: 500;
+}
+.planheut__f--fertig svg { width: 15px; height: 15px; flex: 0 0 auto;
+  fill: none; stroke: currentColor; stroke-width: 2.2;
+  stroke-linecap: round; stroke-linejoin: round; }
+
 /* --- Heute -------------------------------------------------------------- */
 
 .today { padding-top: .9rem; }

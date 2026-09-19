@@ -235,6 +235,107 @@ await zumPlan(p);
 ok('wieder gemerkt: sein Tag gilt wieder', await p.evaluate((o) =>
   document.querySelector(`select[data-day="${o}"]`).value, orte[0].id), '2026-09-22');
 
+/* --- 9. Die Bruecke: "Heute" zeigt den Plan fuer heute -------------------- */
+/* Bis v28 wussten die beiden Haelften der App nichts voneinander -- S.days
+   kam in der ganzen Heute-Ansicht kein einziges Mal vor. Man ordnete abends
+   Orte dem Samstag zu und bekam morgens auf dem Bildschirm namens "Heute"
+   irgendetwas anderes aus allen 101 Orten vorgeschlagen. */
+const heuteIso = await p.evaluate(() => {
+  const d = new Date(), m = String(d.getMonth() + 1), t = String(d.getDate());
+  return d.getFullYear() + '-' + (m.length < 2 ? '0' : '') + m + '-' + (t.length < 2 ? '0' : '') + t;
+});
+const zuHeute = async (p2) => { await p2.locator('.tab[data-tab="heute"]').click(); await p2.waitForTimeout(400); };
+
+/* Erst alles auf einen Tag, der nicht heute ist: kein Block. */
+await p.evaluate(() => {
+  const d = {};
+  JSON.parse(localStorage.getItem('pk.saved') || '[]').forEach((id) => { d[id] = '2026-09-27'; });
+  localStorage.setItem('pk.days', JSON.stringify(d));
+  localStorage.setItem('pk.seen', '[]');
+});
+await p.reload({ waitUntil: 'networkidle' });
+await p.waitForSelector('#app:not([hidden])');
+await zuHeute(p);
+ok('ist fuer heute nichts geplant, steht kein Block da', await p.locator('.planheut').count(), 0);
+ok('… und die Marke zaehlt dann die ganze Merkliste',
+  await p.locator('#tab-n').textContent(), '5');
+
+/* Jetzt drei Orte auf heute. */
+await p.evaluate((h) => {
+  const s = JSON.parse(localStorage.getItem('pk.saved') || '[]');
+  const d = JSON.parse(localStorage.getItem('pk.days') || '{}');
+  s.slice(0, 3).forEach((id) => { d[id] = h; });
+  localStorage.setItem('pk.days', JSON.stringify(d));
+}, heuteIso);
+await p.reload({ waitUntil: 'networkidle' });
+await p.waitForSelector('#app:not([hidden])');
+await zuHeute(p);
+
+ok('mit Tagesplan steht der Block da', await p.locator('.planheut').count(), 1);
+ok('… mit einer Zeile je Station', await p.locator('.planheut__row').count(), 3);
+ok('… und einem Fortschritt', (await p.locator('.planheut__n').textContent()).trim(), '0 von 3');
+ok('… nur die Orte von heute, nicht die vom 27.',
+  await p.evaluate(() => document.querySelectorAll('.planheut__row').length), 3);
+
+/* Der Block steht VOR der Abschnittsleiste: er gilt dem ganzen Tag, die
+   Leiste engt auf einen Abschnitt ein. */
+ok('der Block steht ueber der Abschnittsleiste', await p.evaluate(() => {
+  const b = document.querySelector('.planheut').getBoundingClientRect();
+  const seg = document.querySelector('.segbar, [data-mid]').getBoundingClientRect();
+  return b.top < seg.top;
+}));
+
+/* Das Kaestchen muss aussehen wie eins und 44 px gross sein. Zuerst stand da
+   nur ein Haken in var(--line) -- auf dem Bildschirm nicht als Bedienelement
+   zu erkennen. */
+const kasten = await p.evaluate(() => {
+  const b = document.querySelector('.planheut__tick');
+  const r = b.getBoundingClientRect();
+  const c = getComputedStyle(b.querySelector('svg'));
+  return { w: Math.round(r.width), h: Math.round(r.height),
+    rand: parseFloat(c.borderTopWidth), rund: c.borderTopLeftRadius,
+    label: (b.querySelector('.sr-only') || {}).textContent || '' };
+});
+ok('das Kaestchen ist 44 mal 44', [kasten.w, kasten.h], [44, 44]);
+ok('… und sichtbar umrandet', kasten.rand >= 2);
+ok('… mit einer Ansage fuer Vorleser', /abhaken$/.test(kasten.label.trim()));
+
+/* --- 10. Abhaken direkt in "Heute" --------------------------------------- */
+const restVorher = (await p.locator('.planheut__f').textContent()).trim();
+await p.locator('.planheut__tick').first().click();
+await p.waitForTimeout(400);
+ok('abhaken zaehlt hoch', (await p.locator('.planheut__n').textContent()).trim(), '1 von 3');
+ok('… streicht die Zeile durch', await p.locator('.planheut__row--ab').count(), 1);
+ok('… laesst sie aber stehen', await p.locator('.planheut__row').count(), 3);
+const restNachher = (await p.locator('.planheut__f').textContent()).trim();
+ok('… und rechnet die Restzeit neu', restNachher !== restVorher);
+ok('… die Marke zaehlt die offenen von heute',
+  await p.locator('#tab-n').textContent(), '2');
+ok('… und sagt das auch dem Vorleser',
+  await p.evaluate(() => document.getElementById('tab-n').getAttribute('aria-label')),
+  '2 heute noch offen');
+
+/* Dieselbe Markierung wie ueberall sonst -- kein zweiter Zustand. */
+ok('abgehakt heisst gesehen', await p.evaluate(() =>
+  JSON.parse(localStorage.getItem('pk.seen') || '[]').length), 1);
+
+/* --- 11. Alles abgehakt -------------------------------------------------- */
+await p.locator('.planheut__tick').nth(1).click();
+await p.waitForTimeout(300);
+await p.locator('.planheut__tick').nth(2).click();
+await p.waitForTimeout(400);
+ok('alles abgehakt: der Kopf sagt es',
+  (await p.locator('.planheut__t').textContent()).trim(), 'Heute erledigt');
+ok('… der Fuss auch',
+  /Alle 3 Stationen abgehakt/.test(await p.locator('.planheut__f').textContent()));
+ok('… und die Marke ist weg', await p.locator('#tab-n').isVisible(), false);
+
+/* Zuruecknehmen muss gehen -- ein Fehltipp darf nichts kosten. */
+await p.locator('.planheut__tick').first().click();
+await p.waitForTimeout(400);
+ok('zuruecknehmen geht', (await p.locator('.planheut__n').textContent()).trim(), '2 von 3');
+ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1');
+
 ok('keine JS-Fehler auf dem ganzen Weg', errs.length ? errs.join(' | ') : 0, 0);
 await ctx.close();
 await browser.close();
