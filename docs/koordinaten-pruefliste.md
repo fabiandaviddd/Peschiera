@@ -1,6 +1,6 @@
 # Koordinaten — Stand und Prüfregeln
 
-101 Orte · 100 mit Koordinaten · 1 offen
+101 Orte · 101 mit Koordinaten · 0 offen
 
 ## Wie geprüft wird
 
@@ -67,67 +67,35 @@ Adresse bestätigt den Ortspunkt, und die Luftlinie bleibt dabei klein.
 
 Ein Zahlendreher beim Abtippen fällt damit auf, bevor er auf der Karte landet.
 
-## Offener Punkt (1)
+## Kein offener Punkt mehr
 
-- **Uferweg Desenzano – Rivoltella** (`rivoltella`) — geliefert wurde exakt die
-  Nadel des *MoS Bistrot Portovecchio*. Ein Uferweg übernimmt nicht den Punkt
-  eines Restaurants, das zufällig am selben Hafen liegt. Bleibt leer, bis der
-  Startpunkt am Porto Vecchio eigenständig bestimmt ist.
+Seit 19.09.2026 tragen **alle 101 Orte** eine Koordinate. Der letzte,
+`rivoltella`, hat den Porto Vecchio in Desenzano bekommen (45.470991,
+10.540389) — den Hafen selbst, nicht die 20 m entfernte Nadel des *MoS
+Bistrot*, die der erste Lauf geliefert hatte.
 
-## Der Nachtrag vom 19.09.2026
+## Gehzeiten neu gerechnet (19.09.2026)
 
-28 Koordinaten nachgeschlagen, 27 übernommen. Damit tragen 100 der 101 Orte
-einen Punkt. Drei brauchten eine Entscheidung:
+Mit dem korrigierten Bezugspunkt fiel auf, dass `distance_km` und `walk_min`
+systematisch zu niedrig standen: **47 von 48** Orten mit Gehzeit lagen unter
+dem echten Fußweg, im Median um **0,38 km**. Das ist genau der Abstand des
+Stellplatzes zur Campingplatz-Einfahrt — die alten Werte waren von der
+Einfahrt gemessen, nicht vom Zelt.
 
-- **Festung Peschiera** (`fortezza`) — geliefert wurde exakt der Punkt des
-  *Bastione San Marco*. Damit lägen drei Orte auf einer Nadel, und die Festung
-  wäre von einer ihrer eigenen Bastionen nicht zu unterscheiden. Genommen wurde
-  stattdessen der Flächenschwerpunkt der Anlage (45.438627, 10.694105). Für
-  einen Ring von 3,5 km ist jeder Einzelpunkt eine Wahl; der Schwerpunkt ist die
-  ehrlichste.
-- **Anleger und Linienschiff** (`imbarcadero`, `linienschiff-hund`) — tragen
-  bewusst **denselben** Punkt. Peschiera hat nur einen Linienschiff-Anleger;
-  die beiden Einträge beschreiben dieselbe Stelle aus zwei Blickwinkeln. Damit
-  das nicht wie ein geerbter Gemeindepunkt aussieht, tragen jetzt auch beide
-  dieselbe Adresse (*Piazzale Betteloni*). Die Regel „Orte auf einem Punkt
-  nennen dieselbe Straße" ist damit erfüllt, statt umgangen.
-- **Uferweg Desenzano – Rivoltella** — siehe oben, abgelehnt.
+Neu gerechnet über Fußwegrouting ab `meta.base_geo` (OSRM `routed-foot`,
+eine Tabellenabfrage für alle Orte auf einmal). Geändert wurden **nur die 48
+Orte, die eine `walk_min` tragen** — dort ist Gehen der dokumentierte Weg.
+Wo `walk_min` fehlt, steht in `distance_km` die Reiseentfernung mit Bahn,
+Bus oder Schiff; ein Fußweg wäre dort die falsche Zahl.
 
-### Zwei Befunde aus dem Nachtrag
+Wirkung auf den Umwegfaktor: **sechs unmögliche Werte sind auf einen
+gefallen.**
 
-**Der Bezugspunkt in `meta.base_geo` war falsch — seit 19.09. korrigiert.**
-Er lag 27 m vom Linienschiff-Anleger, also im Hafen statt am Zeltplatz.
-Aufgefallen ist es am *Lido ai Pioppi*: der liegt laut Notiz auf dem Gelände,
-150 m Straße — die Luftlinie betrug 412 m, ein Umwegfaktor von 0,4 und damit
-unmöglich. Jetzt steht dort der vor Ort abgelesene Stellplatz
-(45°26'53.5"N 10°41'51.7"E = 45.448194, 10.697694). Der Median des
-Umwegfaktors über alle 91 verorteten Orte mit Straßenentfernung fällt damit
-von **1,69 auf 1,25** — den Wert, den Straße gegen Luftlinie real hat — und
-die Zahl der Orte mit Faktor über 3 von **29 auf 3**. Alle drei sind erklärt:
-die beiden Radrunden unten und Forte Ardietti, das man über den Mincio
-herum anfahren muss.
-
-Sechs Orte haben jetzt einen Faktor unter 1, die Luftlinie ist dort also
-länger als die eingetragene Straßenentfernung: `lido-ai-pioppi` (0,26),
-`sette-ponti` (0,70), `saligusta` (0,81), `momus` (0,84), `fortezza` (0,91),
-`desenzano` (0,95). Fünf davon liegen im Rundungsbereich — `distance_km` ist
-auf 0,1 km genau. Der Lido ist der echte Fall: 570 m Luftlinie bei
-eingetragenen 150 m. Der Platz ist groß, und die Gehzeiten dürften von der
-Einfahrt aus gemessen sein, nicht vom Stellplatz. Wer die Werte nachmisst,
-fängt dort an.
-
-Der Prüfstand meldet beides seit 19.09. in der Zahlenübersicht (Median des
-Umwegfaktors, Liste der Orte unter 1) — als **Meldung**, nicht als Prüfung:
-bei einem Ort in Sichtweite kippt die Rundung den Faktor schon ohne jeden
-Fehler. Was auffallen soll, ist die Verschiebung des Medians.
-
-**`distance_km` trägt bei zwei Orten etwas anderes.** Bei
-`ciclabile-lugana` (22) und `ciclabile-ostufer` (20) steht dort die **Länge der
-Runde**, nicht die Entfernung zum Ausgangspunkt. Für alle anderen Orte
-bedeutet das Feld „Straßenentfernung ab dem Zeltplatz". Die
-Plausibilitätsregel greift bei beiden deshalb nicht — was nicht heißt, dass
-ihre Koordinaten falsch wären, sondern dass die Regel dort die falsche Frage
-stellt.
+Der eine ist `desenzano`: 12 km eingetragen bei 12,6 km Luftlinie. Das ist
+kein Fehler, sondern dieselbe Feldbedeutung wie oben — 12 km ist die
+Bahnstrecke, die Straße misst 22 km um den See herum. Die Daten bleiben, der
+Prüfstand meldet es, und hier steht warum. Eine Zahl zu ändern, damit ein
+Bericht schweigt, wäre die falsche Richtung.
 
 ## Mehrere Orte auf demselben Punkt (9)
 
