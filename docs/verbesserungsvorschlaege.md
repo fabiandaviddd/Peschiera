@@ -4,8 +4,8 @@ Bestandsaufnahme einer vierten Hand am selben Repo. Alle Zahlen sind aus
 `data/places.json` gerechnet, nicht geschätzt; die Rechenwege stehen jeweils
 dabei. Die Befunde beschreiben den Stand `v13`.
 
-**Vorschlag 1, 2 und 4 sind umgesetzt** (`v15` und `v17`) — siehe
-„Umsetzungsstand" unten. Die Vorschläge 3, 5, 6, 7 und 8 stehen weiter offen
+**Vorschlag 1, 2, 4, 5, 7 und 8 sind umgesetzt** (`v15`, `v17`, `v19`) — siehe
+„Umsetzungsstand" unten. Die Vorschläge 3 und 6 stehen weiter offen
 und sind absichtlich so beschrieben, dass sie jede Hand einzeln aufgreifen
 kann.
 
@@ -449,6 +449,65 @@ sonst unbemerkt nach Afrika.
 Geprüft: 131 Prüfungen, dazu Chromium auf 390×844 mit gestelltem Standort —
 einschalten, sortieren, Detail, über das Kreuz wieder ausschalten, und der
 Fall, dass der Browser den Standort verweigert.
+
+---
+
+### Vorschlag 5 — umgesetzt in `v19`
+
+`applyIncoming('replace')` legt vor dem Überschreiben eine Kopie in eine
+Modulvariable und bietet danach zehn Sekunden lang „Rückgängig" im selben
+Kasten an — kein zweites Bedienmuster, kein neuer Zustand im `localStorage`
+(nach dem Neuladen ist das Angebot ohnehin vorbei). Der destruktive Knopf
+nennt seine Kosten („Meine 3 ersetzen") und trägt `btn--danger`: Ziegel als
+Rand und Schrift, nicht als Fläche — gefüllt wäre er lauter als der
+empfohlene Weg. Die Knopfreihenfolge ist jetzt empfohlen → folgenlos →
+destruktiv.
+
+Eine Falle steckte im Zusammenspiel: `setInert()` legt `#app` still, sobald
+ein Sheet öffnet, und `#inbox` liegt darin. Ein offenes Angebot wäre sichtbar,
+aber nicht mehr antippbar gewesen. `showSheet()` beendet es deshalb.
+
+### Vorschlag 7 — umgesetzt in `v19`
+
+`shortcuts` für „Heute" und „Plan", die über `?v=` in die Ansicht springen;
+`start()` liest den Parameter und prüft ihn gegen `TABS`, damit eine getippte
+Kennung keine leere App erzeugt. Ein Teilen-Link überstimmt das — `showInbox()`
+läuft später und setzt auf „Orte".
+
+`screenshots`: zwei Bilder, erzeugt von `scripts/make-screenshots.mjs` mit
+fester Uhr (Mittwoch 12:30) und fester Fenstergröße, sonst rauscht jeder Lauf
+einen Diff. Einfache Auflösung statt doppelter — 162 kB statt 378 bei einem
+Dialog, der die Bilder klein zeigt. Nicht in `SHELL`: sie kosten sonst
+Offline-Gewicht für etwas, das nur einmal vor der Installation zu sehen ist.
+
+Neu dazu eine Prüfgruppe im Prüfstand: bis `v18` fasste **keine einzige**
+Prüfung das Manifest an. Jetzt wird geprüft, dass jede genannte Bilddatei
+existiert, dass `sizes` mit dem PNG-Kopf übereinstimmt und dass jeder
+Kurzbefehl auf eine Ansicht zeigt, die es gibt.
+
+### Vorschlag 8 — umgesetzt in `v19`
+
+**8.1 (Chip-Zähler):** Die Beschreibung stimmt seit `v14` nicht mehr.
+`render()` setzt `$('filters').hidden = bare || isPlan` — im Plan gibt es
+keine Filterzeile, die Zähler werden dort nie gezeichnet, der Fehler ist nicht
+erreichbar. Die Zusammenführung auf `grundmenge()` bleibt trotzdem: sie nimmt
+die doppelte Pool-Logik aus `selected()` heraus und stimmt von selbst, falls
+die Filter je zurückkehren. Eine Browser-Prüfung hält die Ausblendung fest —
+verschwindet sie, kommt der Fehler zurück.
+
+**8.2 (`aria-live`):** in `v19` gebaut, siehe eigener Abschnitt weiter oben im
+Verlauf. Entscheidend war die Vorbedingung: `#filter-count` entsteht genau
+einmal und wird danach nur über `textContent` beschrieben — ein Element, das
+je Aktualisierung neu gebaut wird, sagt auch mit `aria-live` nichts an.
+
+**8.3 (Suchtreffer):** `markiere()` setzt `<mark>` um jede Fundstelle in der
+Notiz, in Liste und Detail. Die Vermutung im Vorschlag war richtig und der
+Kern der Sache: `norm()` bildet **nicht** 1:1 ab — „Straße" wird „strasse",
+ein Zeichen mehr. `normStellen()` normalisiert deshalb zeichenweise und merkt
+zu jedem Zeichen, woher es kam. Escapen läuft **vor** dem Einsetzen von
+`<mark>`, sonst bekäme eine Notiz eigenes HTML in die Seite; eine Gegenprobe
+im Prüfstand hält das fest. `mark` trägt `color: inherit` — die
+Browservorgabe (schwarz auf gelb) fiele im dunklen Schema auf 2,1:1.
 
 ---
 

@@ -95,10 +95,15 @@
       <div class="inbox" id="inbox" hidden role="region" aria-labelledby="inbox-t">
         <h2 class="inbox__t" id="inbox-t">Liste erhalten</h2>
         <p class="inbox__x" id="inbox-x"></p>
+        <!-- Reihenfolge ist Absicht: der empfohlene Weg zuerst, der folgenlose
+             danach, der destruktive zuletzt und optisch abgesetzt. Vorher
+             standen "Meine ersetzen" und "Verwerfen" gleich aus, obwohl einer
+             vierzehn Tage Markierungen kostet und der andere nichts. -->
         <div class="inbox__acts">
           <button type="button" class="btn btn--primary btn--wide" id="inbox-merge">Zusammenführen</button>
-          <button type="button" class="btn btn--wide" id="inbox-replace">Meine ersetzen</button>
           <button type="button" class="btn btn--wide" id="inbox-cancel">Verwerfen</button>
+          <button type="button" class="btn btn--wide btn--danger" id="inbox-replace">Meine ersetzen</button>
+          <button type="button" class="btn btn--wide btn--primary" id="inbox-undo" hidden>Rückgängig</button>
         </div>
       </div>
 

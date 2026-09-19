@@ -12,7 +12,7 @@
    ========================================================================== */
 
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -489,6 +489,91 @@ if (head) {
 
 /* Die Fassung in app.js und der Cache in sw.js müssen zusammenpassen — sonst
    läuft die App still auf altem Stand weiter. */
+group('grundmenge und markiere — ohne Browser');
+
+/* grundmenge() ist die einzige Quelle fuer selected() UND fuer die Zaehler an
+   den Chips. Im Plan ist das die Merkliste. Dass der Nutzer die Zaehler dort
+   heute gar nicht sieht (render() blendet die Filterzeile aus), aendert nichts
+   daran, dass die Funktion stimmen muss. */
+pk.useData({ places: [
+  { id: 'a', tags: [] }, { id: 'b', tags: [] }, { id: 'c', tags: [] },
+] });
+pk.useState({ view: 'orte', saved: ['a', 'c'] });
+ok('in der Liste zaehlt die Grundmenge alle Orte', pk.grundmenge().length, 3);
+pk.useState({ view: 'gemerkt' });
+ok('im Plan nur die gemerkten', pk.grundmenge().map((p) => p.id), ['a', 'c']);
+pk.useState({ view: 'orte', saved: [] });
+
+/* norm() bildet nicht 1:1 ab: "ß" wird "ss". Wer eine Fundstelle im
+   normalisierten Text sucht und ihren Index roh auf das Original anwendet,
+   markiert ab dort daneben -- und zwar still. */
+const stellen = pk.normStellen('Straße');
+ok('normStellen laengt bei ß mit', stellen.text, 'strasse');
+ok('… und zeigt beide s auf dasselbe Zeichen', stellen.map, [0, 1, 2, 3, 4, 4, 5]);
+
+pk.useState({ q: 'strasse' });
+ok('markiert ueber die Laengenaenderung hinweg',
+   pk.markiere('Zur Straße hin'), 'Zur <mark>Straße</mark> hin');
+/* "caffe" trifft, "cafe" nicht -- das è wird zu e, das doppelte f bleibt. */
+pk.useState({ q: 'caffe' });
+ok('markiert trotz Diakritikum', pk.markiere('Caffè Momus'), '<mark>Caffè</mark> Momus');
+pk.useState({ q: 'cafe' });
+ok('… und erfindet keinen Treffer', pk.markiere('Caffè Momus'), 'Caffè Momus');
+pk.useState({ q: 'a b' });
+ok('markiert jeden Begriff', pk.markiere('a und b'), '<mark>a</mark> und <mark>b</mark>');
+pk.useState({ q: 'x' });
+ok('ohne Treffer bleibt der Text unveraendert', pk.markiere('nichts hier'), 'nichts hier');
+
+/* Escapen kommt VOR dem Einsetzen von <mark>. Andersherum baut man eine
+   Luecke, durch die eine Notiz eigenes HTML in die Seite bekaeme. */
+pk.useState({ q: 'skript' });
+ok('Markierung escapt weiterhin',
+   pk.markiere('<b>skript</b> & "mehr"'),
+   '&lt;b&gt;<mark>skript</mark>&lt;/b&gt; &amp; &quot;mehr&quot;');
+pk.useState({ q: '<mark>' });
+ok('ein Suchbegriff kann kein HTML einschleusen',
+   pk.markiere('harmlos').indexOf('<mark>'), -1);
+pk.useState({ q: '' });
+
+group('manifest.webmanifest — was drinsteht, muss es geben');
+
+/* Bis v18 fasste keine einzige Pruefung das Manifest an. Ein Tippfehler im
+   Pfad faellt sonst erst auf, wenn jemand die App installieren will -- und
+   dann sieht man nur einen leeren Dialog, keinen Fehler. */
+let mani = null;
+try { mani = JSON.parse(readFileSync(join(root, 'manifest.webmanifest'), 'utf8')); }
+catch (e) { /* faellt unten auf */ }
+truthy('ist gültiges JSON', !!mani);
+
+/* Die Groesse steht im PNG-Kopf ab Byte 16, gross-endian. Abgeschriebene
+   sizes veralten sonst still, sobald jemand ein Bild neu erzeugt. */
+const pngMasse = (rel) => {
+  const b = readFileSync(join(root, rel.replace(/^\.\//, '')));
+  return `${b.readUInt32BE(16)}x${b.readUInt32BE(20)}`;
+};
+const bilder = []
+  .concat(mani?.icons || [], mani?.screenshots || [],
+          (mani?.shortcuts || []).flatMap((s) => s.icons || []));
+const fehlend = bilder.filter((b) => !existsSync(join(root, String(b.src).replace(/^\.\//, ''))));
+ok('jede Bilddatei existiert', fehlend.map((b) => b.src), []);
+const falscheMasse = bilder
+  .filter((b) => b.sizes && !String(b.sizes).includes(' ')
+                 && existsSync(join(root, String(b.src).replace(/^\.\//, ''))))
+  .filter((b) => pngMasse(b.src) !== b.sizes)
+  .map((b) => `${b.src}: steht ${b.sizes}, ist ${pngMasse(b.src)}`);
+ok('sizes stimmen mit dem Bild überein', falscheMasse, []);
+
+/* Die Kurzbefehle springen ueber ?v= in eine Ansicht. Eine Kennung, die es
+   in app.js nicht gibt, oeffnet beim Nutzer eine leere App. */
+const tabIds = [...(readFileSync(join(root, 'app.js'), 'utf8')
+  .match(/var TABS = \[([\s\S]*?)\];/) || [, ''])[1]
+  .matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
+const zieleUnbekannt = (mani?.shortcuts || [])
+  .map((s) => (/[?&]v=([a-z]+)/.exec(s.url || '') || [])[1])
+  .filter((v) => v && tabIds.indexOf(v) < 0);
+ok('jeder Kurzbefehl zeigt auf eine echte Ansicht', zieleUnbekannt, []);
+truthy('es gibt überhaupt Kurzbefehle', (mani?.shortcuts || []).length > 0);
+
 group('app.js und sw.js — dieselbe Fassung');
 
 const appSrc = readFileSync(join(root, 'app.js'), 'utf8');

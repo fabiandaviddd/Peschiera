@@ -32,6 +32,7 @@
   --shadow-lift: 0 2px 6px rgba(32,32,28,.08), 0 12px 32px rgba(32,32,28,.12);
   --scrim: rgba(32,32,28,.46);
   --wash: rgba(32,32,28,.045);
+  --mark: rgba(184,145,42,.30);
 
   --r-card: 14px;
   --r-pill: 999px;
@@ -81,6 +82,7 @@
     --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
     --scrim: rgba(0,0,0,.62);
     --wash: rgba(239,234,221,.06);
+    --mark: rgba(224,188,91,.26);
 
     color-scheme: dark;
   }
@@ -109,6 +111,7 @@
   --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
   --scrim: rgba(0,0,0,.62);
   --wash: rgba(239,234,221,.06);
+  --mark: rgba(224,188,91,.26);
 
   color-scheme: dark;
 }
@@ -172,6 +175,16 @@ p { margin: 0; }
 a { color: var(--lake-ink); }
 
 button { font: inherit; color: inherit; background: none; border: 0; }
+
+/* Suchtreffer in der Notiz. color: inherit ist der Kern -- die Textfarbe
+   bleibt --ink, der Kontrast damit derselbe wie ohne Markierung. Ein eigener
+   Vordergrund (Browservorgabe ist schwarz auf gelb) faellt im dunklen Schema
+   sonst auf 2,1:1. Der Untergrund traegt nur die Markierung, nicht die
+   Lesbarkeit. */
+mark {
+  background: var(--mark); color: inherit;
+  border-radius: 2px; padding: 0 .12em;
+}
 
 :focus-visible {
   outline: 2px solid var(--lake-ink);
@@ -547,6 +560,10 @@ body.is-compact .bar__top {
    Knopfes liest sich beides. Ein eigener Wert je Schema ist nicht nötig. */
 .btn--primary { background: var(--lake); border-color: var(--lake); color: var(--card); }
 .btn--wide { width: 100%; }
+/* Der destruktive Knopf traegt Ziegel als Rand und Schrift, nicht als Flaeche:
+   gefuellt waere er lauter als "Zusammenfuehren", und das ist der empfohlene
+   Weg. Er muss sich absetzen, nicht vordraengen. */
+.btn--danger { border-color: var(--brick); color: var(--brick-ink); }
 .btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9;
   stroke-linecap: round; stroke-linejoin: round; }
 

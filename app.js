@@ -96,6 +96,54 @@
     }, { passive: true });
   }
 
+  /* norm() bildet nicht 1:1 ab -- "Straße" wird "strasse", ein Zeichen mehr.
+     Wer im normalisierten Text eine Fundstelle sucht und ihren Index auf das
+     Original anwendet, markiert ab dort daneben. Deshalb zeichenweise
+     normalisieren und zu jedem Zeichen merken, woher es kam. */
+  function normStellen(s) {
+    var src = String(s == null ? '' : s), out = '', map = [];
+    for (var i = 0; i < src.length; i++) {
+      var t = norm(src[i]);
+      for (var k = 0; k < t.length; k++) { out += t[k]; map.push(i); }
+    }
+    return { text: out, map: map };
+  }
+
+  /* Escapen kommt VOR dem Einsetzen von <mark>: andersherum baut man eine
+     Luecke, durch die eine Notiz eigenes HTML in die Seite bekaeme.
+     Hervorgehoben wird jeder Suchbegriff -- sie sind UND-verknuepft, also
+     steht jeder irgendwo, und nur einen zu zeigen erklaert den Treffer halb. */
+  function markiere(text) {
+    var roh = String(text == null ? '' : text);
+    var terms = norm(S.q).split(/\s+/).filter(Boolean);
+    if (!terms.length || !roh) return esc(roh);
+
+    var n = normStellen(roh), treffer = [];
+    terms.forEach(function (t) {
+      var von = 0, i;
+      while ((i = n.text.indexOf(t, von)) >= 0) {
+        treffer.push([n.map[i], n.map[i + t.length - 1] + 1]);
+        von = i + t.length;
+      }
+    });
+    if (!treffer.length) return esc(roh);
+
+    treffer.sort(function (a, b) { return a[0] - b[0]; });
+    var eng = [treffer[0]];
+    for (var j = 1; j < treffer.length; j++) {
+      var letzte = eng[eng.length - 1];
+      if (treffer[j][0] <= letzte[1]) letzte[1] = Math.max(letzte[1], treffer[j][1]);
+      else eng.push(treffer[j]);
+    }
+
+    var h = '', pos = 0;
+    eng.forEach(function (r) {
+      h += esc(roh.slice(pos, r[0])) + '<mark>' + esc(roh.slice(r[0], r[1])) + '</mark>';
+      pos = r[1];
+    });
+    return h + esc(roh.slice(pos));
+  }
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -321,6 +369,15 @@
     buildTabs();
     applyJum();
     bind();
+
+    /* Homescreen-Kurzbefehle springen ueber ?v= direkt in eine Ansicht.
+       Geprueft gegen TABS, damit ein getippter Unsinn nicht eine leere
+       Ansicht erzeugt. Ein Teilen-Link ueberstimmt das weiter unten:
+       showInbox() setzt auf "Orte", und eine geschickte Liste ist
+       dringender als ein Kurzbefehl. */
+    var wunsch = (/[?&]v=([a-z]+)/.exec(location.search || '') || [])[1];
+    if (wunsch && TABS.some(function (t) { return t.id === wunsch; })) S.view = wunsch;
+
     render();
 
     $('boot').hidden = true;
@@ -462,14 +519,40 @@
     { key: 'unseen', label: 'Noch nicht gesehen', icon: 'checkRound' }
   ];
 
+  /* Die Menge, aus der die aktuelle Ansicht schoepft: im Plan die Merkliste,
+     sonst alle Orte. Eine Quelle fuer selected() und fuer die Zaehler an den
+     Chips -- die rechneten bis v18 gegen D.places, also gegen alle 101.
+
+     Vorschlag 8.1 beschreibt daraus einen sichtbaren Fehler: bei acht
+     gemerkten Orten stehe am Chip "Noch nicht gesehen" trotzdem 94. Das
+     stimmt seit v14 nicht mehr. Nachgeprueft: render() setzt
+     $('filters').hidden = bare || isPlan, der Filterknopf ist im Plan also
+     gar nicht da, und die Zaehler werden dort nie gezeichnet. Der Fehler ist
+     nicht mehr erreichbar.
+
+     Die Zusammenfuehrung bleibt trotzdem: sie nimmt die doppelte
+     Pool-Logik aus selected() heraus, und wenn die Filter je in den Plan
+     zurueckkehren, stimmen die Zahlen von selbst. Insurance, keine Korrektur
+     -- deshalb steht sie hier und nicht im Verzeichnis der behobenen Fehler.
+
+     Bewusst NICHT gegen die schon gesetzten Filter gerechnet: dann spraengen
+     die Zahlen bei jedem Tipp im Sheet durcheinander. Was ein Filter kostet,
+     sagt die Zeile darueber (#filter-count) und der Abschlussknopf. */
+  function grundmenge() {
+    return S.view === 'gemerkt'
+      ? D.places.filter(function (p) { return S.saved.indexOf(p.id) >= 0; })
+      : D.places;
+  }
+
   function catCount(id) {
-    return D.places.filter(function (p) { return p.category === id; }).length;
+    return grundmenge().filter(function (p) { return p.category === id; }).length;
   }
 
   function flagCount(key) {
-    if (key === 'walk')   return D.places.filter(function (p) { return has(p.walk_min) && p.walk_min <= WALK_MAX; }).length;
-    if (key === 'short')  return D.places.filter(function (p) { return has(p.time_min) && p.time_min <= SHORT_MAX; }).length;
-    return D.places.length - S.seen.length;
+    var pool = grundmenge();
+    if (key === 'walk')   return pool.filter(function (p) { return has(p.walk_min) && p.walk_min <= WALK_MAX; }).length;
+    if (key === 'short')  return pool.filter(function (p) { return has(p.time_min) && p.time_min <= SHORT_MAX; }).length;
+    return pool.filter(function (p) { return S.seen.indexOf(p.id) < 0; }).length;
   }
 
   function flagOn(key) { return key === 'walk' ? S.walk : key === 'short' ? S.short : S.unseen; }
@@ -530,7 +613,7 @@
 
   function allTags() {
     var count = {};
-    D.places.forEach(function (p) {
+    grundmenge().forEach(function (p) {
       p.tags.forEach(function (t) { count[t] = (count[t] || 0) + 1; });
     });
     return Object.keys(count).sort(function (a, b) {
@@ -720,9 +803,7 @@
   var jumHidden = 0;          // wie viele Orte der Jum-Schalter zuletzt ausblendete
 
   function selected() {
-    var pool = S.view === 'gemerkt'
-      ? D.places.filter(function (p) { return S.saved.indexOf(p.id) >= 0; })
-      : D.places;
+    var pool = grundmenge();
 
     var terms = norm(S.q).split(/\s+/).filter(Boolean);
 
@@ -968,7 +1049,10 @@
       + badgeHtml(p)
       + (wasSeen ? '<span class="card__seen">' + ICON.check + 'Gesehen</span>' : '')
       + '</p>'
-      + (has(p.note) ? '<p class="card__note">' + esc(p.note) + '</p>' : '')
+      /* Die Notiz ist einzeilig gekuerzt: liegt die Fundstelle hinter dem
+         Schnitt, sieht man die Markierung erst im Detail. Besser als gar
+         kein Hinweis, warum der Ort dasteht. */
+      + (has(p.note) ? '<p class="card__note">' + markiere(p.note) + '</p>' : '')
       + factsHtml(p)
       + '<button type="button" class="card__open" data-open="' + esc(p.id) + '"'
       + ' aria-label="' + esc(p.name) + ' — Details"></button>'
@@ -1630,6 +1714,11 @@
   }
 
   function showSheet(html, cls) {
+    /* setInert() legt #app still, und #inbox liegt darin. Ein offenes
+       Rueckgaengig-Angebot waere hinter dem Sheet sichtbar, aber nicht mehr
+       antippbar -- ein toter Knopf ist schlimmer als keiner. */
+    if (rueck) { endeRueckgaengig(); $('inbox').hidden = true; }
+
     var sheet = $('sheet');
     /* Schliesst gerade eins und wird sofort das naechste geoeffnet, darf der
        noch laufende Timer das neue nicht mitnehmen. */
@@ -1828,7 +1917,7 @@
           : '')
       + tilesHtml(p)
       + dogHtml(p)
-      + (has(p.note) ? '<p class="sheet__note">' + esc(p.note) + '</p>' : '');
+      + (has(p.note) ? '<p class="sheet__note">' + markiere(p.note) + '</p>' : '');
 
     /* Ein Primaer statt vierer gleich breiter Pillen; der Rest als Icon-Reihe
        darunter. Die Frage "wie weit, in welche Richtung" ist die einzige, die
@@ -2035,6 +2124,23 @@
   }
 
   var incoming = null;
+  /* "Meine ersetzen" ueberschrieb S.saved und S.seen sofort und ohne Rueckweg.
+     Wer vierzehn Tage markiert hat und eine Reihe zu tief tippt, verlor alles.
+     Eine Kopie plus ein Angebot auf Zeit genuegt -- kein neuer Zustand im
+     Speicher, denn nach dem Neuladen ist das Angebot ohnehin vorbei.
+     10 Sekunden: 2 wie bei flash() sind zu kurz, um in den Plan zu sehen, den
+     Verlust zu bemerken und zurueckzukommen; nach 30 liest man den Kasten als
+     neue Frage statt als Rueckweg. */
+  var rueck = null;
+  var rueckTimer = null;
+  var RUECK_MS = 10000;
+
+  function endeRueckgaengig() {
+    if (rueckTimer) { clearTimeout(rueckTimer); rueckTimer = null; }
+    rueck = null;
+    var k = $('inbox-undo');
+    if (k) k.hidden = true;
+  }
 
   function showInbox() {
     incoming = readIncoming();
@@ -2048,7 +2154,16 @@
       + (incoming.m.length + incoming.g.length === 1 ? 'Ort' : 'Orte') + ' geschickt.'
       + (incoming.dropped ? ' ' + incoming.dropped + ' Einträge sind hier unbekannt und bleiben außen vor.' : '')
       + ' Zusammenführen behält deine eigenen Markierungen.';
+    /* Ein neuer Link raeumt ein offenes Angebot ab -- sonst stuende
+       "Rueckgaengig" neben einer Liste, auf die es sich nicht mehr bezieht. */
+    endeRueckgaengig();
     $('inbox').hidden = false;
+    $('inbox-merge').hidden = false;
+    $('inbox-cancel').hidden = false;
+    $('inbox-replace').hidden = false;
+    /* Der destruktive Knopf nennt, was er kostet. */
+    var eigene = S.saved.length + S.seen.length;
+    $('inbox-replace').textContent = eigene ? 'Meine ' + eigene + ' ersetzen' : 'Meine ersetzen';
     setView('orte');
     window.scrollTo(0, 0);
   }
@@ -2056,6 +2171,7 @@
   function applyIncoming(mode) {
     if (!incoming) return;
     if (mode === 'replace') {
+      rueck = { saved: S.saved.slice(), seen: S.seen.slice() };
       S.saved = incoming.m.slice();
       S.seen = incoming.g.slice();
     } else {
@@ -2064,13 +2180,48 @@
     }
     lsSet(LS_SAVED, S.saved);
     lsSet(LS_SEEN, S.seen);
+    var zumRuecknehmen = rueck;
     dismissInbox();
+    if (zumRuecknehmen) zeigeRueckgaengig(zumRuecknehmen);
+    syncTabs();
+    render();
+  }
+
+  /* Der Kasten bleibt stehen, aber nur noch mit diesem einen Knopf. Ein
+     eigener Streifen waere ein zweites Bedienmuster fuer dieselbe Sache. */
+  function zeigeRueckgaengig(stand) {
+    rueck = stand;
+    var weg = (stand.saved.length + stand.seen.length);
+    $('inbox-x').textContent = 'Deine ' + weg + ' eigenen Markierungen sind ersetzt.';
+    $('inbox-merge').hidden = true;
+    $('inbox-cancel').hidden = true;
+    $('inbox-replace').hidden = true;
+    $('inbox-undo').hidden = false;
+    $('inbox').hidden = false;
+    window.scrollTo(0, 0);
+    rueckTimer = setTimeout(function () {
+      rueckTimer = null;
+      rueck = null;
+      $('inbox-undo').hidden = true;
+      $('inbox').hidden = true;
+    }, RUECK_MS);
+  }
+
+  function nimmZurueck() {
+    if (!rueck) return;
+    S.saved = rueck.saved.slice();
+    S.seen = rueck.seen.slice();
+    lsSet(LS_SAVED, S.saved);
+    lsSet(LS_SEEN, S.seen);
+    endeRueckgaengig();
+    $('inbox').hidden = true;
     syncTabs();
     render();
   }
 
   function dismissInbox() {
     incoming = null;
+    endeRueckgaengig();
     $('inbox').hidden = true;
     clearHash();
   }
@@ -2567,6 +2718,7 @@
     $('inbox-merge').addEventListener('click', function () { applyIncoming('merge'); });
     $('inbox-replace').addEventListener('click', function () { applyIncoming('replace'); });
     $('inbox-cancel').addEventListener('click', dismissInbox);
+    $('inbox-undo').addEventListener('click', nimmZurueck);
 
     window.addEventListener('online', updateOfflineNote);
     window.addEventListener('offline', updateOfflineNote);
@@ -2595,6 +2747,10 @@
       closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,
       dur: dur, km: km, norm: norm, haystack: haystack,
       byDistance: byDistance, byRating: byRating,
+      grundmenge: grundmenge, markiere: markiere, normStellen: normStellen,
+      /* Zustand von aussen setzbar, damit die Pruefungen ohne Browser laufen. */
+      useState: function (teil) { for (var k in teil) S[k] = teil[k]; },
+      useData: function (roh) { D = roh; },
       MOMENTS: MOMENTS, WALK_MAX: WALK_MAX, SHORT_MAX: SHORT_MAX,
       /* tripDay liest den Untertitel aus den geladenen Daten. */
       useMeta: function (meta) { D = { meta: meta || {} }; }
