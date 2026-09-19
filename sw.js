@@ -9,7 +9,7 @@
    ========================================================================== */
 'use strict';
 
-var CACHE = 'peschiera-v25';
+var CACHE = 'peschiera-v26';
 var TIMEOUT = 2500;   // ms, danach greift der Cache
 
 /* Leaflet liegt im Repo, nicht auf einem fremden Server -- sonst waere die

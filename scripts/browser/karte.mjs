@@ -53,18 +53,18 @@ const vertretung = async () => page.evaluate(() => {
   const mk = [...document.querySelectorAll('.leaflet-marker-icon.mk')];
   const bund = mk.filter((m) => m.classList.contains('mk--bund'));
   const einzeln = mk.filter((m) =>
-    !m.classList.contains('mk--bund') && !m.classList.contains('mk--base'));
+    !m.classList.contains('mk--bund') && !m.classList.contains('mk--bezug'));
   return einzeln.length + bund.reduce((a, m) => a + Number(m.textContent.trim() || 0), 0);
 });
 ok('jeder verortete Ort ist vertreten', await vertretung(), MIT_GEO);
-ok('der Zeltplatz ist dabei', await page.locator('.mk--base').count(), 1);
+ok('der Zeltplatz ist dabei', await page.locator('.mk--zelt').count(), 1);
 
 /* Und keine zwei Nadeln liegen naeher beieinander als eine Fingerkuppe --
    genau das war vorher der Fehler. Der Zeltplatz zaehlt nicht mit: er ist
    kein Bedienelement, sondern ein Bezugspunkt. */
 const engsterAbstand = async () => page.evaluate(() => {
   const pos = [...document.querySelectorAll('.leaflet-marker-icon.mk')]
-    .filter((m) => !m.classList.contains('mk--base'))
+    .filter((m) => !m.classList.contains('mk--bezug'))
     .map((m) => { const r = m.getBoundingClientRect();
       return [r.left + r.width / 2, r.top + r.height / 2]; });
   let min = Infinity;
@@ -100,7 +100,7 @@ await page.waitForTimeout(1000);
    Ohne force: seit der Buendelung verdeckt nichts mehr etwas, und genau das
    soll die Zusicherung mitpruefen. Bis v24 stand hier force, weil sich die
    Nadeln im Ortskern ueberlappten -- der offene Punkt aus der README. */
-await page.locator('.mk:not(.mk--base):not(.mk--bund)').first().click();
+await page.locator('.mk:not(.mk--bezug):not(.mk--bund)').first().click();
 await page.waitForTimeout(700);
 ok('einzelne Nadel öffnet das Detail-Sheet', await page.locator('#sheet').isVisible());
 await page.keyboard.press('Escape');
@@ -160,7 +160,158 @@ if (aufPunkt === null) {
   await page.waitForTimeout(500);
 }
 
-/* In Heute, Plan und Info hat die Karte nichts zu suchen. */
+/* --- Das Sheet muss VOR der Karte liegen -------------------------------- */
+/* Leaflet vergibt intern z-index bis 700 (Kacheln 200, Nadeln 600, Popups
+   700). Ohne eigenen Stapelkontext auf .map liegen die alle im selben Stapel
+   wie der Rest der App, und das Sheet mit z-index: 50 verliert gegen jede
+   davon: es stand vollstaendig da, aber Nadeln, Zoomknoepfe und Kacheln
+   stanzten mitten hindurch. Gemeldet vom Besitzer, hier nachgestellt.
+
+   Geprueft wird nicht der z-index, sondern die Wirkung: ueber die ganze
+   Flaeche des Sheets darf an keiner Stelle etwas aus der Karte obenauf
+   liegen. Ein Test auf die Zahl waere mit der naechsten Leaflet-Fassung
+   wertlos. */
+/* Ausschnitt zuruecksetzen: die Pruefungen davor haben bis maxZoom
+   hineingezoomt, die einzelnen Nadeln liegen danach ausserhalb des Bildes.
+   Einmal auf die Liste und zurueck laesst zeigeKarte neu einpassen. */
+await page.click('#map-btn');
+await page.waitForTimeout(500);
+await page.click('#map-btn');
+await page.waitForTimeout(1800);
+
+await page.locator('.mk:not(.mk--bezug):not(.mk--bund)').first().click();
+await page.waitForTimeout(700);
+/* Nachweis ueber die Struktur, nicht ueber eine Trefferprobe.
+
+   Versucht wurde beides. Weder ein Raster ueber das Sheet noch eine gezielte
+   Messung in der Ueberschneidung mit jeder Kartennadel hat den Fehler
+   gefunden: elementFromPoint meldete brav das Sheet, waehrend der
+   Bildschirmabzug aus DEMSELBEN Lauf die Nadeln, die Zoomknoepfe und die
+   Herkunftszeile darueber zeigte. Leaflet schiebt seine Nadeln mit
+   translate3d, sie liegen also auf eigenen Grafikebenen -- und deren
+   Zeichenreihenfolge muss in diesem Chromium nicht der Trefferreihenfolge
+   entsprechen.
+
+   Eine Pruefung, die den Fehler nicht sieht, ist schlimmer als keine: sie
+   behauptet, es sei alles in Ordnung. Deshalb steht hier die Bedingung
+   selbst, und die ist eindeutig -- bildet .map einen eigenen Stapelkontext,
+   koennen Leaflets interne z-index-Werte gar nicht mehr mit dem Rest der App
+   konkurrieren, egal welche Zahlen die naechste Fassung vergibt.
+
+   Belegt wurde der Fehler mit zwei Bildschirmabzuegen, einmal mit und einmal
+   ohne die zwei Zeilen in .map. */
+const stapel = await page.evaluate(() => {
+  const c = getComputedStyle(document.getElementById('map'));
+  const s = getComputedStyle(document.getElementById('sheet'));
+  return { pos: c.position, z: c.zIndex, isolation: c.isolation, sheetZ: s.zIndex };
+});
+/* Ein eigener Stapelkontext entsteht durch position + z-index (oder
+   isolation: isolate). Beides wird akzeptiert -- geprueft ist die
+   Eigenschaft, nicht die Schreibweise. */
+ok('die Karte bildet einen eigenen Stapelkontext',
+  stapel.isolation === 'isolate' || (stapel.pos !== 'static' && stapel.z !== 'auto'));
+/* Und zwar unterhalb des Sheets. Ein eigener Kontext mit z-index: 99 waere
+   genauso falsch wie gar keiner. */
+ok('… und liegt darin unter dem Sheet',
+  stapel.isolation === 'isolate' || Number(stapel.z) < Number(stapel.sheetZ));
+await page.keyboard.press('Escape');
+await page.waitForTimeout(500);
+
+/* --- Von wo starte ich? -------------------------------------------------- */
+/* Der Zeltplatz trug bis v25 einen Tooltip. Ein Tooltip braucht ein
+   Ueberfahren mit der Maus -- auf dem Zielgeraet gibt es das nicht, die
+   Beschriftung war dort nie zu sehen. Jetzt steht sie fest daneben. */
+const zelt = await page.evaluate(() => {
+  const m = document.querySelector('.mk--zelt');
+  if (!m) return null;
+  const t = m.querySelector('.mk__text');
+  const p = m.querySelector('.mk__punkt');
+  const tr = t.getBoundingClientRect(), pr = p.getBoundingClientRect();
+  const karte = document.getElementById('map').getBoundingClientRect();
+  return {
+    text: t.textContent.trim(),
+    schildSichtbar: tr.width > 0 && tr.height > 0 && getComputedStyle(t).display !== 'none',
+    schildUnterDemPunkt: tr.top > pr.bottom,
+    punktRund: Math.round(pr.width) === 22 && Math.round(pr.height) === 22,
+    imBild: pr.left >= karte.left && pr.right <= karte.right
+      && pr.top >= karte.top && pr.bottom <= karte.bottom,
+    durchlaessig: getComputedStyle(m).pointerEvents
+  };
+});
+ok('der Zeltplatz traegt seinen Namen sichtbar', zelt && zelt.text, 'Zeltplatz');
+ok('… ohne dass man mit der Maus darueberfahren muss', zelt && zelt.schildSichtbar);
+ok('… das Schild steht unter dem Punkt', zelt && zelt.schildUnterDemPunkt);
+ok('… der Punkt sitzt rund und mittig auf der Koordinate', zelt && zelt.punktRund);
+ok('… und liegt im sichtbaren Ausschnitt', zelt && zelt.imBild);
+/* Ein Bezugspunkt ist eine Auskunft, kein Bedienelement: er darf keinem Ort
+   den Tipp wegnehmen. Am Zeltplatz liegt das groesste Buendel darunter. */
+ok('… und nimmt keinem Ort den Tipp weg', zelt && zelt.durchlaessig, 'none');
+
+/* --- Der eigene Standort, in einem Fenster mit Ortungsrecht -------------- */
+const browser2 = await chromium.launch();
+{
+  const ctx2 = await browser2.newContext({
+    viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE',
+    permissions: ['geolocation'], geolocation: { latitude: 45.4402, longitude: 10.6905 }
+  });
+  const q = await ctx2.newPage();
+  await q.goto(`${BASE}/index.html?v=orte`, { waitUntil: 'networkidle' });
+  await q.waitForSelector('#app:not([hidden])');
+
+  await q.click('#map-btn');
+  await q.waitForTimeout(2000);
+  ok('ohne gesetzten Standort gibt es keine Hier-Nadel',
+    await q.locator('.mk--hier').count(), 0);
+
+  await q.click('#map-btn');            // zurueck zur Liste
+  await q.waitForTimeout(400);
+  await q.click('#chip-filter');
+  await q.waitForTimeout(600);
+  await q.click('#here-btn');
+  await q.waitForTimeout(1800);
+  await q.keyboard.press('Escape');
+  await q.waitForTimeout(500);
+  await q.click('#map-btn');
+  await q.waitForTimeout(2000);
+
+  const hier = await q.evaluate(() => {
+    const m = document.querySelector('.mk--hier');
+    if (!m) return null;
+    const t = m.querySelector('.mk__text').getBoundingClientRect();
+    const p = m.querySelector('.mk__punkt').getBoundingClientRect();
+    const k = document.getElementById('map').getBoundingClientRect();
+    return {
+      text: m.querySelector('.mk__text').textContent.trim(),
+      schildUeberDemPunkt: t.bottom < p.top,
+      imBild: p.left >= k.left && p.right <= k.right && p.top >= k.top && p.bottom <= k.bottom,
+      zeltAuchDa: !!document.querySelector('.mk--zelt')
+    };
+  });
+  ok('mit Standort steht eine Hier-Nadel auf der Karte', hier !== null);
+  ok('… und sagt es auch', hier && /^Du bist hier/.test(hier.text));
+  /* Zeltplatz nach unten, eigener Standort nach oben -- liegen beide nah
+     beieinander, stehen die Schilder sonst uebereinander. */
+  ok('… ihr Schild steht ueber dem Punkt', hier && hier.schildUeberDemPunkt);
+  ok('… sie liegt im sichtbaren Ausschnitt', hier && hier.imBild);
+  ok('… und der Zeltplatz bleibt daneben stehen', hier && hier.zeltAuchDa);
+
+  /* Standort wieder abschalten: die Nadel muss mit verschwinden, sonst zeigt
+     die Karte einen Bezugspunkt, nach dem nicht mehr gemessen wird. */
+  await q.click('#map-btn');
+  await q.waitForTimeout(400);
+  await q.click('#chip-filter');
+  await q.waitForTimeout(600);
+  await q.click('#here-btn');
+  await q.waitForTimeout(800);
+  await q.keyboard.press('Escape');
+  await q.waitForTimeout(400);
+  await q.click('#map-btn');
+  await q.waitForTimeout(1800);
+  ok('Standort aus -> Hier-Nadel weg', await q.locator('.mk--hier').count(), 0);
+  ok('… der Zeltplatz bleibt', await q.locator('.mk--zelt').count(), 1);
+  await ctx2.close();
+}
+await browser2.close();
 for (const [tab, name] of [['heute', 'Heute'], ['gemerkt', 'Plan'], ['info', 'Info']]) {
   await page.evaluate(() => { const q = document.getElementById('q'); if (q) q.blur(); });
   await page.waitForTimeout(260);

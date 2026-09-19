@@ -1185,6 +1185,22 @@ body.is-typing .tabs { transform: translateY(110%); }
   border-radius: var(--r-card);
   overflow: hidden;
   background: var(--wash);
+  /* Eigener Stapelkontext. Leaflet vergibt intern z-index bis 700 (Kacheln
+     200, Nadeln 600, Popups 700, Bedienelemente daneben). Ohne diese zwei
+     Zeilen liegen die alle im selben Stapel wie der Rest der App -- und das
+     Detail-Sheet mit z-index: 50 verliert gegen jede davon. Es stand
+     vollstaendig da, nur stanzten Nadeln, Zoomknoepfe und Kacheln mitten
+     hindurch.
+
+     position ist noetig, damit z-index ueberhaupt wirkt; Leaflet setzt zwar
+     selbst position: relative auf den Container, aber darauf zu bauen hiesse,
+     sich auf fremdes CSS zu verlassen. z-index: 0 statt isolation: isolate,
+     weil es dasselbe tut und aelter ist als jedes Geraet, das hier laeuft.
+
+     Die Ordnung des Hauses: Karte 0, Kopf 30, Tableiste 35, Abdunkelung 40,
+     Sheet 50, Startbild 60, Sprungmarke 90. */
+  position: relative;
+  z-index: 0;
 }
 .map__note {
   margin: 0 0 .8rem;
@@ -1242,10 +1258,46 @@ body.is-typing .tabs { transform: translateY(110%); }
 .bund__b:hover { background: var(--wash); }
 .bund__n { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name); }
 .bund__k { font-size: var(--t-micro); font-weight: 700; color: var(--soft); }
-.mk--base span {
-  width: 18px; height: 18px;
-  background: var(--ink); border-color: var(--card);
+/* Die Bezugspunkte: Zeltplatz und Geraetestandort. Beide tragen ihren Namen
+   fest neben sich -- ein Tooltip braucht ein Ueberfahren mit der Maus, und
+   das gibt es auf dem Zielgeraet nicht. Die Breite richtet sich nach dem
+   Text (iconSize: null in app.js), deshalb hier max-content statt fester
+   Masse. */
+.mk--bezug { position: relative; pointer-events: none; }
+.mk--bezug .mk__punkt {
+  position: absolute; inset: 0;
+  width: auto; height: auto; border-radius: 50%;
+  border: 3px solid var(--card);
+  box-shadow: 0 1px 4px rgba(0,0,0,.45);
 }
+/* Das Schild haengt absolut am Punkt und ist aus dem Fluss genommen: stuende
+   es daneben im Fluss, verschoebe seine Breite den Punkt von der Koordinate
+   weg. Zentriert, damit es nicht nach rechts in fremde Nadeln ragt --
+   genau das war beim ersten Versuch das Problem. */
+.mk--bezug .mk__text {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  width: auto; height: auto; border: 0; border-radius: var(--r-pill);
+  padding: .12rem .45rem;
+  background: var(--card); color: var(--ink);
+  font-family: var(--font-body); font-size: var(--t-micro); font-weight: 700;
+  line-height: 1.5; white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+/* Zeltplatz nach unten, eigener Standort nach oben. Liegen beide nah
+   beieinander -- der Normalfall, solange man auf dem Platz ist --, stehen
+   die Schilder dadurch nicht uebereinander. */
+.mk--zelt .mk__text { top: 27px; }
+.mk--hier .mk__text { bottom: 27px; }
+/* Der Zeltplatz ist fest, dunkel wie die Schrift -- er gehoert zur App, nicht
+   zur Umgebung. */
+.mk--zelt .mk__punkt { background: var(--ink); }
+/* Der eigene Standort in Seeblau, der Hausfarbe fuer "hier ist etwas an",
+   mit einem weichen Hof: so liest er sich als Person und nicht als Ort. */
+.mk--hier .mk__punkt {
+  background: var(--lake);
+  box-shadow: 0 1px 4px rgba(0,0,0,.45), 0 0 0 7px rgba(30,95,115,.22);
+}
+.mk--hier .mk__text { color: var(--lake-ink); }
 
 /* Leaflet bringt eigene Farben mit, die das dunkle Schema nicht kennen. */
 .leaflet-container { background: var(--wash); font: inherit; }

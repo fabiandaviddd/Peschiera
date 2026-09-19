@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v25 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v26 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -3109,6 +3109,7 @@
      die naeher liegen, nicht mehr einzeln zu treffen sind. */
   var KACHEL = 34;
   var letzteOrte = [];
+  var hierNadel = null;
 
   function buendel(orte, zoom) {
     var gruppen = [];
@@ -3189,6 +3190,42 @@
       if (groesste <= ziel) return z;
     }
     return maxZ;
+  }
+
+  /* Die Bezugspunkte: Zeltplatz und, wenn gesetzt, der Geraetestandort.
+
+     Der Zeltplatz trug bis v25 einen Tooltip, und ein Tooltip erscheint beim
+     Ueberfahren mit der Maus. Auf dem Geraet, fuer das diese App gebaut ist,
+     gibt es kein Ueberfahren -- die Beschriftung war dort schlicht nie zu
+     sehen, und ein dunkler Punkt unter hundert bunten sagt nichts.
+
+     Deshalb steht der Text jetzt fest daneben, im selben Element wie der
+     Punkt. interactive: false, damit der Bezugspunkt keinem Ort den Tipp
+     wegnimmt -- er ist eine Auskunft, kein Bedienelement. zIndexOffset
+     negativ, damit er nicht vor den Orten liegt, um die es geht. */
+  function bezugNadel(lat, lon, art, text) {
+    return window.L.marker([lat, lon], {
+      icon: window.L.divIcon({
+        className: 'mk mk--bezug mk--' + art,
+        html: '<span class="mk__punkt"></span><span class="mk__text">' + esc(text) + '</span>',
+        /* Feste 22x22 fuer den Punkt, damit er exakt auf der Koordinate
+           sitzt. Das Schild haengt absolut darunter und darf herausragen --
+           haenge es im Fluss daran, verschoebe seine Breite den Punkt. */
+        iconSize: [22, 22], iconAnchor: [11, 11]
+      }),
+      interactive: false,
+      /* Unter die Orte. Zuerst stand hier 1000, damit der Bezugspunkt nie
+         verschwindet -- dann verdeckte er am Zeltplatz die Zahl auf dem
+         groessten Buendel, und die ist das Bedienelement. Erkannt wird der
+         Bezugspunkt ohnehin am Schild, und das steht 27 px versetzt, also
+         neben jeder Bündelzahl.
+
+         Getippt werden kann er nie (interactive: false plus pointer-events
+         in der CSS) -- nachgeprueft: ein Tipp mitten auf den Zeltplatz-Punkt
+         geht an das Buendel darunter durch und zoomt. */
+      zIndexOffset: -500,
+      keyboard: false
+    });
   }
 
   function buendelListe(g) {
@@ -3287,10 +3324,7 @@
         /* Der Zeltplatz als fester Bezugspunkt -- ohne ihn weiss man nicht,
            von wo die Entfernungen in der Liste gelten. */
         if (base) {
-          window.L.marker([base.lat, base.lon], {
-            icon: window.L.divIcon({ className: 'mk mk--base', html: '<span></span>',
-                                     iconSize: [18, 18] })
-          }).addTo(karte).bindTooltip('Zeltplatz');
+          bezugNadel(base.lat, base.lon, 'zelt', 'Zeltplatz').addTo(karte);
         }
 
         /* Nach jedem Zoom neu buendeln: was bei Zoom 13 ein Punkt ist, sind
@@ -3318,10 +3352,27 @@
       var mitGeo = orte.filter(function (p) { return p.geo; });
       letzteOrte = mitGeo;
 
+      /* Der Geraetestandort wandert, der Zeltplatz nicht -- deshalb wird er
+         bei jedem Zeichnen neu gesetzt statt einmal beim Anlegen der Karte.
+         Ohne ihn verschob "Von hier aus messen" still den Bezugspunkt aller
+         Entfernungen, und die Karte zeigte davon nichts. */
+      if (hierNadel) { karte.removeLayer(hierNadel); hierNadel = null; }
+      if (S.here) {
+        hierNadel = bezugNadel(S.here.lat, S.here.lon, 'hier',
+          'Du bist hier' + (hereAt() ? ' · ' + hereAt() : '')).addTo(karte);
+      }
+
       if (mitGeo.length) {
-        karte.fitBounds(window.L.latLngBounds(mitGeo.map(function (p) {
-          return [p.geo.lat, p.geo.lon];
-        })).pad(0.15), { maxZoom: 16 });
+        /* Der Bezugspunkt gehoert mit ins Bild. "Von wo starte ich" laesst
+           sich nicht beantworten, wenn der Startpunkt ausserhalb des
+           Ausschnitts liegt -- und bei einem Filter auf Verona oder Mantua
+           waere genau das der Fall gewesen. Der Preis ist ein etwas weiterer
+           Ausschnitt bei weit entfernten Zielen; dafuer sieht man, wie weit
+           es wirklich ist. */
+        var ecken = mitGeo.map(function (p) { return [p.geo.lat, p.geo.lon]; });
+        if (S.here) ecken.push([S.here.lat, S.here.lon]);
+        else if (base) ecken.push([base.lat, base.lon]);
+        karte.fitBounds(window.L.latLngBounds(ecken).pad(0.15), { maxZoom: 16 });
       }
       /* Nach fitBounds, nicht davor: gebuendelt wird nach Pixelabstand, und
          der haengt am Zoom. Vorher gezeichnet waere die Buendelung die des

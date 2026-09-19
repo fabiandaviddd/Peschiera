@@ -401,7 +401,19 @@ Wahrheit aufzumachen.
   Listenzeile. Weißer Ring, sonst verschwindet Verde im Grün der Parks.
   Gesehene Orte sind gedämpft.
 - **Der Zeltplatz ist als eigene, dunkle Nadel dabei** — ohne ihn weiß man
-  nicht, von wo die Entfernungen in der Liste gelten.
+  nicht, von wo die Entfernungen in der Liste gelten. Sein Name steht seit
+  v26 **fest daneben**, nicht mehr in einem Tooltip: ein Tooltip braucht ein
+  Überfahren mit der Maus, und das gibt es auf dem Zielgerät nicht — die
+  Beschriftung war dort nie zu sehen.
+- **Ist ein Standort gesetzt** („Von hier aus messen"), steht er als
+  seeblaue Nadel mit Hof auf der Karte, beschriftet mit *Du bist hier* und
+  der Uhrzeit. Vorher verschob der Standort still den Bezugspunkt aller
+  Entfernungen, und die Karte zeigte davon nichts. Der Ausschnitt schließt
+  den Startpunkt mit ein — „von wo starte ich" lässt sich nicht beantworten,
+  wenn er außerhalb liegt.
+- **Beide Bezugspunkte sind keine Bedienelemente:** sie liegen unter den
+  Orten und lassen jeden Tipp durch. Ihr Schild steht 27 px versetzt (Zelt
+  nach unten, Standort nach oben) und verdeckt damit keine Bündelzahl.
 - **Nadel antippen öffnet dasselbe Sheet** wie eine Listenzeile. Die
   Trefferfläche misst 30 px, der sichtbare Punkt bleibt 16 px.
 - **Nadeln, die näher als 34 px beieinander lägen, werden gebündelt** — ein
@@ -449,6 +461,24 @@ Drei Details, die aus Messungen kamen und nicht aus dem Entwurf:
    gleiche Koordinate — etwa *Osteria sugli Scavi* und *Dom San Martino*).
    Dort hilft kein Zoom. Das Bündel zeigt dann die Namen zum Antippen, statt
    den Benutzer ins Leere tippen zu lassen.
+
+**Behoben in v26: das Detail-Sheet lag hinter der Karte.** Wer in der
+Kartenansicht eine Nadel antippte, bekam das Sheet — aber Nadeln, Zoomknöpfe
+und Kacheln stanzten mitten hindurch. Ursache: `.map` bildete keinen eigenen
+Stapelkontext, dadurch lagen Leaflets interne `z-index`-Werte (bis 700) im
+selben Stapel wie der Rest der App, und das Sheet mit `z-index: 50` verlor
+gegen jeden davon. Zwei Zeilen auf `.map` (`position: relative; z-index: 0`)
+kapseln das.
+
+> **Merkwürdigkeit, die dabei aufgefallen ist:** `elementFromPoint` meldete
+> in genau dem Zustand, in dem der Bildschirmabzug die Nadeln über dem Sheet
+> zeigte, brav das Sheet als oberstes Element. Leaflet schiebt seine Nadeln
+> mit `translate3d`, sie liegen also auf eigenen Grafikebenen — deren
+> Zeichenreihenfolge muss nicht der Trefferreihenfolge entsprechen. **Eine
+> Trefferprobe taugt hier nicht als Nachweis.** `scripts/browser/karte.mjs`
+> prüft deshalb die Bedingung selbst: eigener Stapelkontext, und darin
+> unterhalb des Sheets. Beide Fehlerarten sind gegengeprüft — kein Kontext,
+> und Kontext mit zu hohem `z-index`.
 
 **Hinweis für Tests in dieser Umgebung:** das hier verwendete Chromium traut
 dem MITM-Zertifikat des Agent-Proxys nicht, alle fremden Anfragen enden in
