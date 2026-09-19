@@ -4,7 +4,7 @@ Bestandsaufnahme einer vierten Hand am selben Repo. Alle Zahlen sind aus
 `data/places.json` gerechnet, nicht geschätzt; die Rechenwege stehen jeweils
 dabei. Die Befunde beschreiben den Stand `v13`.
 
-**Vorschlag 1, 2 und 4 sind umgesetzt** (`v15` und `v16`) — siehe
+**Vorschlag 1, 2 und 4 sind umgesetzt** (`v15` und `v17`) — siehe
 „Umsetzungsstand" unten. Die Vorschläge 3, 5, 6, 7 und 8 stehen weiter offen
 und sind absichtlich so beschrieben, dass sie jede Hand einzeln aufgreifen
 kann.
@@ -405,7 +405,7 @@ mittwochs wieder da. Der Regen-Leerzustand mit Jum ist eigens nachgestellt.
 
 ---
 
-### Vorschlag 4 — umgesetzt in `v16`
+### Vorschlag 4 — umgesetzt in `v17`
 
 | | v15 | v16 |
 |---|---|---|
