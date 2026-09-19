@@ -578,6 +578,27 @@ function stats() {
   line('Luftlinie ab Zeltplatz: max / median',
     `${Math.round(Math.max(...fern))} km / `
     + `${(fern.slice().sort((a, b) => a - b)[Math.floor(fern.length / 2)]).toFixed(1)} km`);
+
+  /* Der Umwegfaktor sagt mehr ueber die Daten als jede Einzelzahl: Strasse
+     geteilt durch Luftlinie liegt real zwischen 1,1 und 1,6. Ein Median weit
+     darueber heisst, dass der Bezugspunkt nicht stimmt -- genau so ist am
+     19.09. aufgefallen, dass base_geo im Hafen lag statt am Zeltplatz (Median
+     1,69 statt 1,25). Unter 1 ist die Luftlinie laenger als die Strasse, also
+     unmoeglich; dort stimmt entweder die Koordinate oder distance_km nicht.
+
+     Bewusst eine Meldung und keine Pruefung: distance_km ist auf 0,1 km
+     gerundet, und bei einem Ort in Sichtweite kippt das den Faktor schon ohne
+     jeden Fehler. Was auffallen soll, ist die Verschiebung des Medians. */
+  const paare = data.places
+    .filter((p) => p.geo && typeof p.distance_km === 'number' && p.distance_km > 0)
+    .map((p) => ({ id: p.id, f: p.distance_km / pk.airKmPoint(data.meta.base_geo, p.geo) }))
+    .filter((r) => Number.isFinite(r.f));
+  const sortiert = paare.map((r) => r.f).sort((a, b) => a - b);
+  line('Umwegfaktor Strasse/Luft: median',
+    sortiert[Math.floor(sortiert.length / 2)].toFixed(2));
+  const unmoeglich = paare.filter((r) => r.f < 1).map((r) => r.id);
+  line('… Luftlinie laenger als Strasse',
+    unmoeglich.length ? `${unmoeglich.length}: ${unmoeglich.join(', ')}` : 'keine');
   line('… verteilt auf', ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
     .map((w, i) => ({ w, n: shut.filter((p) => pk.closedOn(p.hours) === (i + 1) % 7).length }))
     .filter((x) => x.n).map((x) => `${x.w} ${x.n}`).join(' · '));

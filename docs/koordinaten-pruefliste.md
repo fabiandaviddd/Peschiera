@@ -95,17 +95,31 @@ einen Punkt. Drei brauchten eine Entscheidung:
 
 ### Zwei Befunde aus dem Nachtrag
 
-**Der Bezugspunkt in `meta.base_geo` ist falsch.** Er liegt 27 m vom
-Linienschiff-Anleger entfernt, also mitten im Hafen — nicht am Campingplatz.
-Gegenprobe aus den eigenen Daten: der *Lido ai Pioppi* liegt laut Notiz **auf
-dem Campingplatzgelände**, 150 m Straße und 2 Gehminuten entfernt — die
-Luftlinie zum Bezugspunkt beträgt aber 412 m. Ein Umwegfaktor von 0,4 ist
-unmöglich. Betroffen ist nur die Prüfmechanik (`test-logic.mjs`,
-`koordinaten.html`, `add-coords.mjs`); die App selbst liest `base_geo` nicht,
-die angezeigten Entfernungen stammen aus `distance_km` und sind gemessen.
-Solange der Punkt falsch ist, fällt die Entfernungsprüfung im Ortskern zu
-milde aus — deshalb sind dort auch die beiden Fehltreffer vom 19.09.
-durchgerutscht. Offen: die tatsächliche Koordinate des Campingplatzes.
+**Der Bezugspunkt in `meta.base_geo` war falsch — seit 19.09. korrigiert.**
+Er lag 27 m vom Linienschiff-Anleger, also im Hafen statt am Zeltplatz.
+Aufgefallen ist es am *Lido ai Pioppi*: der liegt laut Notiz auf dem Gelände,
+150 m Straße — die Luftlinie betrug 412 m, ein Umwegfaktor von 0,4 und damit
+unmöglich. Jetzt steht dort der vor Ort abgelesene Stellplatz
+(45°26'53.5"N 10°41'51.7"E = 45.448194, 10.697694). Der Median des
+Umwegfaktors über alle 91 verorteten Orte mit Straßenentfernung fällt damit
+von **1,69 auf 1,25** — den Wert, den Straße gegen Luftlinie real hat — und
+die Zahl der Orte mit Faktor über 3 von **29 auf 3**. Alle drei sind erklärt:
+die beiden Radrunden unten und Forte Ardietti, das man über den Mincio
+herum anfahren muss.
+
+Sechs Orte haben jetzt einen Faktor unter 1, die Luftlinie ist dort also
+länger als die eingetragene Straßenentfernung: `lido-ai-pioppi` (0,26),
+`sette-ponti` (0,70), `saligusta` (0,81), `momus` (0,84), `fortezza` (0,91),
+`desenzano` (0,95). Fünf davon liegen im Rundungsbereich — `distance_km` ist
+auf 0,1 km genau. Der Lido ist der echte Fall: 570 m Luftlinie bei
+eingetragenen 150 m. Der Platz ist groß, und die Gehzeiten dürften von der
+Einfahrt aus gemessen sein, nicht vom Stellplatz. Wer die Werte nachmisst,
+fängt dort an.
+
+Der Prüfstand meldet beides seit 19.09. in der Zahlenübersicht (Median des
+Umwegfaktors, Liste der Orte unter 1) — als **Meldung**, nicht als Prüfung:
+bei einem Ort in Sichtweite kippt die Rundung den Faktor schon ohne jeden
+Fehler. Was auffallen soll, ist die Verschiebung des Medians.
 
 **`distance_km` trägt bei zwei Orten etwas anderes.** Bei
 `ciclabile-lugana` (22) und `ciclabile-ostufer` (20) steht dort die **Länge der

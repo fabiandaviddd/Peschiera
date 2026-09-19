@@ -2,10 +2,10 @@
   "meta": {
     "title": "Peschiera kompakt",
     "subtitle": "14.–28. September 2026 · Gardasee",
-    "base": "Campeggio del Garda, Lungolago Giuseppe Garibaldi 15, Peschiera del Garda",
+    "base": "Campeggio del Garda, Lungolago Giuseppe Garibaldi 15, Peschiera del Garda — base_geo ist der Stellplatz selbst (45°26'53.5\"N 10°41'51.7\"E, vor Ort abgelesen), nicht die Einfahrt.",
     "base_geo": {
-      "lat": 45.4406,
-      "lon": 10.6919
+      "lat": 45.448194,
+      "lon": 10.697694
     },
     "note": "Alle Entfernungen ab dem Zeltplatz, auf Google Maps gemessen. Bewertungen und Öffnungsstatus: Google Maps, Stand 17.09.2026. Fahrpläne und Preise: Trenitalia, Navigazione Laghi, ATV und offizielle Seiten. Ergänzung 18.09.2026: alle Orte haben jetzt time_min (Minuten, empfohlene Aufenthaltsdauer ohne Anfahrt) und time_label (Textfassung). Die am 18.09. ergänzten Orte tragen geschätzte Geh- und Fahrzeiten; Preise und Öffnungszeiten stehen nur dort, wo sie belegt waren, sonst 'ungeprüft'.",
     "stand": "2026-09-18",
