@@ -588,7 +588,11 @@ ok('CACHE passt zu VERSION', swV, appV ? appV.split(/[\s·]/)[0] : null);
 ok('FONTS passt zu VERSION', swF, appV ? appV.split(/[\s·]/)[0] : null);
 
 /* Jede Datei in SHELL muss es auch geben, sonst fehlt sie offline. */
+/* Kommentare vorher heraus: ein Blockkommentar im Array hat den Parser am
+   19.09. zerlegt, und die Fehlermeldung zeigte auf die Dateiliste statt auf
+   den Kommentar. */
 const shell = (swSrc.match(/var SHELL = \[([\s\S]*?)\]/) || [, ''])[1]
+  .replace(/\/\*[\s\S]*?\*\//g, '')
   .split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
 const missing = shell.filter((rel) => {
   if (rel === './') return false;

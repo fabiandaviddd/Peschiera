@@ -368,52 +368,39 @@ Die Seite gehört nicht zur App, ist aus ihr nicht verlinkt und stört nichts.
   kürzester Runde ab dem Zeltplatz. Setzt die Koordinaten voraus (siehe unten),
   weil sich sonst keine Entfernungen zwischen zwei Orten rechnen lassen.
 
-## Karte (offen)
+## Karte
 
-Seit v16 wird `geo` an zwei Stellen benutzt — der Luftlinie im Plan und
-„Von hier" —, beide ohne Karte und ohne einen einzigen Laufzeit-Request.
-Die Karte selbst ist weiter offen.
+Seit `v21` gebaut. **Kein eigener Reiter**, sondern ein Umschalter in der
+Filterzeile der Ortsansicht: *Karte* ⇄ *Liste*. Damit gelten Suche, Filter,
+der Jum-Schalter und die Sortierung unverändert weiter — die Karte zeigt
+genau die Treffer, die die Zählzeile darüber nennt, statt eine zweite
+Wahrheit aufzumachen.
 
-Vorgesehen ist ein Tab „Karte" mit Leaflet und OpenStreetMap-Tiles, Marker in
-den Kategoriefarben, Hundefilter live auf den Markern und Marker-Tap öffnet das
-bestehende Sheet. Dafür fehlen noch zwei Dinge:
+- **Nadeln in den Kategoriefarben**, dieselben fünf wie die Kante an der
+  Listenzeile. Weißer Ring, sonst verschwindet Verde im Grün der Parks.
+  Gesehene Orte sind gedämpft.
+- **Der Zeltplatz ist als eigene, dunkle Nadel dabei** — ohne ihn weiß man
+  nicht, von wo die Entfernungen in der Liste gelten.
+- **Nadel antippen öffnet dasselbe Sheet** wie eine Listenzeile.
+- **Leaflet 1.9.4 liegt unter `vendor/leaflet/`** im Repo, BSD-2-Clause.
+  Kein CDN zur Laufzeit. Geladen wird es trotzdem erst beim ersten Öffnen der
+  Karte: 162 kB beim Start zu zahlen für eine Ansicht, die man vielleicht nie
+  aufmacht, wäre die falsche Reihenfolge.
+- **Offline** liegt Leaflet im Cache (`SHELL`), die Kacheln nicht — die kommen
+  zur Laufzeit und lassen sich nicht sinnvoll vorhalten. Ohne Netz zeigt die
+  Karte die Nadeln ohne Untergrund.
 
-**1. Koordinaten.** Erledigt: seit 19.09.2026 tragen **alle 101 Orte** ein
-`geo`. Die Entscheidungen, die dabei nötig waren — Festung, Anleger,
-Rivoltella — stehen in `docs/koordinaten-pruefliste.md`, ebenso die am
-selben Tag neu gerechneten Gehzeiten. Zur Laufzeit wird nie geocodiert — die Werte werden
-einmalig nachgetragen. Zwei Wege:
+**Offen: die Nadeln überlappen im Ortskern.** Bei 101 Orten auf engem Raum
+wird aus dem Zentrum ein Klumpen; man muss hineinzoomen, um einzelne Nadeln zu
+treffen. Ein Cluster-Aufsatz wäre die übliche Antwort und eine weitere
+Abhängigkeit — bewusst noch nicht gebaut.
 
-**Ohne Terminal:** `koordinaten.html` im Browser öffnen, auf *Starten* tippen,
-warten, *Datei herunterladen* — die geladene `places.json` ersetzt die alte.
-Die Seite hält das Limit von einer Anfrage pro Sekunde ein, speichert laufend
-mit und macht nach einem Abbruch dort weiter, wo sie war.
-
-**Mit Terminal:** dasselbe als Skript.
-
-```bash
-node scripts/add-coords.mjs --dry     # zeigt nur, was passieren würde
-node scripts/add-coords.mjs           # schreibt geo in places.json
-```
-
-Es hält Nominatims Limit von einer Anfrage pro Sekunde ein, schickt einen
-eigenen User-Agent, probiert pro Ort mehrere Schreibweisen (Adresse → Adresse
-ohne Hausnummer → Name plus Ort) und überspringt alles, wo `geo` schon steht.
-Läuft also beliebig oft. Zurzeit gibt es nichts mehr zu holen. Was es nicht findet, listet es am Ende auf — das von Hand aus Google
-Maps nachtragen.
-
-**2. Leaflet lokal.** Kein CDN zur Laufzeit, die Dateien gehören ins Repo:
-
-```bash
-mkdir -p vendor
-curl -Lo vendor/leaflet.js  https://unpkg.com/leaflet@1.9.4/dist/leaflet.js
-curl -Lo vendor/leaflet.css https://unpkg.com/leaflet@1.9.4/dist/leaflet.css
-curl -Lo vendor/marker-shadow.png https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png
-```
-
-Beides musste lokal passieren: in der Umgebung, in der diese Version gebaut
-wurde, sind `nominatim.openstreetmap.org`, die CDNs und
-`tile.openstreetmap.org` durch die Egress-Policy gesperrt.
+**Hinweis für Tests in dieser Umgebung:** das hier verwendete Chromium traut
+dem MITM-Zertifikat des Agent-Proxys nicht, alle fremden Anfragen enden in
+`ERR_ABORTED` — deshalb laden weder Kartenkacheln noch Google Fonts. Mit
+`ignoreHTTPSErrors: true` laden sie (am 19.09.2026 nachgestellt, 200er von
+`tile.openstreetmap.org`). Das ist eine Eigenheit der Umgebung, kein Fehler
+der App. `scripts/browser/karte.mjs` prüft deshalb alles außer den Kacheln.
 
 ## Icons neu erzeugen
 

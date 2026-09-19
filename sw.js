@@ -10,10 +10,16 @@
    ========================================================================== */
 'use strict';
 
-var CACHE = 'peschiera-v20';
-var FONTS = 'peschiera-fonts-v20';
+var CACHE = 'peschiera-v21';
+var FONTS = 'peschiera-fonts-v21';
 var TIMEOUT = 2500;   // ms, danach greift der Cache
 
+/* Leaflet liegt im Repo, nicht auf einem fremden Server -- sonst waere die
+   Karte offline nicht einmal als leere Flaeche da. Die Kacheln sind eine
+   andere Sache: die kommen zur Laufzeit und lassen sich nicht sinnvoll
+   vorhalten. Ohne Netz zeigt die Karte die Nadeln ohne Untergrund und sagt
+   das auch. Kommentare gehoeren hierher und nicht INS Array -- der Pruefstand
+   liest es mit einem regulaeren Ausdruck. */
 var SHELL = [
   './',
   './index.html',
@@ -25,7 +31,9 @@ var SHELL = [
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png',
-  './icons/favicon-32.png'
+  './icons/favicon-32.png',
+  './vendor/leaflet/leaflet.js',
+  './vendor/leaflet/leaflet.css'
 ];
 
 self.addEventListener('install', function (e) {

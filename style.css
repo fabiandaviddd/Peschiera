@@ -325,6 +325,10 @@ body.is-compact .bar__top {
 
 .chip--filter { flex: 0 0 auto; }
 .chip--filter[aria-pressed="true"] { background: var(--lake); border-color: var(--lake); color: var(--card); }
+/* Karte und Sortierung stehen rechts; der Umschalter zuerst, weil er die
+   Darstellung wechselt und die Sortierung nur die Reihenfolge. */
+.chip--map  { flex: 0 0 auto; margin-left: auto; }
+.chip--map + .chip--sort { margin-left: .35rem; }
 .chip--sort { flex: 0 0 auto; margin-left: auto; }
 
 /* Aktiver Filter im Kopf: der Chip traegt sein eigenes Kreuz. */
@@ -1019,3 +1023,47 @@ body.is-typing .tabs { transform: translateY(110%); }
   body { padding-bottom: 0; }
   .card { break-inside: avoid; box-shadow: none; }
 }
+
+/* ------------------------------------------------------------------ Karte */
+/* Dieselbe Auswahl wie die Liste, nur anders dargestellt. Die Hoehe rechnet
+   sich aus dem Ausschnitt statt fest: mit fixiertem Kopf und fixierter
+   Tableiste bleibt sonst entweder ein Loch oder die Karte laeuft darunter. */
+.map {
+  height: calc(100dvh - var(--bar-full) - 8.5rem);
+  min-height: 18rem;
+  margin: .2rem 0 .6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: var(--wash);
+}
+.map__note {
+  margin: 0 0 .8rem;
+  font-size: var(--t-meta);
+  color: var(--soft);
+}
+
+/* Die Nadel traegt die Kategoriefarbe, wie die Kante an der Listenzeile.
+   Weisser Ring, damit sie auf jedem Kartenuntergrund steht -- ohne ihn
+   verschwindet Verde im Gruen der Parks. */
+.mk span {
+  display: block; width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent, var(--lake));
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.45);
+}
+.mk--seen span { opacity: .45; }
+.mk--base span {
+  width: 18px; height: 18px;
+  background: var(--ink); border-color: var(--card);
+}
+
+/* Leaflet bringt eigene Farben mit, die das dunkle Schema nicht kennen. */
+.leaflet-container { background: var(--wash); font: inherit; }
+.leaflet-control-attribution,
+.leaflet-bar a {
+  background: var(--card); color: var(--soft); border-color: var(--line);
+}
+.leaflet-bar a { color: var(--ink); }
+.leaflet-control-attribution a { color: var(--lake); }

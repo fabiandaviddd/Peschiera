@@ -85,6 +85,7 @@
       <div class="wrap filterbar__wrap">
         <button type="button" class="chip chip--filter" id="chip-filter" aria-haspopup="dialog"></button>
         <div class="filterbar__active" id="active-filters"></div>
+        <button type="button" class="chip chip--map" id="map-btn"></button>
         <button type="button" class="chip chip--sort" id="sort-btn"></button>
       </div>
     </div>
@@ -118,6 +119,9 @@
 
       <div class="today" id="today" hidden></div>
       <div class="list" id="list"></div>
+      <!-- Leaflet wird erst beim ersten Oeffnen geladen, siehe ladeKarte(). -->
+      <div class="map" id="map" hidden></div>
+      <p class="map__note" id="map-note" hidden></p>
       <div id="info"></div>
 
       <div class="empty" id="empty" hidden>

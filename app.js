@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v20 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v21 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -38,6 +38,7 @@
     mid: null,              // gewaehlter Tagesabschnitt; null = aus der Uhr
     moreOpen: false,        // "Sonst noch" ausgeklappt
     seenOk: false,          // Gesehene in "Heute" ausnahmsweise doch zeigen
+    map: false,             // Liste oder Karte in der Ortsansicht
     /* Der Geraetestandort. Bewusst nirgends gespeichert: eine Position ist
        nach dem naechsten Spaziergang falsch, und eine falsche Entfernung ist
        schlechter als gar keine. Wer ihn wieder will, tippt wieder. */
@@ -264,6 +265,7 @@
     tags: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 11.2V4.8a1.2 1.2 0 0 1 1.2-1.2h6.4l8.4 8.4a1.4 1.4 0 0 1 0 2l-5.6 5.6a1.4 1.4 0 0 1-2 0z"/><path d="M7.6 7.6h.01"/></svg>',
     /* Schieberegler fuer den Filterknopf, Pfeilpaar fuer die Sortierung. */
     filter: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+    map: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"/><path d="M9 4.5v12.7M15 6.8v12.7"/></svg>',
     sort: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>',
     /* Die vier Marken des Badge-Kanons. Termin und Kuratiert sind gefuellt,
        weil sie etwas behaupten; Ungeprueft und Einschraenkung sind offen. */
@@ -881,6 +883,17 @@
     renderShareBar();
     measureBar();
 
+    /* Die Karte gehoert zur Ortsansicht: dieselben Filter, dieselbe Auswahl,
+       nur eine andere Darstellung. In Heute, Info und Plan hat sie nichts zu
+       suchen und wird weggeraeumt. */
+    var kartenAnsicht = !bare && !isPlan && S.map;
+    $('map').hidden = !kartenAnsicht;
+    if (!kartenAnsicht) mapNote('');
+    $('map-btn').hidden = bare || isPlan;
+    $('map-btn').innerHTML = ICON.map + (S.map ? 'Liste' : 'Karte');
+    $('map-btn').setAttribute('aria-label',
+      S.map ? 'Zur Liste wechseln' : 'Die Treffer auf der Karte zeigen');
+
     if (bare) {
       $('list').innerHTML = '';
       $('list').hidden = true;
@@ -928,6 +941,8 @@
     if (!items.length) {
       $('list').hidden = true;
       $('list').innerHTML = '';
+      $('map').hidden = true;
+      mapNote('');
       $('empty').hidden = false;
       {
         $('empty-h').textContent = 'Nichts gefunden';
@@ -942,6 +957,12 @@
     }
 
     $('empty').hidden = true;
+    if (kartenAnsicht) {
+      $('list').hidden = true;
+      $('list').innerHTML = '';
+      zeigeKarte(items);
+      return;
+    }
     $('list').hidden = false;
     $('list').innerHTML = items.map(cardHtml).join('');
   }
@@ -2566,6 +2587,11 @@
       if (e.target.closest('#chip-filter')) { openFilterSheet(); return; }
       /* Zwei Sortierungen brauchen keine dauerhafte Segmentleiste — ein Knopf,
          der seinen aktuellen Stand nennt und beim Tippen umschaltet. */
+      if (e.target.closest('#map-btn')) {
+        S.map = !S.map;
+        render();
+        return;
+      }
       if (e.target.closest('#sort-btn')) {
         S.sort = S.sort === 'rating' ? 'distance' : 'rating';
         render();
@@ -2768,6 +2794,95 @@
      neuen Datensatz still falsch, ohne Fehlermeldung. scripts/test-logic.mjs
      laedt diese Datei mit node und prueft sie — dafuer muss es sie erreichen.
      Im Browser gibt es kein `module`, dort passiert hier also nichts. */
+  /* ------------------------------------------------------------- Karte */
+
+  /* Leaflet liegt unter vendor/ im Repo -- kein Laufzeit-Request an einen
+     fremden Server, wie ueberall hier. Geladen wird es trotzdem erst beim
+     ersten Oeffnen der Karte: 162 kB beim Start zu zahlen fuer eine Ansicht,
+     die man vielleicht nie aufmacht, waere die falsche Reihenfolge. */
+  var karte = null, marker = [], leafletLaedt = null;
+
+  function ladeLeaflet() {
+    if (window.L) return Promise.resolve(true);
+    if (leafletLaedt) return leafletLaedt;
+    leafletLaedt = new Promise(function (fertig) {
+      var css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = './vendor/leaflet/leaflet.css';
+      document.head.appendChild(css);
+      var js = document.createElement('script');
+      js.src = './vendor/leaflet/leaflet.js';
+      js.onload = function () { fertig(!!window.L); };
+      js.onerror = function () { fertig(false); };
+      document.head.appendChild(js);
+    });
+    return leafletLaedt;
+  }
+
+  function mapNote(txt) {
+    var el = $('map-note');
+    if (!el) return;
+    el.textContent = txt || '';
+    el.hidden = !txt;
+  }
+
+  function zeigeKarte(orte) {
+    ladeLeaflet().then(function (da) {
+      if (!da) {
+        $('map').hidden = true;
+        mapNote('Die Karte lässt sich nicht laden. Die Liste zeigt dieselben Orte.');
+        return;
+      }
+      var base = D.meta && D.meta.base_geo;
+      if (!karte) {
+        karte = window.L.map('map', { zoomControl: true, attributionControl: true });
+        window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '© OpenStreetMap'
+        }).addTo(karte);
+        karte.setView(base ? [base.lat, base.lon] : [45.44, 10.69], 13);
+        /* Der Zeltplatz als fester Bezugspunkt -- ohne ihn weiss man nicht,
+           von wo die Entfernungen in der Liste gelten. */
+        if (base) {
+          window.L.marker([base.lat, base.lon], {
+            icon: window.L.divIcon({ className: 'mk mk--base', html: '<span></span>',
+                                     iconSize: [18, 18] })
+          }).addTo(karte).bindTooltip('Zeltplatz');
+        }
+      }
+
+      marker.forEach(function (m) { karte.removeLayer(m); });
+      marker = [];
+      var mitGeo = orte.filter(function (p) { return p.geo; });
+      mitGeo.forEach(function (p) {
+        var m = window.L.marker([p.geo.lat, p.geo.lon], {
+          icon: window.L.divIcon({
+            className: 'mk ' + accentClass(p.category)
+              + (S.seen.indexOf(p.id) >= 0 ? ' mk--seen' : ''),
+            html: '<span></span>', iconSize: [16, 16]
+          }),
+          title: p.name
+        });
+        m.on('click', function () { openSheet(p.id); });
+        m.addTo(karte);
+        marker.push(m);
+      });
+
+      if (mitGeo.length) {
+        karte.fitBounds(window.L.latLngBounds(mitGeo.map(function (p) {
+          return [p.geo.lat, p.geo.lon];
+        })).pad(0.15), { maxZoom: 16 });
+      }
+      karte.invalidateSize();
+
+      var ohne = orte.length - mitGeo.length;
+      mapNote(!orte.length
+        ? 'Kein Ort passt zu den Filtern.'
+        : (ohne ? ohne + (ohne === 1 ? ' Ort hat keine Koordinate und fehlt hier.'
+                                     : ' Orte haben keine Koordinate und fehlen hier.') : ''));
+    });
+  }
+
   if (typeof module === 'object' && module && module.exports) {
     module.exports = {
       hoursWindow: hoursWindow, closedOn: closedOn, closedToday: closedToday,
