@@ -1,6 +1,6 @@
 # Koordinaten — Stand und Prüfregeln
 
-101 Orte · 73 mit Koordinaten · 28 offen
+101 Orte · 100 mit Koordinaten · 1 offen
 
 ## Wie geprüft wird
 
@@ -67,109 +67,66 @@ Adresse bestätigt den Ortspunkt, und die Luftlinie bleibt dabei klein.
 
 Ein Zahlendreher beim Abtippen fällt damit auf, bevor er auf der Karte landet.
 
-## Offene Punkte
+## Offener Punkt (1)
 
-### Sollten eine Koordinate bekommen (9)
+- **Uferweg Desenzano – Rivoltella** (`rivoltella`) — geliefert wurde exakt die
+  Nadel des *MoS Bistrot Portovecchio*. Ein Uferweg übernimmt nicht den Punkt
+  eines Restaurants, das zufällig am selben Hafen liegt. Bleibt leer, bis der
+  Startpunkt am Porto Vecchio eigenständig bestimmt ist.
 
-- **Famila** (`famila`) — Via Campanello 1/a, Peschiera del Garda
-- **La Taverna da Oreste** (`oreste`) — Via F. Fontana 32, Lazise
-- **Jamaica Beach & Schwefelquelle** (`jamaica-beach`) — Spitze der Halbinsel, Sirmione
-- **Forte Ardietti & Monte della Guardia** (`ponti-sul-mincio`) — Ponti sul Mincio
-- **Azienda Agricola Ottella** (`ottella`) — Località Boschetti 1, San Benedetto di Lugana, Peschiera del Garda
-- **Podere Selva Capuzza** (`selva-capuzza`) — Via Selva Capuzza, San Martino della Battaglia
-- **Parco Termale Villa dei Cedri** (`villa-dei-cedri`) — Piazza di Sopra 4, Colà di Lazise
-- **Riserva Rocca e Sasso di Manerba** (`rocca-manerba`) — Via della Rocca 16, Manerba del Garda
-- **Pescheria Cavallaro** (`pescheria-cavallaro`) — Località Stretta Castello 19, Desenzano del Garda
+## Der Nachtrag vom 19.09.2026
 
-### Geleert, weil der Punkt ein Ortsmittelpunkt war (6)
+28 Koordinaten nachgeschlagen, 27 übernommen. Damit tragen 100 der 101 Orte
+einen Punkt. Drei brauchten eine Entscheidung:
 
-Diese Orte trugen eine Koordinate, die der Dienst für eine ganze Gemeinde
-geliefert hatte. Auf `null` gesetzt — eine falsche Nadel schickt jemanden hin,
-eine fehlende nicht.
+- **Festung Peschiera** (`fortezza`) — geliefert wurde exakt der Punkt des
+  *Bastione San Marco*. Damit lägen drei Orte auf einer Nadel, und die Festung
+  wäre von einer ihrer eigenen Bastionen nicht zu unterscheiden. Genommen wurde
+  stattdessen der Flächenschwerpunkt der Anlage (45.438627, 10.694105). Für
+  einen Ring von 3,5 km ist jeder Einzelpunkt eine Wahl; der Schwerpunkt ist die
+  ehrlichste.
+- **Anleger und Linienschiff** (`imbarcadero`, `linienschiff-hund`) — tragen
+  bewusst **denselben** Punkt. Peschiera hat nur einen Linienschiff-Anleger;
+  die beiden Einträge beschreiben dieselbe Stelle aus zwei Blickwinkeln. Damit
+  das nicht wie ein geerbter Gemeindepunkt aussieht, tragen jetzt auch beide
+  dieselbe Adresse (*Piazzale Betteloni*). Die Regel „Orte auf einem Punkt
+  nennen dieselbe Straße" ist damit erfüllt, statt umgangen.
+- **Uferweg Desenzano – Rivoltella** — siehe oben, abgelehnt.
 
-Vier davon brauchen **zuerst eine genauere Adresse**, sonst liefert der nächste
-Lauf denselben Ortspunkt und beide Regeln nicken ihn durch:
+### Zwei Befunde aus dem Nachtrag
 
-- **Festung Peschiera** (`fortezza`) — Adresse ist nur „Peschiera del Garda"; die
-  Festung liegt bei 10,69 Ost, der geliefert Punkt bei 10,68
-- **Bahnhof Peschiera del Garda** (`bahnhof`) — dito, braucht die Via Venezia
-- **Imbarcadero Peschiera** (`imbarcadero`) — dito, braucht das Lungolago
-- **Ammazza Caffè** (`ammazza-verona`) — trug nur „Verona" und bekam den
-  Stadtpunkt. Seit 19.09. steht dort *Vicolo Volto Cittadella 12/A* — die
-  Adresse reicht jetzt, der Ort wartet nur noch auf einen Lauf
+**Der Bezugspunkt in `meta.base_geo` ist falsch.** Er liegt 27 m vom
+Linienschiff-Anleger entfernt, also mitten im Hafen — nicht am Campingplatz.
+Gegenprobe aus den eigenen Daten: der *Lido ai Pioppi* liegt laut Notiz **auf
+dem Campingplatzgelände**, 150 m Straße und 2 Gehminuten entfernt — die
+Luftlinie zum Bezugspunkt beträgt aber 412 m. Ein Umwegfaktor von 0,4 ist
+unmöglich. Betroffen ist nur die Prüfmechanik (`test-logic.mjs`,
+`koordinaten.html`, `add-coords.mjs`); die App selbst liest `base_geo` nicht,
+die angezeigten Entfernungen stammen aus `distance_km` und sind gemessen.
+Solange der Punkt falsch ist, fällt die Entfernungsprüfung im Ortskern zu
+milde aus — deshalb sind dort auch die beiden Fehltreffer vom 19.09.
+durchgerutscht. Offen: die tatsächliche Koordinate des Campingplatzes.
 
-Zwei haben eine brauchbare Adresse und sollten beim nächsten Lauf durchgehen:
+**`distance_km` trägt bei zwei Orten etwas anderes.** Bei
+`ciclabile-lugana` (22) und `ciclabile-ostufer` (20) steht dort die **Länge der
+Runde**, nicht die Entfernung zum Ausgangspunkt. Für alle anderen Orte
+bedeutet das Feld „Straßenentfernung ab dem Zeltplatz". Die
+Plausibilitätsregel greift bei beiden deshalb nicht — was nicht heißt, dass
+ihre Koordinaten falsch wären, sondern dass die Regel dort die falsche Frage
+stellt.
 
-- **Trattoria al Combattente** (`combattente`) — Strada Bergamini 60
-- **Lago del Frassino** (`lago-frassino`) — Strada Santa Cristina
+## Mehrere Orte auf demselben Punkt (9)
 
-Beide trugen denselben Punkt; welcher von beiden ihn zu Recht trug, ließ sich
-nicht entscheiden, also sind beide leer.
+Alle neun nennen dieselbe Straße oder denselben Flurnamen, die Orte liegen also
+tatsächlich nebeneinander. Auf der Karte überlappen die Marker, sie zeigen aber
+nicht woandershin.
 
-Nicht geleert wurde **Verona** (`verona`): für einen Städteausflug ist der
-Stadtpunkt die richtige Nadel. Er teilte ihn nur mit dem Café.
-
-### Was der Lauf vom 19.09. ergeben hat
-
-Neun Orte kamen mit einer Koordinate zurück, **eine** davon war belastbar:
-
-- **S'Aligusta** übernommen. Gegenprobe: derselbe Straßenzug wie der
-  Tierarzt in der *Via Bell'Italia 49*, 800 m auseinander bei Hausnummer 12
-  gegen 49; 1,25 km Luftlinie bei 1,5 km Straße.
-- **Sechs** trugen wieder genau die Ortsmittelpunkte, die oben geleert worden
-  waren — Festung, Bahnhof und Anleger auf einem Punkt, Trattoria und Lago del
-  Frassino auf einem zweiten, das Ammazza auf dem Stadtpunkt von Verona. Der
-  Prüfstand hat alle sechs abgefangen; ohne die beiden Punkt-Regeln wären sie
-  unbemerkt zurückgekehrt.
-- **Zwei** lagen in der falschen Gemeinde und kamen trotzdem durch:
-  *La Taverna da Oreste* (Adresse Lazise) landete 6,4 km südlich von Lazise,
-  *Forte Ardietti* (Adresse Ponti sul Mincio) 3,1 km vom Zeltplatz statt der
-  11 km, die die Straße misst. Beide sind exakt die Punkte, die schon Lauf 1
-  als Fehltreffer verworfen hatte und die in `scripts/browser/koord2.mjs` als
-  nachgestellte Fehlerfälle stehen.
-
-**Daraus folgt:** die Ortsprüfung liest den Namen aus der Antwort des
-Dienstes, nicht die Lage. Nennt die Antwort „Lazise", gilt der Ort als
-bestätigt, auch wenn der Punkt 6 km daneben liegt. Die Entfernungsregel greift
-dort nicht, weil sie nur nach oben begrenzt — und eine Untergrenze ist oben aus
-guten Gründen verworfen.
-
-Für die verbleibenden Orte ist der Dienst damit ausgereizt. Der verlässliche
-Weg ist der, den dieser Abschnitt von Anfang an für die schwierigen Fälle
-vorsieht: Koordinate in Google Maps ablesen (Rechtsklick auf die Nadel) und
-von Hand eintragen. Der Prüfstand prüft sie danach wie jede andere.
-
-### Ohne sinnvollen Einzelpunkt (13)
-
-Wege, Radrunden, Bootstouren und Termine. Bleiben leer; die Karte muss das aushalten.
-
-- Uferweg am Mincio (`lungomincio`)
-- Wochenmarkt (`mercato`)
-- Isola del Garda (`isola-del-garda`)
-- Uferweg Cappuccini – Bergamini – Le Fornaci (`bergamini`)
-- Lungolago di Lugana (`lungolago-lugana`)
-- Uferweg Desenzano – Rivoltella (`rivoltella`)
-- Uferweg Pacengo – Lazise (`pacengo-lazise`)
-- Sentiero delle incisioni rupestri (`monte-luppia`)
-- Giro delle Mura — Bootsfahrt (`giro-delle-mura`)
-- Linienschiff als Bootstour (`linienschiff-hund`)
-- Radrunde durch die Lugana-Weinberge (`ciclabile-lugana`)
-- Radweg Peschiera – Lazise – Bardolino – Garda (`ciclabile-ostufer`)
-- Rievocazione Storica Peschiera (`rievocazione`)
-
-## Mehrere Orte auf demselben Punkt (8)
-
-Die verbleibenden acht sind harmlos: alle nennen dieselbe Straße oder denselben
-Flurnamen, die Orte liegen also tatsächlich nebeneinander. Auf der Karte
-überlappen die Marker, sie zeigen aber nicht woandershin.
-
-- Osteria sugli Scavi  +  Dom San Martino — *Piazza Ferdinando di Savoia*
-- Pavillon  +  Parco Catullo — *Parco Catullo*
-- Porta Brescia  +  Velolake Bike Rental — *Porta Brescia*
-- Bastione San Marco  +  Museo della Pesca — *Bastione San Marco*
-- Punta San Vigilio  +  Taverna San Vigilio — *Punta San Vigilio*
-- Braccobaldo Beach  +  Lapescheria — *Località Fornaci*
-- Supermercato Orvea  +  Penny Market — *Via Venezia*
-- Lido 3.9 Lounge Bar  +  Wochenmarkt Desenzano — *Lungolago Cesare Battisti*
-
-Die drei groben Gruppen sind oben geleert.
+- Osteria sugli Scavi + Dom San Martino — *Piazza Ferdinando di Savoia*
+- Pavillon + Parco Catullo — *Parco Catullo*
+- Porta Brescia + Velolake Bike Rental — *Porta Brescia*
+- Bastione San Marco + Museo della Pesca — *Bastione San Marco*
+- Punta San Vigilio + Taverna San Vigilio — *Punta San Vigilio*
+- Braccobaldo Beach + Lapescheria — *Località Fornaci*
+- Supermercato Orvea + Penny Market — *Via Venezia*
+- Imbarcadero Peschiera + Linienschiff als Bootstour — *Piazzale Betteloni*
+- Lido 3.9 Lounge Bar + Wochenmarkt Desenzano — *Lungolago Cesare Battisti*

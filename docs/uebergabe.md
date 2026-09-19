@@ -264,7 +264,7 @@ die nur ein Gerät beantwortet:
 **Daten.** `indoor` ist nur bei 1 von 101 Orten ausdrücklich gesetzt; die
 übrigen laufen über Tag-Heuristiken (`INDOOR_YES`/`INDOOR_NO` plus die Regel
 „Gastronomie gilt als überdacht"), was 44 drinnen / 40 draußen / 17 offen
-ergibt. `geo` fehlt bei 29 von 101 Orten — davon hängt die Wegwarnung im
+ergibt. `geo` fehlt noch bei 1 von 101 Orten — davon hängt die Wegwarnung im
 Plan ab. `rating` fehlt bei 65, weshalb die Sortierung nach Bewertung
 faktisch ein Drittel sortiert.
 
@@ -279,7 +279,7 @@ sich teilweise.
 Informationsarchitektur aus Abschnitt 3.1 — ein Tab „Mehr", der Info,
 Teilen und Einstellungen aufnimmt. Sie war nie Teil der vier Schritte.
 Ebenfalls offen: die Karte (Abschnitt „Karte (offen)" in der README), die
-Leaflet lokal im Repo und die fehlenden 29 Koordinaten voraussetzt.
+Leaflet lokal im Repo und die zuletzt fehlende Koordinate voraussetzt.
 
 **Eine Kleinigkeit am Deployment**, ein Einzeiler, offen — der zweite
 Punkt hat sich erledigt: `main` existiert seit dem Aufräumen, ist der

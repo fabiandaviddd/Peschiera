@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { fixtureRoute, FIXTURE } from './fixture.mjs';
 /* Playwright liegt global, nicht im Projekt — der Pfad kommt aus der Umgebung. */
 const BASE = process.env.PK_BASE || 'http://localhost:8765';
 const { chromium } = createRequire(import.meta.url)(
@@ -7,6 +8,7 @@ const R=[]; const ok=(n,p,x='')=>{R.push([p?'PASS':'FAIL',n,x]); if(!p) process.
 const browser = await chromium.launch();
 const ctx = await browser.newContext({viewport:{width:402,height:754},hasTouch:true,acceptDownloads:true});
 const page = await ctx.newPage();
+await fixtureRoute(ctx);          // fester Ausgangszustand, siehe fixture.mjs
 const errs=[]; page.on('pageerror',e=>errs.push(e.message));
 await ctx.route('https://nominatim.openstreetmap.org/**', r =>
   r.fulfill({status:200, contentType:'application/json', body:'[]'}));
@@ -16,8 +18,8 @@ await ctx.route('https://nominatim.openstreetmap.org/**', r =>
    Koordinate bekam, griff bei ihm der Zweig "steht schon in der Datei" statt der
    Entfernungsregel, raus blieb leer und die Protokoll-Pruefung fiel um. Der Test
    prueft aber die Regel, nicht diesen einen Ort. */
-const DATEN = createRequire(import.meta.url)('../../data/places.json');
-const BASEGEO = DATEN.meta.base_geo;
+const DATEN = FIXTURE.daten;
+const BASEGEO = FIXTURE.base;
 const GRAD_KM = 111.2;                       // ein Grad Breite, unabhaengig von jeder Bibliothek
 const grenze = (p) => p.distance_km * 1.15 + 0.5;
 const nordVon = (kmWeit) => ({ lat: Number((BASEGEO.lat + kmWeit / GRAD_KM).toFixed(6)),

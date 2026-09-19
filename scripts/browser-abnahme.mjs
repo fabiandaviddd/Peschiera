@@ -248,14 +248,28 @@ await page.waitForTimeout(200);
 
 /* ------------------------------------- Luftlinie im Plan haengt an geo */
 /* Zwischen zwei Stationen steht ab 1,2 km die Luftlinie als Warnung — aber nur,
-   wenn beide ein geo tragen. Sechs Orte haben seit dem Leeren der geerbten
-   Ortsmittelpunkte keins mehr, und dann muss die Zeile wegbleiben statt eine
-   Entfernung aus einem Gemeindepunkt zu rechnen. */
+   wenn beide ein geo tragen. Fehlt es bei einer, muss die Zeile wegbleiben statt
+   eine Entfernung aus einem Gemeindepunkt zu rechnen.
+
+   Der zweite Fall braucht eine Station OHNE Koordinate. Vorher stand dafuer
+   fortezza fest im Text — als der am 19.09. eine bekam, meldete der Test eine
+   Luftlinie, wo er keine erwartete, obwohl die App genau das Richtige tat.
+   Geprueft wird die Regel, nicht der Datenstand: die Station ohne Koordinate
+   wird deshalb ueber die geladene Datei erzeugt, nicht in den Daten gesucht. */
 console.log('\nPlan: Luftlinie nur mit echten Koordinaten');
 {
-  const mk = async (ids) => {
+  const mk = async (ids, ohneGeo) => {
     const c = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE' });
     const pg = await c.newPage();
+    if (ohneGeo) {
+      await c.route('**/data/places.json*', async (route) => {
+        const antwort = await route.fetch();
+        const daten = JSON.parse(await antwort.text());
+        for (const p of daten.places) if (p.id === ohneGeo) p.geo = null;
+        await route.fulfill({ status: 200, contentType: 'application/json',
+                              body: JSON.stringify(daten) });
+      });
+    }
     await pg.addInitScript((list) => {
       try { localStorage.setItem('pk.saved', JSON.stringify(list)); } catch (e) {}
     }, ids);
@@ -273,7 +287,7 @@ console.log('\nPlan: Luftlinie nur mit echten Koordinaten');
   const both = await mk(['bip', 'mantova']);          // beide mit geo, weit auseinander
   ok('zwei Stationen mit geo: zwei Zeilen', both.rows, 2);
   ok('… und die Luftlinie steht da', both.far > 0);
-  const one = await mk(['fortezza', 'mantova']);       // fortezza hat kein geo mehr
+  const one = await mk(['fortezza', 'mantova'], 'fortezza');  // fortezza hier ohne geo
   ok('ohne geo bei einer Station: zwei Zeilen', one.rows, 2);
   ok('… aber keine Luftlinie', one.far, 0);
 }

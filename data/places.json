@@ -148,7 +148,10 @@
         "seefisch",
         "terrasse"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.449614,
+        "lon": 10.669875
+      },
       "time_min": 120,
       "moment": [
         "abend"
@@ -582,7 +585,10 @@
         "specialty coffee",
         "verona"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.436062,
+        "lon": 10.99157
+      },
       "time_min": 45,
       "moment": [
         "frueh",
@@ -609,7 +615,10 @@
         "festung",
         "foto"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438627,
+        "lon": 10.694105
+      },
       "time_min": 90,
       "moment": [
         "frueh",
@@ -815,7 +824,10 @@
         "schatten",
         "spaziergang"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.440113,
+        "lon": 10.69628
+      },
       "time_min": 60,
       "moment": [
         "frueh",
@@ -876,7 +888,10 @@
         "rad",
         "vögel"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.435601,
+        "lon": 10.661229
+      },
       "time_min": 75,
       "moment": [
         "frueh",
@@ -902,7 +917,10 @@
         "markt",
         "einkaufen"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438,
+        "lon": 10.691894
+      },
       "time_min": 60,
       "moment": [
         "frueh",
@@ -1026,7 +1044,10 @@
         "buchen"
       ],
       "connection": "Erst per Schiff oder Bus zum Abfahrtshafen — Lazise, Bardolino, Sirmione oder Desenzano.",
-      "geo": null,
+      "geo": {
+        "lat": 45.592804,
+        "lon": 10.586941
+      },
       "time_min": 180,
       "moment": [
         "frueh",
@@ -1405,7 +1426,10 @@
       "tags": [
         "supermarkt"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.445838,
+        "lon": 10.707134
+      },
       "time_min": 45,
       "moment": [],
       "time_label": "30–60 Min"
@@ -1556,7 +1580,10 @@
         "zug",
         "verkehr"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438575,
+        "lon": 10.702309
+      },
       "time_min": 10,
       "moment": [],
       "time_label": "10 Min Vorlauf"
@@ -1566,7 +1593,7 @@
       "name": "Imbarcadero Peschiera",
       "category": "praktisch",
       "note": "Schiffsanleger Navigazione Laghi. Sommerfahrplan bis 04.10.2026. Infoline 800 551 801.",
-      "address": "Peschiera del Garda",
+      "address": "Piazzale Betteloni, Peschiera del Garda",
       "phone": null,
       "rating": null,
       "reviews": null,
@@ -1579,7 +1606,10 @@
         "schiff",
         "verkehr"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.440416,
+        "lon": 10.692127
+      },
       "time_min": 10,
       "moment": [],
       "time_label": "10 Min Vorlauf"
@@ -1859,7 +1889,10 @@
         "seefisch",
         "hafen"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.505364,
+        "lon": 10.73149
+      },
       "time_min": 105,
       "moment": [
         "mittag",
@@ -2104,7 +2137,10 @@
         "foto",
         "sonnenuntergang"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.440041,
+        "lon": 10.690563
+      },
       "time_min": 90,
       "moment": [
         "nachmittag",
@@ -2193,7 +2229,10 @@
         "schatten",
         "vögel"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.461966,
+        "lon": 10.622591
+      },
       "time_min": 90,
       "moment": [
         "frueh",
@@ -2222,7 +2261,10 @@
         "natur",
         "weg"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.502513,
+        "lon": 10.60597
+      },
       "time_min": 120,
       "moment": [
         "frueh",
@@ -2344,7 +2386,10 @@
         "weg",
         "natur"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.467885,
+        "lon": 10.713055
+      },
       "time_min": 90,
       "moment": [
         "frueh",
@@ -2470,7 +2515,10 @@
         "foto",
         "schatten"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.575272,
+        "lon": 10.675726
+      },
       "time_min": 120,
       "moment": [
         "frueh",
@@ -2498,7 +2546,10 @@
         "foto",
         "festung"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.438787,
+        "lon": 10.693918
+      },
       "time_min": 60,
       "moment": [
         "mittag",
@@ -2542,7 +2593,7 @@
       "category": "ausflug",
       "badge": "Hund gratis",
       "note": "Die verlässliche Bootstour mit Jum ist keine Tour, sondern das Linienschiff: Hunde unter 50 cm fahren kostenlos, Maulkorb muss mitgeführt werden, in der Tasche entfällt die Pflicht. Peschiera–Sirmione 25 Min / 6 €, Lazise 20 Min / 6 €, Desenzano 30 Min / 11,50 €. Sommerfahrplan bis 04.10.",
-      "address": "Imbarcadero Peschiera",
+      "address": "Piazzale Betteloni, Peschiera del Garda",
       "phone": null,
       "rating": null,
       "reviews": null,
@@ -2556,7 +2607,10 @@
         "hund",
         "aussicht"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.440416,
+        "lon": 10.692127
+      },
       "time_min": 120,
       "moment": [
         "frueh",
@@ -2586,7 +2640,10 @@
         "wein",
         "foto"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.444371,
+        "lon": 10.684479
+      },
       "time_min": 120,
       "moment": [
         "frueh",
@@ -2614,7 +2671,10 @@
         "natur",
         "aussicht"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.442084,
+        "lon": 10.696873
+      },
       "time_min": 270,
       "moment": [
         "frueh"
@@ -2642,7 +2702,10 @@
         "natur",
         "vögel"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.422654,
+        "lon": 10.693292
+      },
       "time_min": 105,
       "moment": [
         "frueh",
@@ -2700,7 +2763,10 @@
         "wein",
         "lugana"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.424163,
+        "lon": 10.654836
+      },
       "time_min": 90,
       "moment": [
         "frueh",
@@ -2728,7 +2794,10 @@
         "lugana",
         "natur"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.420551,
+        "lon": 10.594872
+      },
       "time_min": 60,
       "moment": [
         "frueh",
@@ -2790,7 +2859,10 @@
         "schatten",
         "nichtstun"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.472488,
+        "lon": 10.74906
+      },
       "time_min": 300,
       "moment": [
         "frueh",
@@ -2821,7 +2893,10 @@
         "natur",
         "strand"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.556269,
+        "lon": 10.56861
+      },
       "time_min": 270,
       "moment": [
         "frueh"
@@ -2849,7 +2924,10 @@
         "foto",
         "festung"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.439699,
+        "lon": 10.695459
+      },
       "time_min": 180,
       "moment": [
         "nachmittag",
@@ -2969,7 +3047,10 @@
         "einkauf",
         "selbstkochen"
       ],
-      "geo": null,
+      "geo": {
+        "lat": 45.47032,
+        "lon": 10.5393
+      },
       "time_min": 25,
       "moment": [],
       "time_label": "20–30 Min",

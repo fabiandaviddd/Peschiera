@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { fixtureRoute, FIXTURE } from './fixture.mjs';
 /* Playwright liegt global, nicht im Projekt — der Pfad kommt aus der Umgebung. */
 const BASE = process.env.PK_BASE || 'http://localhost:8765';
 /* Screenshots nur, wenn ein Zielordner uebergeben wird. */
@@ -11,15 +12,18 @@ const R=[]; const ok=(n,p,x='')=>{R.push([p?'PASS':'FAIL',n,x]); if(!p) process.
    Ortsmittelpunkte geleert -- danach standen die Zusicherungen still auf dem
    alten Stand und meldeten fuenf Fehlschlaege, von denen keiner ein Fehler
    der Seite war. */
-const DATEN = createRequire(import.meta.url)('../../data/places.json');
-const ALLE = DATEN.places.length;
-const MIT_GEO = DATEN.places.filter((p) => p.geo).length;
-const OHNE_GEO = ALLE - MIT_GEO;
-const STAND = `${MIT_GEO} von ${ALLE}`;
+/* Nicht mehr aus data/places.json: die Suite prueft die Koordinatensuche,
+   nicht den Arbeitsstand der Daten. Siehe fixture.mjs. */
+const DATEN = FIXTURE.daten;
+const ALLE = FIXTURE.alle;
+const MIT_GEO = FIXTURE.mitGeo;
+const OHNE_GEO = FIXTURE.ohneGeo;
+const STAND = FIXTURE.stand;
 const browser = await chromium.launch();
 const ctx = await browser.newContext({viewport:{width:402,height:754},deviceScaleFactor:3,hasTouch:true,
   acceptDownloads:true});
 const page = await ctx.newPage();
+await fixtureRoute(ctx);          // fester Ausgangszustand, siehe fixture.mjs
 const errs=[]; page.on('pageerror',e=>errs.push(e.message));
 
 // Nominatim ist von hier gesperrt -> Antworten nachstellen

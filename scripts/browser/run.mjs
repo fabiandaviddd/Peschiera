@@ -25,7 +25,9 @@ const PORT = process.env.PK_PORT || '8765';
 const BASE = `http://localhost:${PORT}`;
 
 const alle = readdirSync(here)
-  .filter((f) => f.endsWith('.mjs') && f !== 'run.mjs')
+  /* fixture.mjs ist gemeinsamer Datensatz, keine Suite -- ohne diese Zeile
+     startet der Laeufer sie und meldet eine Suite ohne Ergebnis. */
+  .filter((f) => f.endsWith('.mjs') && f !== 'run.mjs' && f !== 'fixture.mjs')
   .map((f) => f.replace(/\.mjs$/, ''))
   .sort();
 

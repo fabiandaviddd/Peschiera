@@ -86,7 +86,7 @@ streichen, die eine der Zeilen aus Abschnitt 2 absichert**.
 
 ## 4. Koordinaten
 
-**Stand: 78 von 101.** Die 23 offenen stehen mit Begründung in
+**Stand: 100 von 101.** Der eine offene steht mit Begründung in
 `docs/koordinaten-pruefliste.md`.
 
 Die Suche prüft ihre Treffer, statt sie zu übernehmen — beim ersten Durchlauf
@@ -133,7 +133,7 @@ Google Fonts ist erreichbar.
 
 | Was | Wer |
 |---|---|
-| 23 Orte ohne Koordinaten | Benutzer: `koordinaten.html` öffnen, **Starten** |
+| 1 Ort ohne Koordinate | Benutzer: `koordinaten.html` öffnen, **Starten** |
 | Leaflet vendoren | Benutzer: drei `curl`-Befehle auf dem Mac |
 | `dog` bei 58 von 101 Orten ungeklärt | Recherche. Größte inhaltliche Lücke — betrifft jede Entscheidung mit dem Hund |
 | Schriften laden auf dem iPhone? | Ungeprüft. `selbsttest.html` beantwortet es |
