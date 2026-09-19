@@ -76,7 +76,11 @@ streichen, die eine der Zeilen aus Abschnitt 2 absichert**.
 - **Nie `isMobile: true` in Playwright.** Dieses Chromium ignoriert dann die
   gesetzte Fenstergröße und nimmt 498×933. Richtig:
   `{ viewport: {width:402, height:754}, deviceScaleFactor:3, hasTouch:true }`.
-  402×754 ist das Gerät des Benutzers (iPhone, iOS 18.7, Safari 27).
+  402×754 ist das Gerät des Benutzers (iPhone, **iOS 27**, Safari 27).
+  Hier stand bis 19.09.2026 „iOS 18.7, Safari 27" — das widersprach sich
+  selbst, Safari trägt seit der Jahresnummerierung dieselbe Zahl wie iOS.
+  Der Besitzer hat iOS 27 bestätigt. Wer hier etwas über das Verhalten von
+  Safari behauptet, muss dazuschreiben, für welche Fassung es galt.
 - **Sichtbarkeit prüfen, nicht Attribute.** `el.hidden === true` hat monatelang
   bestanden, während das Element sichtbar war.
 - Die Startansicht ist „Heute"; Suiten wechseln zuerst auf „Orte".
