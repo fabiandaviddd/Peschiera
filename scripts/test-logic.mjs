@@ -653,6 +653,30 @@ ok('jede vorgeladene Schrift wird auch angezogen',
 truthy('preload traegt crossorigin', vorab.length === 0
   || (idx.match(/rel="preload"[^>]*crossorigin[^>]*>/g) || []).length === vorab.length);
 
+group('Fuss und Reiter — was der Nutzer liest');
+
+/* meta.note ist Provenienz-Doku (Feldnamen, Messdaten, Rechenwege) und stand
+   bis v26 woertlich im Fuss der App: auf dem Plan dominierte ein Absatz
+   ueber "distance_km" und "meta.base_geo" die halbe Ansicht. Der Fuss zeigt
+   jetzt meta.hinweis. Diese Pruefungen halten die Trennung: der Nutzertext
+   darf keine Interna tragen, und die App darf nicht zurueck auf note. */
+const metaH = data.meta && data.meta.hinweis;
+truthy('meta.hinweis ist gepflegt', typeof metaH === 'string' && metaH.length > 20);
+truthy('… und ohne Feldnamen und Interna',
+  !!metaH && !/[a-z]+_[a-z]+|meta\.|base_geo|json|routing/i.test(metaH));
+truthy('… und in einer Laenge, die man liest, nicht ueberfliegt',
+  !!metaH && metaH.length <= 300);
+truthy('der Fuss zeigt hinweis, nicht note',
+  /foot-note'\)\.textContent = has\(D\.meta\.hinweis\)/.test(appSrc)
+  && !/foot-note'\)\.textContent = has\(D\.meta\.note\)/.test(appSrc));
+
+/* Der vierte Reiter hiess "Info" — das versprach ein Impressum. Er traegt
+   Hunderegeln, Notruf, Trinkgeld und die offenen Punkte; sein Name muss
+   sagen, was man bekommt. Die id bleibt 'info', ?v=info ist ein dokumentiertes
+   Lesezeichen. */
+const tabInfo = /\{ id: 'info', label: '([^']+)'/.exec(appSrc);
+ok('der vierte Reiter traegt einen sagenden Namen', tabInfo && tabInfo[1], 'Wissen');
+
 group('app.js und sw.js — dieselbe Fassung (Fortsetzung)');
 
 /* Jede Datei in SHELL muss es auch geben, sonst fehlt sie offline. */

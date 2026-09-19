@@ -182,6 +182,45 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   await c.close();
 }
 
+/* --- v27: der Plan lief 16 px ueber beide Raender hinaus ----------------- */
+/* .list zieht sich mit margin-inline: -1rem ueber die volle Breite, und der
+   Plan, der IN #list gerendert wird, zog denselben Rand noch einmal ab: 434
+   px Ansicht auf 402 px Bildschirm. Die Seite liess sich seitwaerts wackeln,
+   und das rechte Sechzehntel jeder Zeile -- seit v27 die Umsortier-Pfeile --
+   lag unsichtbar neben dem Bild. */
+{
+  const c = await mach();
+  const p = await c.newPage();
+  await p.goto(BASE + '/?v=orte', { waitUntil: 'networkidle' });
+  await p.waitForSelector('#app:not([hidden])');
+  await p.evaluate(() => localStorage.setItem('pk.saved',
+    JSON.stringify(['desenzano', 'bakare'])));
+  await p.reload({ waitUntil: 'networkidle' });
+  await p.waitForSelector('#app:not([hidden])');
+  await p.locator('.tab[data-tab="gemerkt"]').click();
+  await p.waitForTimeout(500);
+
+  ok('der Plan macht die Seite nicht seitwaerts scrollbar',
+    await p.evaluate(() => document.documentElement.scrollWidth), 402);
+  const pfeile = await p.evaluate(() => [...document.querySelectorAll('.pmove')]
+    .map((e) => { const r = e.getBoundingClientRect();
+      return [Math.round(r.width), Math.round(r.height),
+        r.left >= 0 && r.right <= 402]; }));
+  ok('vier Umsortier-Pfeile stehen da', pfeile.length, 4);
+  ok('jeder ist 44 mal 44', pfeile.every((x) => x[0] === 44 && x[1] === 44));
+  ok('und jeder liegt im Bild', pfeile.every((x) => x[2]));
+
+  /* Umsortieren muss weiter wirken -- die Pfeile sind seit v27 anders
+     angeordnet, und Anordnung ist genau das, was so etwas still bricht. */
+  const erster = await p.evaluate(() => document.querySelector('.planrow__name').textContent);
+  await p.locator('.pmove[data-down]:not([disabled])').first().click();
+  await p.waitForTimeout(400);
+  const danach = await p.evaluate(() =>
+    [...document.querySelectorAll('.planrow__name')].map((e) => e.textContent));
+  ok('nach unten schieben vertauscht wirklich', danach[1], erster);
+  await c.close();
+}
+
 await browser.close();
 console.log(R.map((r) => `${r[0]}  ${r[1]}${r[2] ? '  [' + r[2] + ']' : ''}`).join('\n'));
 console.log('\n' + R.filter((r) => r[0] === 'PASS').length + '/' + R.length + ' passed');

@@ -1071,10 +1071,20 @@ body.is-typing .tabs { transform: translateY(110%); }
   font-size: var(--t-meta); color: var(--soft);
   padding: .1rem 0 .7rem; font-variant-numeric: tabular-nums;
 }
-.plan { display: grid; margin-inline: -1rem; border-top: 1px solid var(--line); }
+/* KEIN eigener negativer Rand: der Plan wird in #list gerendert, und .list
+   zieht sich bereits mit margin-inline: -1rem ueber die volle Breite. Beide
+   zusammen machten die Ansicht 434 px breit bei 402 px Bildschirm -- die
+   Seite liess sich seitwaerts wackeln (eigene Regel: kein horizontaler
+   Scroll), und das rechte Sechzehntel jeder Zeile lag unsichtbar neben dem
+   Bild. Aufgefallen erst, als die Umsortier-Pfeile dorthin wuchsen. */
+.plan { display: grid; border-top: 1px solid var(--line); }
 
 .planrow {
-  display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) 2.6rem;
+  /* Dritte Spalte auto statt fester 2.6rem: dort stehen seit v27 zwei
+     44er-Pfeile nebeneinander (rund 92px). In der festen Spalte ragte der
+     zweite Pfeil unsichtbar aus dem Bild -- die Messung fand ihn mit 44x44,
+     nur eben rechts neben dem Bildschirm. */
+  display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto;
   align-items: center;
   min-height: 4.4rem; padding: .5rem .85rem .5rem .45rem;
   background: var(--card);
@@ -1101,9 +1111,15 @@ body.is-typing .tabs { transform: translateY(110%); }
 /* Pfeile statt Ziehen: eine Wischgeste laesst sich von hier aus nicht auf
    echtem iOS pruefen, und bei einer Handvoll Stationen sind zwei Knoepfe
    ohnehin treffsicherer als ein Griff. */
-.planrow__move { display: grid; gap: .1rem; }
+/* Nebeneinander statt uebereinander: zwei 44er-Ziele uebereinander machten
+   die Zeile 90 px hoch, nebeneinander bleibt sie bei ihren 54. Der Titel
+   verliert ein paar Pixel Breite und traegt ohnehin eine Auslassung. */
+.planrow__move { display: flex; gap: .15rem; align-items: center; }
 .pmove {
-  width: 2.4rem; height: 2.1rem;
+  /* 2.75rem = 44 px. Vorher 38x34 -- das einzige Bedienelement der App
+     unter der 44-px-Regel des Hauses. flex-basis statt width: im
+     Flex-Container wurde width auf 29 px zusammengedrueckt, gemessen. */
+  flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem;
   display: grid; place-items: center;
   color: var(--soft); cursor: pointer; border-radius: 7px;
 }

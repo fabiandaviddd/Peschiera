@@ -12,7 +12,8 @@
     "fields": {
       "time_min": "Empfohlene Aufenthaltsdauer in Minuten, ohne An- und Abreise. Für Tagesplanung und Sortierung.",
       "time_label": "Menschenlesbare Fassung, oft mit kurzer und ausführlicher Variante."
-    }
+    },
+    "hinweis": "Alle Entfernungen und Gehzeiten gelten ab dem Zeltplatz. Bewertungen, Öffnungszeiten und Fahrpläne stammen aus öffentlichen Quellen und können sich ändern — im Zweifel kurz vor Ort prüfen."
   },
   "categories": [
     {

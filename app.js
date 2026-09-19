@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v26 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v27 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -312,6 +312,7 @@
     phone: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.2 3.6h3l1.6 4-2 1.4a11 11 0 0 0 5.2 5.2l1.4-2 4 1.6v3a1.8 1.8 0 0 1-2 1.8C10.6 19.8 4.2 13.4 4.4 5.6a1.8 1.8 0 0 1 1.8-2z"/></svg>',
     list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.4h16M4 12h16M4 17.6h16"/></svg>',
     info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 10.8V17M12 7.6h.01"/></svg>',
+    buch: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.6C10.5 5.2 8.2 4.6 5 4.6v13.2c3.2 0 5.5.6 7 2 1.5-1.4 3.8-2 7-2V4.6c-3.2 0-5.5.6-7 2z"/><path d="M12 6.6v13.2"/></svg>',
     sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>',
     moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.4A8.4 8.4 0 1 1 9.6 4a6.8 6.8 0 0 0 10.4 10.4z"/></svg>',
     auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8" /><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"/></svg>',
@@ -429,7 +430,14 @@
        jetzt der Jum-Schalter; die Angabe wandert in den Fuss, wo schon der
        Datenstand steht. */
     $('foot-sub').textContent = has(D.meta.subtitle) ? D.meta.subtitle : '';
-    $('foot-note').textContent = has(D.meta.note) ? D.meta.note : '';
+    /* meta.hinweis, nicht meta.note. note ist die Provenienz-Doku der Daten
+       -- Feldnamen, Messdaten, Rechenwege -- und stand bis v26 woertlich im
+       Fuss der App. Auf dem Plan mit zwei Eintraegen dominierte ein Absatz
+       ueber "distance_km" und "meta.base_geo" die halbe Ansicht. Der Fuss
+       traegt jetzt den Satz, der den Nutzer betrifft; die Doku bleibt in den
+       Daten und in der README. KEIN Rueckfall auf note: lieber eine leere
+       Zeile als die Interna wieder beim Nutzer. */
+    $('foot-note').textContent = has(D.meta.hinweis) ? D.meta.hinweis : '';
 
     buildTabs();
     applyJum();
@@ -529,7 +537,14 @@
     /* Die Kennung bleibt "gemerkt": daran haengen der Teilen-Link und der
        Speicher. Sichtbar ist es ein Plan. */
     { id: 'gemerkt', label: 'Plan', icon: ICON.star },
-    { id: 'info', label: 'Info', icon: ICON.info }
+    /* Die Ansicht heisst innen "Gut zu wissen" und traegt Hunderegeln,
+       Notruf, Trinkgeld, Bus-Zeiten und die offenen Punkte -- eine der
+       nuetzlichsten Ansichten der App. "Info" mit i-Kringel versprach ein
+       Impressum; wer den Inhalt nicht kannte, hatte keinen Grund zu tippen.
+       Ein Reitername muss sagen, was man bekommt. Die id bleibt 'info':
+       ?v=info steht als Lesezeichen-Beispiel in der README, und ein
+       umbenannter Parameter braeche jeden gespeicherten Link. */
+    { id: 'info', label: 'Wissen', icon: ICON.buch }
   ];
 
   /* Kein role="tab": dazu gehoerten tabpanel und aria-controls, und Panels
