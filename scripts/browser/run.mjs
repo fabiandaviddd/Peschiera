@@ -78,10 +78,17 @@ try {
     const zeile = (t.out.match(/^\d+\/\d+ passed$/m) || ['—'])[0];
     const fails = (t.out.match(/^FAIL .*/gm) || []);
     const abbruch = /ABBRUCH|TimeoutError/.test(t.out);
-    ergebnis.push({ s, zeile, fails, abbruch, c: t.c });
-    console.log(`${s.padEnd(10)} ${zeile}${abbruch ? '  ABBRUCH' : ''}`);
+    /* Eine Suite ohne lesbare Schlusszeile zaehlt als Fehler. Vorher stand
+       dort nur ein Strich, und der sah zwischen lauter gruenen Zeilen aus wie
+       Zustimmung -- am 19.09. lief liste.mjs so einmal komplett durch, ohne
+       dass eine einzige ihrer Zusicherungen in die Summe eingegangen waere.
+       Die Schlusszeile muss exakt "<n>/<m> passed" lauten. */
+    const stumm = zeile === '—';
+    ergebnis.push({ s, zeile, fails, abbruch, stumm, c: t.c });
+    console.log(`${s.padEnd(10)} ${zeile}${abbruch ? '  ABBRUCH' : ''}`
+      + (stumm && !abbruch ? '  KEIN ERGEBNIS (Schlusszeile fehlt)' : ''));
     fails.forEach((f) => console.log('   ' + f));
-    if (t.c !== 0 || abbruch) code = 1;
+    if (t.c !== 0 || abbruch || stumm) code = 1;
   }
 
   const summe = ergebnis.reduce((n, e) => {

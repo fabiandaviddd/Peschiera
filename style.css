@@ -91,6 +91,10 @@
   --shadow-lift: 0 2px 6px rgba(32,32,28,.08), 0 12px 32px rgba(32,32,28,.12);
   --scrim: rgba(32,32,28,.46);
   --wash: rgba(32,32,28,.045);
+  /* Das Geruest beim Start. --wash (4,5 %) war auf dem Bildschirm kaum von
+     der Flaeche zu unterscheiden -- ein Geruest, das man nicht sieht, ist
+     wieder nur ein weisser Bildschirm. */
+  --skel: rgba(32,32,28,.11);
   --mark: rgba(184,145,42,.30);
 
   --r-card: 14px;
@@ -147,6 +151,7 @@
     --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
     --scrim: rgba(0,0,0,.62);
     --wash: rgba(239,234,221,.06);
+    --skel: rgba(239,234,221,.13);
     --mark: rgba(224,188,91,.26);
 
     color-scheme: dark;
@@ -176,6 +181,7 @@
   --shadow-lift: 0 2px 6px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
   --scrim: rgba(0,0,0,.62);
   --wash: rgba(239,234,221,.06);
+  --skel: rgba(239,234,221,.13);
   --mark: rgba(224,188,91,.26);
 
   color-scheme: dark;
@@ -876,19 +882,70 @@ body.is-typing .tabs { transform: translateY(110%); }
 .foot__warn { display: block; margin-top: .35rem; color: var(--brick-ink); font-weight: 700; }
 
 /* --- Ladezustand / Fehler ---------------------------------------------- */
+/* Der Startzustand bildet das Geruest der Liste nach, statt einen Kreis zu
+   drehen. Die Masse sind aus dem fertigen Zustand abgenommen, nicht geraten:
+   die Kopfzeile misst --bar-full, eine Ortskarte ist rund 92 px hoch. Sitzt
+   das Geruest daneben, springt der Inhalt beim Erscheinen -- genau das, was
+   ein Geruest verhindern soll. */
 .boot {
-  position: fixed; inset: 0; z-index: 60;
-  display: grid; place-content: center; justify-items: center; gap: .9rem;
-  padding: 1.5rem; text-align: center; background: var(--bg); color: var(--soft);
+  position: fixed; inset: 0; z-index: 60; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  /* .875rem = 14px: exakt die Hoehe, auf der der fertige Kopf seinen Titel
+     zeigt. Nachgemessen -- mit .8rem stand er 1,2 px zu hoch und rutschte
+     beim Erscheinen der App sichtbar nach. */
+  padding: calc(env(safe-area-inset-top, 0px) + .875rem) 1rem 1.5rem;
+  text-align: center; background: var(--bg); color: var(--soft);
 }
 .boot[hidden] { display: none; }
 .boot h2 { font-size: var(--t-title); color: var(--ink); }
 .boot p { font-size: var(--t-body); max-width: 26rem; }
 .boot code { font-family: ui-monospace, Menlo, monospace; font-size: var(--t-meta);
   background: var(--wash); padding: .1rem .3rem; border-radius: 4px; }
-.spin { width: 28px; height: 28px; border-radius: 50%;
-  border: 3px solid var(--line); border-top-color: var(--lake); animation: spin 850ms linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Der Titel steht schon an der Stelle, an der ihn der fertige Kopf zeigt --
+   dadurch springt er beim Erscheinen der App nicht. Deshalb ist der Kasten
+   linksbuendig und nicht zentriert; zentriert wird nur im Fehlerfall. */
+.boot__msg {
+  width: 100%; max-width: var(--col); text-align: left;
+  display: grid; justify-items: start; gap: .2rem; margin-bottom: 1rem;
+}
+.boot__msg h2 { font-family: var(--font-head); font-weight: 600; letter-spacing: -.015em; }
+.boot__msg p { font-size: var(--t-meta); }
+
+.boot__skel { width: 100%; max-width: var(--col); display: grid; gap: .6rem; }
+
+.skel { animation: pulsen 1600ms ease-in-out infinite; }
+.skel--kopf  { height: 2.6rem; border-radius: 10px; background: var(--skel); }
+.skel--chips { height: 2rem; border-radius: var(--r-pill); background: var(--skel);
+  margin-bottom: .5rem; }
+
+/* Eine leere Ortskarte, nicht ein grauer Kasten: gleiche Flaeche, gleicher
+   Rahmen, gleicher Schatten wie spaeter. Die zwei Balken darin sitzen dort,
+   wo Name und Beschreibung stehen werden. */
+.skel--karte {
+  position: relative; height: 92px; border-radius: var(--r-card);
+  background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.skel--karte::before, .skel--karte::after {
+  content: ''; position: absolute; left: .9rem;
+  border-radius: 4px; background: var(--skel);
+}
+.skel--karte::before { top: 1rem;   width: 55%; height: 1.05rem; }
+.skel--karte::after  { top: 2.9rem; width: 78%; height: .72rem; }
+
+/* Versetzt, sonst atmen vier Karten im Gleichschritt und das wirkt wie ein
+   Fortschrittsbalken, der nichts misst. */
+.skel--karte:nth-of-type(3) { animation-delay: 130ms; }
+.skel--karte:nth-of-type(4) { animation-delay: 260ms; }
+.skel--karte:nth-of-type(5) { animation-delay: 390ms; }
+@keyframes pulsen { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+/* Fehlerfall: kein Geruest, Meldung mittig und zentriert. */
+.boot--fehler { justify-content: center; }
+.boot--fehler .boot__skel { display: none; }
+.boot--fehler .boot__msg {
+  justify-items: center; text-align: center; gap: .9rem; margin-bottom: 0;
+}
 
 /* --- Heute -------------------------------------------------------------- */
 

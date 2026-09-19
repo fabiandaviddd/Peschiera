@@ -41,12 +41,34 @@
 
 <a class="skip" href="#main">Zum Inhalt springen</a>
 
-<!-- Start- und Fehlerzustand -->
+<!-- Start- und Fehlerzustand.
+
+     Bis v23 stand hier ein drehender Kreis. Der sagt "warte", ein Geruest
+     sagt "so wird es aussehen" -- und am See mit einem Balken Empfang ist
+     das der Unterschied zwischen "laedt" und "kaputt". Die Formen unten
+     bilden nach, was danach wirklich kommt: Kopfzeile, Filterzeile, dann
+     Karten mit Name, zwei Marken und zwei Textzeilen.
+
+     aria-hidden, weil ein Vorleser mit leeren Kaesten nichts anfangen kann.
+     Was er braucht, steht in .boot__msg, und die traegt role="status" --
+     ohne das bliebe ein Fehler beim Laden fuer ihn stumm.
+
+     Im Fehlerfall setzt app.js .boot--fehler: dann verschwindet das Geruest.
+     Es weiter zu zeigen waere ein Versprechen, das die App nicht mehr
+     einloest. -->
 <div id="boot" class="boot">
-  <div class="spin" id="boot-spin" aria-hidden="true"></div>
-  <h2 id="boot-title">Peschiera kompakt</h2>
-  <p id="boot-text">Daten werden geladen&hellip;</p>
-  <button type="button" class="btn btn--primary" id="boot-retry" hidden>Erneut versuchen</button>
+  <div class="boot__msg" role="status">
+    <h2 id="boot-title">Peschiera kompakt</h2>
+    <p id="boot-text">Daten werden geladen&hellip;</p>
+    <button type="button" class="btn btn--primary" id="boot-retry" hidden>Erneut versuchen</button>
+  </div>
+  <div class="boot__skel" id="boot-skel" aria-hidden="true">
+    <div class="skel skel--kopf"></div>
+    <div class="skel skel--chips"></div>
+    <div class="skel skel--karte"></div>
+    <div class="skel skel--karte"></div>
+    <div class="skel skel--karte"></div>
+  </div>
 </div>
 
 <div id="app" hidden>

@@ -133,7 +133,12 @@ const E = await ctxD.newPage();
 const errsE=[]; E.on('pageerror',e=>errsE.push(e.message));
 await E.goto(URL+'#liste=nonsense___',{waitUntil:'networkidle'});
 await E.waitForSelector('#app:not([hidden])');
-  await zuOrten(E); await E.waitForTimeout(250);
+  await zuOrten(E);
+/* Seit v24 kommt die Liste in Stuecken: erst 18 Karten, der Rest ueber
+   requestAnimationFrame hinterher. Auf data-voll warten statt auf eine
+   Wartezeit zu hoffen -- mit waitForTimeout haette diese Zusicherung je nach
+   Tageslaune der Maschine mal 101 und mal 42 gesehen. */
+await E.waitForSelector('#list[data-voll="1"]');
 ok('Kaputter Link: App läuft normal', (await E.$$('#list .card')).length===101 && errsE.length===0,
    errsE.join(' | '));
 ok('Kaputter Link: kein Panel', await E.evaluate(()=>

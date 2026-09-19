@@ -416,6 +416,7 @@ ok('App startet offline aus dem Cache', await page.locator('#app').isVisible());
 ok('Orte sind offline da', (await page.evaluate(() =>
    document.querySelectorAll('.card').length + (document.querySelector('#today') ? 1 : 0))) > 0);
 await goTab('orte');
+await page.waitForSelector('#list[data-voll="1"]');   // Liste kommt in Stuecken
 ok('Liste ist offline vollstaendig', (await page.locator('.card').count()) > 50);
 const footOff = await page.locator('#foot-offline').textContent();
 ok('Footer sagt offline', /Offline —/.test(footOff));

@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v23 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v24 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -119,6 +119,50 @@
       for (var k = 0; k < t.length; k++) { out += t[k]; map.push(i); }
     }
     return { text: out, map: map };
+  }
+
+  /* Der Ausschnitt um die Fundstelle.
+
+     Die Beschreibung in der Liste ist eine Zeile hoch und wird hinten
+     abgeschnitten -- das ist Absicht, jede Karte misst dadurch exakt 97 px
+     und die Liste bleibt lesbar. Der Preis stand bis v24 als bekannter
+     Kompromiss im Kommentar an cardHtml: liegt die Fundstelle hinter dem
+     Schnitt, sieht man die Markierung erst im Detail.
+
+     Nachgemessen ist der Preis hoch. Bei "hund" zeigten 12 von 16 Treffern
+     nicht, warum sie Treffer sind, bei "see" 13 von 20, bei "wein" 9 von 15
+     -- rund sechs von zehn. Man bekommt eine Liste und muss jede Karte
+     einzeln oeffnen, um sie zu verstehen.
+
+     Statt die Zeile zu verlaengern faengt sie jetzt vor dem Fund an. Gleiche
+     Zeile, gleiche Hoehe, nur ein anderer Ausschnitt. VOR steht ein
+     Auslassungszeichen, damit niemand den Anfang des Satzes fuer den ganzen
+     haelt.
+
+     Geschnitten wird an einer Wortgrenze: mitten im Wort zu beginnen liest
+     sich wie ein Fehler. Ohne Grenze in Reichweite wird hart geschnitten --
+     besser ein angeschnittenes Wort als der falsche Satzanfang. */
+  var VORLAUF = 12;     // Zeichen Kontext vor dem Fund
+  var AB_HIER = 24;     // erst ab dieser Fundstelle ueberhaupt verschieben
+
+  function ausschnitt(text) {
+    var roh = String(text == null ? '' : text);
+    var terms = norm(S.q).split(/\s+/).filter(Boolean);
+    if (!terms.length || !roh) return roh;
+
+    var n = normStellen(roh), erste = -1;
+    terms.forEach(function (t) {
+      var i = n.text.indexOf(t);
+      if (i >= 0 && (erste < 0 || n.map[i] < erste)) erste = n.map[i];
+    });
+    /* Steht der Fund ohnehin am Anfang, bleibt alles wie es war -- ein
+       Auslassungszeichen vor dem zweiten Wort waere nur Rauschen. */
+    if (erste < AB_HIER) return roh;
+
+    var von = erste - VORLAUF;
+    var luecke = roh.lastIndexOf(' ', von);
+    if (luecke >= 0 && von - luecke <= 8) von = luecke + 1;
+    return '…' + roh.slice(von);
   }
 
   /* Escapen kommt VOR dem Einsetzen von <mark>: andersherum baut man eine
@@ -321,7 +365,9 @@
 
   function bootError(msg) {
     var local = location.protocol === 'file:';
-    $('boot-spin').hidden = true;
+    /* Das Geruest weg: es zeigt Karten, die es nicht geben wird. Der Kasten
+       rueckt dabei in die Mitte, damit die Meldung nicht oben klebt. */
+    $('boot').classList.add('boot--fehler');
     $('boot-title').textContent = 'Daten nicht geladen';
     $('boot-text').innerHTML = msg ? esc(msg) : (local
       ? 'Der Browser blockiert das Lesen lokaler Dateien über <code>file://</code>. '
@@ -753,6 +799,33 @@
     root.setProperty('--bar-full', full + 'px');
   }
 
+  /* Der Kopf aendert seine Hoehe nur, wenn sich SEIN Inhalt aendert -- die
+     Liste dahinter beruehrt ihn nicht. Bis v23 mass render() ihn trotzdem bei
+     jedem Durchgang, und jede Messung liest offsetHeight. Das zwingt den
+     Browser, sofort das ganze Dokument zu setzen, samt aller Karten darunter.
+
+     Im Profil war das beim Tippen mit 109 von 355 ms der groesste
+     Einzelposten -- deutlich groesser als das Rendern der Karten selbst
+     (37 ms). Genau die Art Kosten, die man nicht sieht, wenn man nur auf die
+     Zeile schaut, die viel Text erzeugt.
+
+     Jetzt wird gemessen, wenn der Kopf anders aussieht als zuletzt. Als
+     Kennung dient sein eigenes Markup: darin schlaegt sich alles nieder, was
+     ihn hoeher oder niedriger macht -- die Filterchips, das Loeschkreuz im
+     Suchfeld, ausgeblendete Zeilen je Ansicht. Was sich NICHT im Markup
+     zeigt, faengt der ResizeObserver auf .bar ab: geladene Schriften,
+     Drehung des Geraets, Textvergroesserung im System. */
+  var kopfStand = '';
+
+  function measureBarWennNoetig() {
+    var bar = document.querySelector('.bar');
+    if (!bar) return;
+    var jetzt = bar.innerHTML.length + '|' + bar.className + '|' + window.innerWidth;
+    if (jetzt === kopfStand) return;
+    kopfStand = jetzt;
+    measureBar();
+  }
+
   /* Beim Scrollen nach unten fahren Titel, Schalter und Suche weg; die
      Filterzeile bleibt. Der Kopf kostet beim Lesen damit eine Zeile statt
      dreier. Oben angekommen klappt er immer wieder auf. */
@@ -906,7 +979,7 @@
     $('search-wrap').hidden = S.view === 'info' || isPlan;
     $('meta-row').hidden = bare || isPlan;
     renderShareBar();
-    measureBar();
+    measureBarWennNoetig();
 
     /* Die Karte gehoert zur Ortsansicht: dieselben Filter, dieselbe Auswahl,
        nur eine andere Darstellung. In Heute, Info und Plan hat sie nichts zu
@@ -920,7 +993,7 @@
       S.map ? 'Zur Liste wechseln' : 'Die Treffer auf der Karte zeigen');
 
     if (bare) {
-      $('list').innerHTML = '';
+      $('list').innerHTML = ''; $('list').setAttribute('data-voll', '1');
       $('list').hidden = true;
       $('empty').hidden = true;
       if (S.view === 'info') {
@@ -944,7 +1017,7 @@
       var plan = planList();
       if (!plan.length) {
         $('list').hidden = true;
-        $('list').innerHTML = '';
+        $('list').innerHTML = ''; $('list').setAttribute('data-voll', '1');
         $('empty').hidden = false;
         $('empty-h').textContent = 'Noch nichts im Plan';
         $('empty-p').textContent = 'Auf einer Zeile den Stern antippen — der Plan bleibt auch offline erhalten '
@@ -955,6 +1028,7 @@
       $('empty').hidden = true;
       $('list').hidden = false;
       $('list').innerHTML = planHtml();
+      $('list').setAttribute('data-voll', '1');
       return;
     }
 
@@ -965,7 +1039,7 @@
 
     if (!items.length) {
       $('list').hidden = true;
-      $('list').innerHTML = '';
+      $('list').innerHTML = ''; $('list').setAttribute('data-voll', '1');
       $('map').hidden = true;
       mapNote('');
       $('empty').hidden = false;
@@ -984,12 +1058,68 @@
     $('empty').hidden = true;
     if (kartenAnsicht) {
       $('list').hidden = true;
-      $('list').innerHTML = '';
+      $('list').innerHTML = ''; $('list').setAttribute('data-voll', '1');
       zeigeKarte(items);
       return;
     }
     $('list').hidden = false;
-    $('list').innerHTML = items.map(cardHtml).join('');
+    listeFuellen(items);
+  }
+
+  /* ------------------------------------------------- Die Liste in Stuecken */
+  /* Bis v23 stand hier items.map(cardHtml) in einem Zug: alle 101 Karten,
+     synchron, bei jedem Tastendruck. Auf gedrosselter CPU (Faktor 4, grob ein
+     Telefon) kostete der zweite Buchstabe gemessen 157 ms. Ab 100 ms wirkt
+     eine Eingabe nicht mehr unmittelbar, der Cursor haengt sichtbar.
+
+     Jetzt kommt die erste Fuhre sofort, der Rest ueber requestAnimationFrame
+     hinterher. Es wird weiterhin ALLES gerendert, nur verteilt -- eine Liste,
+     die nur das Sichtbare haelt, haette zwei Dinge gekostet: die Suche des
+     Browsers in der Seite und die Zusicherung des Pruefstands, dass wirklich
+     101 Karten dastehen. 101 Karten sind keine Last, nur nicht in einem
+     Rutsch.
+
+     lauf zaehlt bei jedem Durchgang hoch. Eine noch laufende Nachlieferung
+     sieht die geaenderte Zahl und bricht ab -- ohne das haengte beim
+     schnellen Tippen die Liste des vorigen Begriffs an die neue an.
+
+     data-voll sagt, wann die Liste fertig ist. Das ist nicht Zierde: der
+     Pruefstand kann sonst nicht unterscheiden, ob eine Karte fehlt oder nur
+     noch nicht dran war. Die Zweige, die hier gar nicht durchkommen -- leere
+     Trefferliste, Plan, Karte -- setzen es ebenfalls: "leer" ist auch ein
+     fertiger Zustand, und ohne das bliebe dort die Meldung des vorigen
+     Durchgangs stehen. */
+  var ERSTE = 18;    // deckt 402x754 ueber den Falz hinaus ab
+  var FUHRE = 24;
+  var lauf = 0;
+
+  function listeFuellen(items) {
+    var el = $('list');
+    lauf += 1;
+    var meins = lauf;
+    el.removeAttribute('data-voll');
+    el.innerHTML = items.slice(0, ERSTE).map(function (p) { return cardHtml(p); }).join('');
+    if (items.length <= ERSTE) { el.setAttribute('data-voll', '1'); return; }
+
+    var i = ERSTE;
+
+    function weiter() {
+      if (meins !== lauf) return;              // ein neuer Durchgang hat uebernommen
+      var teil = items.slice(i, i + FUHRE);
+      if (!teil.length) { el.setAttribute('data-voll', '1'); return; }
+      el.insertAdjacentHTML('beforeend',
+        teil.map(function (p) { return cardHtml(p); }).join(''));
+      i += FUHRE;
+      if (i < items.length) requestAnimationFrame(weiter);
+      else el.setAttribute('data-voll', '1');
+    }
+
+    /* Bewusst requestAnimationFrame und nicht der direkte Aufruf: als
+       selbstaufrufende Funktion lief die erste Nachlieferung noch im selben
+       Zug mit, und der Tastendruck trug 42 Karten statt 18 -- die Haelfte der
+       Ersparnis war damit wieder weg. Gemessen an der fertigen Suite, nicht
+       ueberlegt. */
+    requestAnimationFrame(weiter);
   }
 
   var lastCount = { shown: 0, total: 0 };
@@ -1096,13 +1226,13 @@
       + badgeHtml(p)
       + (wasSeen ? '<span class="card__seen">' + ICON.check + 'Gesehen</span>' : '')
       + '</p>'
-      /* Die Notiz ist einzeilig gekuerzt: liegt die Fundstelle hinter dem
-         Schnitt, sieht man die Markierung erst im Detail. Besser als gar
-         kein Hinweis, warum der Ort dasteht. */
+      /* Die Notiz ist einzeilig gekuerzt. Damit die Markierung trotzdem im
+         Bild steht, faengt der Text bei aktiver Suche vor der Fundstelle an
+         -- siehe ausschnitt(). Im Sheet steht weiterhin der volle Satz. */
       /* Die eigene Notiz steht VOR der Beschreibung: sie ist das, was man
          selbst herausgefunden hat, und schlaegt damit den Katalogtext. */
       + (S.notes[p.id] ? '<p class="card__mine">' + ICON.note + esc(S.notes[p.id]) + '</p>' : '')
-      + (has(p.note) ? '<p class="card__note">' + markiere(p.note) + '</p>' : '')
+      + (has(p.note) ? '<p class="card__note">' + markiere(ausschnitt(p.note)) + '</p>' : '')
       + factsHtml(p)
       + '<button type="button" class="card__open" data-open="' + esc(p.id) + '"'
       + ' aria-label="' + esc(p.name) + ' — Details"></button>'
@@ -3040,7 +3170,7 @@
   /* ------------------------------------------------------------------ Boot */
 
   $('boot-retry').addEventListener('click', function () {
-    $('boot-spin').hidden = false;
+    $('boot').classList.remove('boot--fehler');
     $('boot-retry').hidden = true;
     $('boot-title').textContent = 'Peschiera kompakt';
     $('boot-text').textContent = 'Daten werden geladen…';
