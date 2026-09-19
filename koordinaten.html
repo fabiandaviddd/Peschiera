@@ -52,6 +52,7 @@
     <div class="k__acts">
       <button type="button" class="btn btn--primary btn--wide" id="start">Starten</button>
       <button type="button" class="btn btn--wide" id="dl" hidden>Datei herunterladen</button>
+      <button type="button" class="btn btn--wide" id="retry" hidden>Nicht gefundene erneut versuchen</button>
       <button type="button" class="btn btn--wide" id="reset" hidden>Von vorn anfangen</button>
     </div>
     <div class="log" id="log" hidden></div>
@@ -74,20 +75,21 @@
   var REGELN = 3;      /* hochzaehlen, wenn sich die Pruefregeln aendern */
 
   var $ = function (id) { return document.getElementById(id); };
-  var data = null, found = {}, failed = {}, running = false, stop = false;
+  var data = null, found = {}, failed = {}, failedAddr = {}, running = false, stop = false;
 
   try {
     var raw = JSON.parse(localStorage.getItem(LS) || '{}') || {};
     /* alte Fassung speicherte nur die Treffer */
     found = raw.found || raw;
     failed = raw.failed || {};
+    failedAddr = raw.failedAddr || {};
     /* Nach einer Regelaenderung duerfen frueher Abgelehnte nicht dauerhaft
        haengen bleiben — sonst tut ein zweiter Lauf gar nichts mehr. */
-    if (raw.regeln !== REGELN) failed = {};
-  } catch (e) { found = {}; failed = {}; }
+    if (raw.regeln !== REGELN) { failed = {}; failedAddr = {}; }
+  } catch (e) { found = {}; failed = {}; failedAddr = {}; }
 
   function save() {
-    try { localStorage.setItem(LS, JSON.stringify({ found: found, failed: failed, regeln: REGELN })); }
+    try { localStorage.setItem(LS, JSON.stringify({ found: found, failed: failed, failedAddr: failedAddr, regeln: REGELN })); }
     catch (e) {}
   }
 
@@ -113,6 +115,9 @@
     $('eta').textContent = Math.max(1, Math.round(todo().length * PAUSE / 60000)) + ' Minuten';
     $('dl').hidden = d === 0;
     $('reset').hidden = d === 0 || running;
+    /* Ohne diesen Knopf gab es aus einem Fehlschlag keinen Weg zurueck ausser
+       "Von vorn anfangen" — und das wirft die schon geholten Treffer weg. */
+    $('retry').hidden = !f || running;
     $('start').hidden = d === n && !running;
     /* Waehrend des Laufs ist derselbe Knopf die Notbremse — nicht sperren. */
     $('start').textContent = running ? 'Anhalten' : (d > 0 ? 'Weitermachen' : 'Starten');
@@ -270,7 +275,16 @@
 
   function run() {
     var list = todo();
-    if (!list.length) { running = false; paint(); return Promise.resolve(); }
+    if (!list.length) {
+      running = false; paint();
+      /* Vorher passierte hier stillschweigend nichts: wer auf "Weitermachen"
+         tippte, sah keine Reaktion und musste raten, ob die Seite kaputt ist. */
+      var f = Object.keys(failed).length;
+      log(f ? 'Nichts mehr zu holen — ' + f + ' Orte gelten als nicht gefunden. '
+            + 'Mit „Nicht gefundene erneut versuchen" fragt die Seite sie noch einmal.'
+            : 'Nichts mehr zu holen — alle Orte sind versorgt.', 'b');
+      return Promise.resolve();
+    }
 
     running = true; stop = false; paint();
     log('Starte mit ' + list.length + ' Orten…');
@@ -303,6 +317,7 @@
         if (qi >= qs.length) {
           var warum = gruende.length ? ' — ' + gruende[0] : ' — nichts gefunden';
           failed[p.id] = warum;
+          failedAddr[p.id] = p.address || '';
           save();
           log('✗ ' + p.name + warum, 's');
           return wait(PAUSE).then(next);
@@ -313,7 +328,7 @@
             var grund = reject(p, hits[i].geo, hits[i].name);
             if (!grund) {
               found[p.id] = hits[i].geo;
-              delete failed[p.id];
+              delete failed[p.id]; delete failedAddr[p.id];
               save(); paint();
               log('✓ ' + p.name);
               return wait(PAUSE).then(next);
@@ -359,8 +374,29 @@
       }
     });
 
+    /* Ein Fehlschlag gilt nur fuer die Adresse, gegen die er entstanden ist.
+       Wird sie praeziser gefasst -- genau das verlangt die Pruefliste fuer
+       Festung, Bahnhof, Anleger und das Ammazza --, muss der Ort wieder in die
+       Warteschlange. Fehlschlaege aus der Zeit vor dieser Notiz tragen keine
+       Adresse und verfallen deshalb einmalig. */
+    var neueAdresse = [];
+    Object.keys(failed).forEach(function (id) {
+      var pl = null;
+      for (var k = 0; k < data.places.length; k++) if (data.places[k].id === id) pl = data.places[k];
+      if (!pl || (failedAddr[id] || '') !== (pl.address || '')) {
+        if (pl) neueAdresse.push(pl.name);
+        delete failed[id]; delete failedAddr[id];
+      }
+    });
+
     /* Immer sichern: damit wird zugleich das alte Speicherformat migriert. */
     save();
+
+    if (neueAdresse.length) {
+      log(neueAdresse.length + ' Orte werden erneut gefragt, weil sich ihre '
+        + 'Adresse geaendert hat:', 'b');
+      neueAdresse.forEach(function (n) { log('   ' + n, 's'); });
+    }
 
     if (raus.length) {
       log('Aus einem frueheren Lauf verworfen:');
@@ -386,9 +422,15 @@
     run();
   });
   $('dl').addEventListener('click', download);
+  $('retry').addEventListener('click', function () {
+    var n = Object.keys(failed).length;
+    failed = {}; failedAddr = {}; save(); paint();
+    log(n + ' Orte werden beim naechsten Start erneut gefragt.', 'b');
+  });
   $('reset').addEventListener('click', function () {
     if (!window.confirm('Alle bisher geholten Koordinaten verwerfen?')) return;
-    found = {}; failed = {}; save(); $('log').innerHTML = ''; $('log').hidden = true; paint();
+    found = {}; failed = {}; failedAddr = {}; save();
+    $('log').innerHTML = ''; $('log').hidden = true; paint();
   });
 
   fetch(DATA, { cache: 'no-cache' }).then(function (r) { return r.json(); })

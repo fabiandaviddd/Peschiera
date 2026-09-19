@@ -103,6 +103,47 @@ ok('Mehr Orte verortet als vorher', mitGeo > MIT_GEO, `${mitGeo} (vorher ${MIT_G
 ok('Bestehende Werte unangetastet', out.places.find(p=>p.id==='bip').geo.lat === 
    DATEN.places.find(p=>p.id==='bip').geo.lat);
 
+/* Aus einem Fehlschlag muss ein Weg zurueckfuehren, der die Treffer behaelt.
+   Vorher gab es nur "Von vorn anfangen", das auch alles Geholte wegwarf --
+   also klickte niemand, und die Seite lieferte bei jedem weiteren Start
+   stillschweigend nichts. */
+const trefferVorher = await page.evaluate(() =>
+  Object.keys(JSON.parse(localStorage.getItem('pk.coords')).found).length);
+ok('Knopf für den Neuversuch ist sichtbar', await page.isVisible('#retry'));
+
+queries = [];
+await page.click('#retry');
+await page.waitForTimeout(300);
+const nachRetry = await page.evaluate(() => JSON.parse(localStorage.getItem('pk.coords')));
+ok('Neuversuch behält die Treffer',
+   Object.keys(nachRetry.found).length === trefferVorher,
+   `${Object.keys(nachRetry.found).length} von ${trefferVorher}`);
+ok('Neuversuch leert die Fehlschläge',
+   Object.keys(nachRetry.failed).length === 0,
+   String(Object.keys(nachRetry.failed).length));
+
+await page.click('#start');
+await page.waitForTimeout(3000);
+ok('Dritter Lauf fragt die Fehlschläge wieder', queries.length > 0,
+   `${queries.length} Anfragen`);
+
+/* Ein Fehlschlag gilt nur fuer die Adresse, gegen die er entstanden ist.
+   Die Pruefliste verlangt fuer Festung, Bahnhof und Anleger genauere
+   Adressen -- ohne diese Regel bliebe der Ort danach trotzdem uebersprungen. */
+await page.evaluate(() => {
+  const r = JSON.parse(localStorage.getItem('pk.coords'));
+  r.failed = { saligusta: ' — erfunden' };
+  r.failedAddr = { saligusta: 'eine voellig andere Adresse' };
+  localStorage.setItem('pk.coords', JSON.stringify(r));
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(600);
+const nachAdresse = await page.evaluate(() => JSON.parse(localStorage.getItem('pk.coords')));
+ok('Geänderte Adresse lässt den Fehlschlag verfallen',
+   !nachAdresse.failed.saligusta, JSON.stringify(nachAdresse.failed));
+ok('Der Ort steht wieder in der Warteschlange',
+   (await page.textContent('#sub')).includes('offen'), await page.textContent('#sub'));
+
 ok('Keine JS-Fehler', errs.length===0, errs.join(' | '));
 if (SHOT) await page.screenshot({ path: SHOT + '/koord2.png' });
 await browser.close();

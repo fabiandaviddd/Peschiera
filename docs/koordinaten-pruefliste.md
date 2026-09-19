@@ -27,6 +27,25 @@ auch 17 bis 25 korrekte Orte. Kurze Strecken sind zu grob gerundet.
 Wird ein Treffer verworfen, probiert die Suche die nächste Schreibweise.
 Erst wenn alle scheitern, bleibt der Ort leer — mit Begründung im Protokoll.
 
+### Wann ein Fehlschlag wieder verfällt
+
+Gescheiterte Orte werden gemerkt, damit ein zweiter Lauf nicht dieselben
+aussichtslosen Anfragen wiederholt — der Dienst verlangt eine Sekunde Pause je
+Anfrage. Gemerkt heißt aber nicht *für immer*. Ein Fehlschlag verfällt:
+
+- wenn sich die **Prüfregeln** ändern (`REGELN` in `koordinaten.html`),
+- wenn sich die **Adresse des Ortes** in `places.json` ändert — genau das
+  verlangt die Liste unten für Festung, Bahnhof, Anleger und das Ammazza,
+- wenn man **„Nicht gefundene erneut versuchen"** drückt. Der Knopf erscheint,
+  sobald es Fehlschläge gibt, und lässt die bereits geholten Treffer stehen.
+
+Vorher fehlten die letzten beiden. Wer einmal durchgelaufen war, bekam bei
+jedem weiteren Start **stillschweigend nichts** — die Arbeitsliste war leer,
+und die Seite sagte es nicht. Der einzige Ausweg hieß „Von vorn anfangen" und
+warf alles Geholte weg, weshalb ihn zu Recht niemand drückte. Eine bessere
+Adresse einzutragen half ebenfalls nicht, weil der Ort übersprungen blieb.
+Sechs Prüfungen in `scripts/browser/koord2.mjs` halten das jetzt fest.
+
 ### Auch die fertige Datei wird geprüft
 
 Die beiden Regeln griffen bisher nur, während der Dienst befragt wird. Die 13
