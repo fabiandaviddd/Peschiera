@@ -1322,6 +1322,60 @@ body.is-typing .tabs { transform: translateY(110%); }
 .uebs__d--heute { box-shadow: inset 0 0 0 2px var(--lake); }
 .uebs__d--heute .uebs__n { font-weight: 700; }
 
+/* Das Plus auf einem freien Tag: sagt, dass hier etwas hin kann. Ohne das
+   sahen freie und volle Zellen gleich aus und taten seit v31 dasselbe --
+   sichtbar war der Unterschied nur an der Zahl, die dem freien Tag fehlt. */
+.uebs__plus {
+  position: absolute; top: -5px; right: -4px;
+  width: 1.1rem; height: 1.1rem;
+  display: grid; place-items: center;
+  font-size: var(--t-meta); font-weight: 700; line-height: 1;
+  color: var(--soft); background: var(--bg);
+  border: 1px dashed var(--line); border-radius: 50%;
+}
+
+/* --- Ein Reisetag als Sheet -------------------------------------------- */
+.tagsheet__h {
+  display: flex; align-items: baseline; gap: .5rem;
+  font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
+  margin: 1.1rem 0 .4rem;
+}
+.tagsheet__n { margin-left: auto; font-family: var(--font-body); font-weight: 500;
+  font-size: var(--t-meta); color: var(--soft); font-variant-numeric: tabular-nums; }
+.tagsheet__leer { font-size: var(--t-body); color: var(--soft); margin: .8rem 0 1rem; }
+
+.tagsheet__l { display: grid; gap: .3rem; margin-bottom: .6rem; }
+.tagsheet__row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 2.75rem;
+  align-items: center; gap: .4rem;
+  padding: .3rem .3rem .3rem .7rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent, var(--line));
+  border-radius: 10px;
+}
+.tagsheet__txt { display: grid; gap: .05rem; min-width: 0; }
+.tagsheet__name { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tagsheet__m { font-size: var(--t-meta); color: var(--soft);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* An dem Tag Ruhetag: Ziegel, die Achtungsfarbe des Hauses. Steht hier und
+   nicht erst im Plan -- der richtige Zeitpunkt fuer diese Auskunft ist der,
+   an dem man den Tag waehlt. */
+.tagsheet__zu { color: var(--brick-ink); font-weight: 500; }
+
+.tagsheet__b {
+  /* 44 px, wie jedes Bedienelement des Hauses. */
+  width: 2.75rem; height: 2.75rem;
+  display: grid; place-items: center;
+  border-radius: 50%; cursor: pointer;
+  color: var(--lake-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+.tagsheet__b svg { width: 20px; height: 20px; fill: none; stroke: currentColor;
+  stroke-width: 2.4; stroke-linecap: round; }
+.tagsheet__b--weg { color: var(--soft); }
+
 /* Der Hinweis unter dem Merklisten-Kopf. */
 .plan__hint {
   padding: .5rem 1rem .6rem;

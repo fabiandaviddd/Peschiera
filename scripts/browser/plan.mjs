@@ -403,42 +403,104 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   ok('… zwoelf frei', g.leer, 12);
   ok('… mit der Zahl der Orte je Tag', g.zahlen, ['2', '3', '2']);
   ok('… und innerhalb der Seitenraender', g.links >= 12 && g.rechts <= 390);
-  ok('nur volle Tage sind Knoepfe', g.knoepfe, 3);
+  /* Seit v31 sind ALLE Zellen Knoepfe. Bis v30 sprangen volle nur zu ihrer
+     Gruppe und leere taten gar nichts -- ausgerechnet der freie Tag, den die
+     Uebersicht gerade zur Frage gemacht hatte, war der tote Knopf. */
+  ok('alle 15 Tage sind Knoepfe', g.knoepfe, 15);
+  ok('freie Tage tragen ein Plus', await q.evaluate(() =>
+    document.querySelectorAll('.uebs__d--leer .uebs__plus').length), 12);
+  ok('volle Tage tragen keins', await q.evaluate(() =>
+    document.querySelectorAll('.uebs__d--voll .uebs__plus').length), 0);
   ok('die Seite bleibt seitwaerts unverschiebbar',
     await q.evaluate(() => document.documentElement.scrollWidth), 402);
 
-  /* Die Ansage fuer Vorleser: leere Zellen sind aria-hidden, sonst werden
-     zwoelf Datumsangaben ohne Inhalt vorgelesen. */
-  ok('leere Zellen sind fuer Vorleser stumm', await q.evaluate(() =>
-    [...document.querySelectorAll('.uebs__d--leer')]
-      .every((e) => e.getAttribute('aria-hidden') === 'true')));
-  ok('volle Zellen sagen, wohin sie fuehren', await q.evaluate(() =>
-    /hinspringen$/.test(document.querySelector('button.uebs__d').getAttribute('aria-label') || '')));
-  ok('… und wie viel dort steht', await q.evaluate(() =>
-    /, \d+ Orte?/.test(document.querySelector('button.uebs__d').getAttribute('aria-label') || '')));
+  /* Kein aria-hidden mehr auf den leeren Zellen: sie sind seit v31 Knoepfe,
+     und ein unsichtbarer Knopf waere schlimmer als eine Zeile Vorlesetext.
+     Ihr Label sagt, was dort los ist -- es ist keine nackte Datumsangabe. */
+  ok('keine Zelle ist fuer Vorleser versteckt', await q.evaluate(() =>
+    [...document.querySelectorAll('.uebs__d')]
+      .every((e) => e.getAttribute('aria-hidden') === null)));
+  ok('freie Tage sagen, dass nichts geplant ist', await q.evaluate(() =>
+    /noch nichts geplant, öffnen$/.test(
+      document.querySelector('.uebs__d--leer').getAttribute('aria-label') || '')));
+  ok('volle Tage sagen, wie viel dort steht', await q.evaluate(() =>
+    /— \d+ Orte? geplant/.test(
+      document.querySelector('.uebs__d--voll').getAttribute('aria-label') || '')));
 
-  /* --- 13. Der Sprung ---------------------------------------------------- */
+  /* --- 13. Ein freier Tag laesst sich fuellen ---------------------------- */
+  /* Bis v30 zeigte die Uebersicht, dass Mittwoch frei ist -- und von dort aus
+     liess sich nichts damit anfangen. Man musste die Luecke unten in der
+     Merkliste suchen, den Ort finden und dessen Waehler auf den richtigen
+     Tag stellen. Drei Schritte fuer etwas, das die Uebersicht gerade erst
+     zur Frage gemacht hatte. */
+  await q.locator('[data-dayopen="2026-09-23"]').click();
+  await q.waitForTimeout(600);
+  ok('ein freier Tag oeffnet sein Sheet', await q.locator('#sheet').isVisible());
+  ok('… mit dem Tag als Ueberschrift',
+    (await q.locator('#sheet-name').textContent()).trim(), 'Mittwoch, 23.09.');
+  ok('… und sagt, dass noch nichts dasteht',
+    /noch nichts geplant/.test(await q.locator('.tagsheet__leer').first().textContent()));
+  const ausMerk = await q.locator('[data-dayiso="2026-09-23"]').count();
+  ok('… und bietet die Merkliste an', ausMerk, 13);
+
+  /* Hinzufuegen laesst das Sheet offen: einen Tag fuellt man selten mit
+     einem einzigen Ort. */
+  await q.locator('[data-dayiso="2026-09-23"]').first().click();
+  await q.waitForTimeout(400);
+  ok('Hinzufuegen laesst das Sheet offen', await q.locator('#sheet').isVisible());
+  await q.locator('[data-dayiso="2026-09-23"]').first().click();
+  await q.waitForTimeout(400);
+  ok('zwei Orte stehen jetzt an dem Tag', await q.evaluate(() =>
+    Object.values(JSON.parse(localStorage.getItem('pk.days') || '{}'))
+      .filter((v) => v === '2026-09-23').length), 2);
+  ok('… die Merkliste im Sheet ist um zwei kuerzer',
+    await q.locator('[data-dayiso="2026-09-23"]').count(), ausMerk - 2);
+
+  /* Herunternehmen: der Ort wandert zurueck in die Merkliste, er verlaesst
+     den Plan nicht. */
+  const vorWeg = await q.evaluate(() =>
+    JSON.parse(localStorage.getItem('pk.saved') || '[]').length);
+  await q.locator('.tagsheet__b--weg').first().click();
+  await q.waitForTimeout(400);
+  ok('Herunternehmen nimmt den Ort vom Tag', await q.evaluate(() =>
+    Object.values(JSON.parse(localStorage.getItem('pk.days') || '{}'))
+      .filter((v) => v === '2026-09-23').length), 1);
+  ok('… aber nicht aus dem Plan', await q.evaluate(() =>
+    JSON.parse(localStorage.getItem('pk.saved') || '[]').length), vorWeg);
+
+  ok('die Knoepfe im Sheet sind 44 mal 44', await q.evaluate(() =>
+    [...document.querySelectorAll('.tagsheet__b')].every((e) => {
+      const r = e.getBoundingClientRect();
+      return Math.round(r.width) === 44 && Math.round(r.height) === 44;
+    })));
+
+  /* --- 13b. Vom Sheet in den Plan ---------------------------------------- */
   ok('vor dem Sprung steht die Seite oben',
     await q.evaluate(() => Math.round(window.scrollY)), 0);
-  await q.locator('.uebs__d--voll[data-goto="2026-09-24"]').click();
-  await q.waitForTimeout(900);
+  await q.locator('[data-daygoto]').click();
+  await q.waitForTimeout(1000);
   const sprung = await q.evaluate(() => {
-    const z = document.getElementById('tag-2026-09-24');
+    const z = document.getElementById('tag-2026-09-23');
     const bar = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bar-full'), 10) || 0;
-    return { y: Math.round(window.scrollY), oben: Math.round(z.getBoundingClientRect().top), bar: bar };
+    return { zu: document.getElementById('sheet').hidden,
+      y: Math.round(window.scrollY),
+      oben: z ? Math.round(z.getBoundingClientRect().top) : null, bar: bar };
   });
-  ok('der Tipp springt wirklich', sprung.y > 100);
-  /* Nicht unter den fixierten Kopf: scroll-padding-top auf html haelt ihn
-     frei, und genau das soll hier bestaetigt werden. */
-  ok('… und das Ziel landet unter dem Kopf, nicht darunter verdeckt',
-    sprung.oben >= sprung.bar - 6 && sprung.oben < 400);
+  ok('"Im Plan anzeigen" schliesst das Sheet', sprung.zu);
+  /* Erst nach dem Schliessen scrollen -- waehrend des Sheets ist body
+     fixiert, ein scrollIntoView liefe ins Leere. */
+  ok('… und springt wirklich', sprung.y > 100);
+  ok('… das Ziel landet unter dem Kopf, nicht darunter verdeckt',
+    sprung.oben !== null && sprung.oben >= sprung.bar - 6 && sprung.oben < 400);
 
   /* --- 14. Die Summenzeile luegt nicht mehr ------------------------------ */
   /* "20 Orte · 30,8 h Aufenthalt" addierte drei verplante Tage und dreizehn
      unverplante Orte zu einer Stunde, die nirgends vorkommt. */
   const summe = (await q.locator('.plan__sum').textContent()).trim();
   ok('die Summenzeile zaehlt Verplantes und Uebriges getrennt',
-    summe, '7 Orte an 3 Tagen · 13 noch ohne Tag');
+    /* Acht statt sieben und vier Tage statt drei: der Mittwoch ist eben
+       dazugekommen, einer der zwei Hinzugefuegten wieder heruntergenommen. */
+    summe, '8 Orte an 4 Tagen · 12 noch ohne Tag');
   ok('… und nennt keine Gesamtstundenzahl mehr', /Aufenthalt|Weg/.test(summe), false);
 
   /* --- 15. Die Merkliste heisst Merkliste -------------------------------- */
@@ -449,7 +511,7 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   });
   ok('der Rest heisst nicht mehr "noch keinem Tag zugeordnet"',
     offenKopf.t, 'Gemerkt, noch ohne Tag');
-  ok('… mit seiner Zahl', offenKopf.n, '13');
+  ok('… mit seiner Zahl', offenKopf.n, '12');
   ok('… und einem Hinweis, wie man daraus einen Tag macht',
     /Tag-Wähler/.test(await q.locator('.plan__hint').textContent()));
 

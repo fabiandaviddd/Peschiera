@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v30 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v31 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -35,6 +35,9 @@
     short: false,
     sort: 'distance',
     filterOpen: false,
+    /* Welcher Reisetag gerade als Sheet offen ist. Nur fuer die Dauer des
+       Sheets -- nichts, was den Neustart ueberlebt. */
+    dayOpen: null,
     wet: false,             // vom Benutzer gesagt, nicht abgerufen
     pick: 0,                // welcher Vorschlag gerade dran ist
     mid: null,              // gewaehlter Tagesabschnitt; null = aus der Uhr
@@ -320,6 +323,8 @@
     phone: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.2 3.6h3l1.6 4-2 1.4a11 11 0 0 0 5.2 5.2l1.4-2 4 1.6v3a1.8 1.8 0 0 1-2 1.8C10.6 19.8 4.2 13.4 4.4 5.6a1.8 1.8 0 0 1 1.8-2z"/></svg>',
     list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.4h16M4 12h16M4 17.6h16"/></svg>',
     info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 10.8V17M12 7.6h.01"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg>',
+    minus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12h13"/></svg>',
     buch: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.6C10.5 5.2 8.2 4.6 5 4.6v13.2c3.2 0 5.5.6 7 2 1.5-1.4 3.8-2 7-2V4.6c-3.2 0-5.5.6-7 2z"/><path d="M12 6.6v13.2"/></svg>',
     sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>',
     moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.4A8.4 8.4 0 1 1 9.6 4a6.8 6.8 0 0 0 10.4 10.4z"/></svg>',
@@ -2216,8 +2221,10 @@
 
     var id = S.openId;
     var wasFilter = S.filterOpen;
+    var wasDay = S.dayOpen;
     S.openId = null;
     S.filterOpen = false;
+    S.dayOpen = null;
 
     /* Vor dem Zurückgeben des Fokus: in ein inertes Element hinein kann er
        nicht, der Aufruf würde still ins Leere laufen. */
@@ -2225,6 +2232,7 @@
 
     var back = id ? document.querySelector('[data-open="' + id.replace(/"/g, '\\"') + '"]') : null;
     if (wasFilter) back = $('chip-filter');
+    if (wasDay) back = document.querySelector('[data-dayopen="' + wasDay + '"]');
     if (back) back.focus({ preventScroll: true });
     else if (lastFocus && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
   }
@@ -2912,17 +2920,23 @@
       var innen = '<span class="uebs__w">' + t.kurz.slice(0, 2) + '</span>'
         + '<span class="uebs__n">' + t.kurz.slice(3).replace(/\.\d\d\.$/, '.') + '</span>'
         + '<span class="uebs__c">' + (n || '') + '</span>';
-      if (!n) {
-        return '<span class="' + kl + '" aria-hidden="true">' + innen + '</span>';
-      }
-      return '<button type="button" class="' + kl + '" data-goto="' + t.iso + '"'
-        + ' aria-label="' + t.lang + ', ' + n + (n === 1 ? ' Ort' : ' Orte')
-        + (ist ? ', heute' : '') + ' — hinspringen">' + innen + '</button>';
+      /* Seit v31 sind ALLE Zellen Knoepfe und oeffnen dasselbe Sheet. Bis v30
+         sprangen volle Zellen nur zu ihrer Gruppe und leere taten gar nichts
+         -- fuenfzehn gleich aussehende Knoepfe, zwei Verhalten, und
+         ausgerechnet der freie Tag, den die Uebersicht gerade zur Frage
+         gemacht hatte, war der tote. */
+      return '<button type="button" class="' + kl + '" data-dayopen="' + t.iso + '"'
+        + ' aria-label="' + t.lang + ' — '
+        + (n ? n + (n === 1 ? ' Ort' : ' Orte') + ' geplant' : 'noch nichts geplant')
+        + (ist ? ', heute' : '') + ', öffnen">' + innen
+        + (n ? '' : '<span class="uebs__plus" aria-hidden="true">+</span>') + '</button>';
     }).join('');
 
-    /* Die Zusammenfassung sagt, was das Raster zeigt -- fuer alle, die es
-       nicht sehen koennen. Die leeren Zellen tragen aria-hidden, sonst liest
-       ein Vorleser fuenfzehn Datumsangaben ohne Inhalt vor. */
+    /* Die Zusammenfassung sagt, was das Raster zeigt. Seit v31 tragen die
+       leeren Zellen kein aria-hidden mehr: sie sind Knoepfe geworden, und
+       ein unsichtbarer Knopf waere schlimmer als eine Zeile mehr Vorlesetext
+       -- ihr Label sagt ausserdem "noch nichts geplant", ist also keine
+       leere Datumsangabe. */
     var frei = tage.length - verplant;
     return '<section class="uebs">'
       + '<p class="uebs__h">Reiseplan'
@@ -2931,6 +2945,105 @@
       + (frei ? '<p class="sr-only">' + frei + (frei === 1 ? ' Tag ist' : ' Tage sind')
           + ' noch ohne Plan.</p>' : '')
       + '</section>';
+  }
+
+  /* Ein Reisetag als Sheet: was an dem Tag steht, und was man aus der
+     Merkliste dazulegen kann.
+
+     Bis v30 zeigte die Reiseuebersicht, dass Mittwoch frei ist -- aber von
+     dort aus liess sich nichts damit anfangen. Man sah die Luecke und musste
+     sie unten in der Merkliste suchen, den richtigen Ort finden und dessen
+     Waehler auf den richtigen Tag stellen. Drei Schritte fuer etwas, das die
+     Uebersicht gerade erst zur Frage gemacht hatte.
+
+     Alle fuenfzehn Zellen oeffnen dasselbe Sheet -- fuenfzehn gleich
+     aussehende Knoepfe muessen dasselbe tun. Fuer den Weg in den Plan steht
+     im Sheet ein eigener Verweis; so gibt es einen Einstieg statt zweier,
+     die sich nach Fuellstand unterscheiden.
+
+     Das Sheet bleibt beim Hinzufuegen offen: einen Tag fuellt man selten mit
+     einem einzigen Ort, und jedes Mal neu zu oeffnen waere eine Strafe fuers
+     Planen. Dieselbe Entscheidung wie beim Filter-Sheet. */
+  function daySheetHtml(iso) {
+    var tage = tripTage();
+    var tag = null;
+    for (var i = 0; i < tage.length; i++) if (tage[i].iso === iso) tag = tage[i];
+    if (!tag) return '';
+
+    var heute = isoTag(new Date());
+    var gueltig = tagKennungen();
+    var alle = planList();
+    var drin = alle.filter(function (p) { return planTagVon(p.id, gueltig) === iso; });
+    var frei = alle.filter(function (p) { return !planTagVon(p.id, gueltig); });
+
+    var min = 0, minN = 0;
+    drin.forEach(function (p) { if (has(p.time_min)) { min += p.time_min; minN++; } });
+
+    var h = '<p class="sheet__cat">Reisetag' + (iso === heute ? ' · heute' : '') + '</p>'
+      + '<h2 class="sheet__name" id="sheet-name">' + esc(tag.lang) + '</h2>';
+
+    if (drin.length) {
+      h += '<p class="tagsheet__h">An diesem Tag'
+        + '<span class="tagsheet__n">' + drin.length
+        + (minN ? ' · ' + esc(dur(min)) : '') + '</span></p>'
+        + '<div class="tagsheet__l">'
+        + drin.map(function (p) {
+            return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
+              + '<span class="tagsheet__txt">'
+              + '<span class="tagsheet__name">' + esc(p.name) + '</span>'
+              + '<span class="tagsheet__m">' + esc(catLabel(p.category))
+              + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '') + '</span></span>'
+              /* Herausnehmen, nicht loeschen: der Ort wandert zurueck in die
+                 Merkliste, er verlaesst den Plan nicht. */
+              + '<button type="button" class="tagsheet__b tagsheet__b--weg"'
+              + ' data-dayset="' + esc(p.id) + '" data-dayiso=""'
+              + ' aria-label="' + esc(p.name) + ' von diesem Tag herunternehmen">'
+              + ICON.minus + '</button></div>';
+          }).join('')
+        + '</div>'
+        + '<button type="button" class="btn btn--wide" data-daygoto="' + esc(iso) + '">'
+        + 'Im Plan anzeigen</button>';
+    } else {
+      h += '<p class="tagsheet__leer">Für diesen Tag ist noch nichts geplant.</p>';
+    }
+
+    if (frei.length) {
+      h += '<p class="tagsheet__h">Aus deiner Merkliste'
+        + '<span class="tagsheet__n">' + frei.length + '</span></p>'
+        + '<div class="tagsheet__l">'
+        + frei.map(function (p) {
+            return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
+              + '<span class="tagsheet__txt">'
+              + '<span class="tagsheet__name">' + esc(p.name) + '</span>'
+              + '<span class="tagsheet__m">' + esc(catLabel(p.category))
+              + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
+              + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
+              + (closedToday(p, new Date(iso + 'T12:00:00'))
+                  ? ' · <span class="tagsheet__zu">an dem Tag zu</span>' : '')
+              + '</span></span>'
+              + '<button type="button" class="tagsheet__b" data-dayset="' + esc(p.id) + '"'
+              + ' data-dayiso="' + esc(iso) + '"'
+              + ' aria-label="' + esc(p.name) + ' auf ' + esc(tag.lang) + ' legen">'
+              + ICON.plus + '</button></div>';
+          }).join('')
+        + '</div>';
+    } else {
+      h += '<p class="tagsheet__leer">'
+        + (alle.length
+            ? 'Alle gemerkten Orte haben schon einen Tag.'
+            : 'Deine Merkliste ist leer — in „Orte" den Stern antippen.')
+        + '</p>'
+        + '<button type="button" class="btn btn--wide" id="tagsheet-orte">'
+        + 'Orte durchsuchen</button>';
+    }
+    return h;
+  }
+
+  function openDaySheet(iso) {
+    S.openId = null;
+    S.filterOpen = false;
+    S.dayOpen = iso;
+    showSheet(daySheetHtml(iso), 'sheet--tag');
   }
 
   function planHtml() {
@@ -3260,14 +3373,8 @@
     });
 
     $('list').addEventListener('click', function (e) {
-      var go = e.target.closest('[data-goto]');
-      if (!go) return;
-      var ziel = document.getElementById('tag-' + go.getAttribute('data-goto'));
-      if (!ziel) return;
-      /* scroll-padding-top steht auf html und haelt den fixierten Kopf frei
-         -- deshalb reicht scrollIntoView, ohne selbst zu rechnen. */
-      try { ziel.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
-      catch (err) { ziel.scrollIntoView(true); }
+      var zelle = e.target.closest('[data-dayopen]');
+      if (zelle) openDaySheet(zelle.getAttribute('data-dayopen'));
     });
 
     $('list').addEventListener('change', function (e) {
@@ -3295,6 +3402,53 @@
       if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); return; }
       var seen = e.target.closest('[data-seen]');
       if (seen) { e.preventDefault(); toggleSeen(seen.getAttribute('data-seen')); return; }
+
+      /* Tages-Sheet: Ort auf den Tag legen oder herunternehmen. Das Sheet
+         bleibt offen -- einen Tag fuellt man selten mit einem einzigen Ort.
+         Die Liste dahinter zieht sofort nach, wie beim Filter-Sheet. */
+      var setz = e.target.closest('[data-dayset]');
+      if (setz && S.dayOpen) {
+        e.preventDefault();
+        var wohin = setz.getAttribute('data-dayiso') || '';
+        var wen = setz.getAttribute('data-dayset');
+        if (wohin) S.days[wen] = wohin; else delete S.days[wen];
+        lsSet(LS_DAYS, S.days);
+        render();
+        syncTabs();
+        $('sheet-body').innerHTML = daySheetHtml(S.dayOpen);
+        /* Der Ort wechselt beim Zuordnen die Sektion, seinen Knopf gibt es
+           aber weiterhin -- der Fokus wandert mit, statt an den Anfang des
+           Sheets zu fallen. */
+        var wieder = $('sheet-body').querySelector('[data-dayset="' + wen.replace(/"/g, '\\"') + '"]');
+        if (wieder) { try { wieder.focus({ preventScroll: true }); } catch (err) { /* egal */ } }
+        return;
+      }
+
+      var hin = e.target.closest('[data-daygoto]');
+      if (hin) {
+        e.preventDefault();
+        var iso = hin.getAttribute('data-daygoto');
+        closeSheet();
+        /* Erst nach dem Schliessen scrollen: waehrend des Sheets ist body
+           fixiert, ein scrollIntoView liefe ins Leere. 300 ms, der
+           Schliessvorgang laeuft 260 ms nach. */
+        window.setTimeout(function () {
+          var ziel = document.getElementById('tag-' + iso);
+          if (!ziel) return;
+          /* scroll-padding-top steht auf html und haelt den fixierten Kopf
+             frei -- deshalb reicht scrollIntoView, ohne selbst zu rechnen. */
+          try { ziel.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+          catch (err) { ziel.scrollIntoView(true); }
+        }, 300);
+        return;
+      }
+
+      if (e.target.closest('#tagsheet-orte')) {
+        e.preventDefault();
+        closeSheet();
+        setView('orte');
+        return;
+      }
 
       /* Filter-Sheet: die Liste dahinter zieht sofort nach, das Sheet bleibt
          offen. Die Zahl am Tag-Knopf zeigt, wie viele Tags aktiv sind. */

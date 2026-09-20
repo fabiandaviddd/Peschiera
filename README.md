@@ -438,18 +438,39 @@ Seit `v30` steht oben im Plan ein Raster über alle Reisetage:
 - **Fünf Spalten, drei Reihen** — fünfzehn Tage passen damit bei 402 px ohne
   Schieben ins Bild. Ein waagerechter Streifen hätte die Hälfte versteckt, und
   ein Tag, den man erst hervorschieben muss, beantwortet die Frage nicht.
-- **Verplante Tage sind Knöpfe** und springen zu ihrer Gruppe. Bei viereinhalb
-  Bildschirmen ist das der Unterschied zwischen Nachschlagen und Suchen. Die
-  Zahl in der Marke sagt, wie viele Orte dort stehen.
-- **Freie Tage sind gestrichelt** — im Haus heißt gestrichelt „da, aber nichts
-  los", wie die vergangenen Abschnitte in „Heute". Sie sind **keine Knöpfe**:
-  es gibt nichts, wohin sie springen könnten, und ein Knopf, der nichts tut,
-  ist schlimmer als keiner.
-- **Für Vorleser** tragen leere Zellen `aria-hidden` — sonst werden zwölf
-  Datumsangaben ohne Inhalt vorgelesen. Stattdessen steht dort ein Satz: „12
-  Tage sind noch ohne Plan."
+- **Verplante Tage** tragen eine Marke mit der Zahl der Orte, **freie Tage**
+  sind gestrichelt und tragen ein `+` — im Haus heißt gestrichelt „da, aber
+  nichts los", wie die vergangenen Abschnitte in „Heute".
+- **Alle fünfzehn Zellen sind Knöpfe** und öffnen dasselbe Sheet (siehe unten).
+  Bis `v30` sprangen volle Zellen nur zu ihrer Gruppe und leere taten gar
+  nichts — fünfzehn gleich aussehende Knöpfe, zwei Verhalten, und ausgerechnet
+  der freie Tag, den die Übersicht gerade zur Frage gemacht hatte, war der tote.
 - **Das Raster erscheint erst mit der ersten Zuordnung**, wie die Tagesgruppen.
   Ohne Zuordnung wäre es ein leeres Raster über einer Merkliste.
+
+### Ein Reisetag als Sheet
+
+Bis `v30` zeigte die Übersicht, dass Mittwoch frei ist — und von dort aus ließ
+sich nichts damit anfangen. Man sah die Lücke, musste sie unten in der
+Merkliste suchen, den richtigen Ort finden und dessen Wähler auf den richtigen
+Tag stellen. **Drei Schritte für etwas, das die Übersicht gerade erst zur Frage
+gemacht hatte.**
+
+Seit `v31` öffnet jede Tageszelle ein Sheet für diesen Tag:
+
+- **„An diesem Tag"** — was dort steht, mit Zeitsumme, jedes mit einem `−` zum
+  Herunternehmen. Herunternehmen **löscht nicht**: der Ort wandert zurück in
+  die Merkliste, er verlässt den Plan nicht.
+- **„Aus deiner Merkliste"** — alles ohne Tag, jedes mit einem `+`. Steht an
+  dem Tag ein Ruhetag an, sagt die Zeile das schon hier: der richtige Zeitpunkt
+  für diese Auskunft ist der, an dem man den Tag wählt.
+- **Das Sheet bleibt beim Hinzufügen offen.** Einen Tag füllt man selten mit
+  einem einzigen Ort, und jedes Mal neu zu öffnen wäre eine Strafe fürs Planen
+  — dieselbe Entscheidung wie beim Filter-Sheet.
+- **„Im Plan anzeigen"** schließt das Sheet und springt zur Tagesgruppe. Erst
+  nach dem Schließen: während das Sheet offen ist, liegt `body` auf `fixed`,
+  und ein `scrollIntoView` liefe ins Leere.
+- Ist die Merkliste leer, sagt das Sheet das und bietet den Weg zu „Orte".
 
 Dazu zwei Zeilen, die vorher nicht stimmten:
 
