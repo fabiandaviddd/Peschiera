@@ -1343,6 +1343,12 @@ body.is-typing .tabs { transform: translateY(110%); }
 .tagsheet__n { margin-left: auto; font-family: var(--font-body); font-weight: 500;
   font-size: var(--t-meta); color: var(--soft); font-variant-numeric: tabular-nums; }
 .tagsheet__leer { font-size: var(--t-body); color: var(--soft); margin: .8rem 0 1rem; }
+/* Warum steht das obenan: eine Reihenfolge, die man nicht erklaeren kann,
+   ist schlechter als gar keine. */
+.tagsheet__lead { font-size: var(--t-meta); color: var(--soft); margin: -.1rem 0 .5rem; }
+/* Die Luftlinie in Seeblau -- im Haus heisst das "Bezugspunkt", dieselbe
+   Rolle wie .fact--here in der Liste. */
+.tagsheet__weit { color: var(--lake-ink); font-weight: 500; }
 
 .tagsheet__l { display: grid; gap: .3rem; margin-bottom: .6rem; }
 .tagsheet__row {

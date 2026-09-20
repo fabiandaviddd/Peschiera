@@ -524,6 +524,127 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   await c4.close();
 }
 
+/* --- 16. Die Merkliste im Tages-Sheet steht nach Naehe --------------------- */
+/* Bis v31 stand sie in der Reihenfolge, in der man gemerkt hat -- bei zwanzig
+   Eintraegen sucht man darin. Gerechnet wird hier IM TEST, nicht in der App:
+   eine Pruefung, die die App fragt, ob die App recht hat, prueft nichts. */
+{
+  const luft = (a, b) => {
+    const R = 6371, r = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+    const x = Math.sin(dLat / 2) ** 2
+      + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  };
+
+  const c5 = await mach();
+  const q = await c5.newPage();
+  const errs5 = []; q.on('pageerror', (e) => errs5.push(e.message));
+  await q.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await q.waitForSelector('#app:not([hidden])');
+  const daten = await q.evaluate(async () => {
+    const d = await (await fetch('./data/places.json')).json();
+    return { base: d.meta.base_geo,
+      orte: d.places.map((x) => ({ id: x.id, name: x.name, geo: x.geo })) };
+  });
+  const byId = {};
+  daten.orte.forEach((o) => { byId[o.id] = o; });
+  const zwanzig = daten.orte.slice(0, 20).map((o) => o.id);
+
+  const namenImSheet = async () => q.evaluate(() =>
+    [...document.querySelectorAll('.tagsheet__l')].pop()
+      .querySelectorAll('.tagsheet__name').length
+      ? [...[...document.querySelectorAll('.tagsheet__l')].pop()
+          .querySelectorAll('.tagsheet__name')].map((e) => e.textContent.trim())
+      : []);
+
+  /* (a) Leerer Tag: der Bezugspunkt der App gilt -- der Zeltplatz. */
+  await q.evaluate((ids) => {
+    localStorage.setItem('pk.saved', JSON.stringify(ids));
+    localStorage.setItem('pk.days', '{}');
+  }, zwanzig);
+  await q.reload({ waitUntil: 'networkidle' });
+  await q.waitForSelector('#app:not([hidden])');
+  await zumPlan(q);
+  /* Ohne Zuordnung gibt es kein Raster -- also ueber den Tageswaehler einen
+     Tag belegen und wieder freigeben, damit das Raster erscheint. */
+  await q.selectOption(`select[data-day="${zwanzig[0]}"]`, '2026-09-21');
+  await q.waitForTimeout(350);
+  await q.locator('[data-dayopen="2026-09-23"]').click();
+  await q.waitForTimeout(600);
+
+  ok('ein leerer Tag misst ab dem Zeltplatz',
+    (await q.locator('.tagsheet__lead').textContent()).trim(),
+    'Nach Entfernung vom Zeltplatz');
+  const abZelt = await namenImSheet();
+  const sollZelt = zwanzig.slice(1).map((id) => byId[id])
+    .sort((x, y) => luft(daten.base, x.geo) - luft(daten.base, y.geo))
+    .map((o) => o.name);
+  ok('… und steht in dieser Reihenfolge', abZelt, sollZelt);
+  ok('jede Zeile nennt ihre Entfernung', await q.evaluate(() =>
+    [...[...document.querySelectorAll('.tagsheet__l')].pop()
+      .querySelectorAll('.tagsheet__row')]
+      .every((r) => !!r.querySelector('.tagsheet__weit'))));
+
+  /* (b) Ein Ort am Tag: er ist der Anker, und er wird benannt. */
+  const ankerA = zwanzig[7];
+  await q.evaluate(([ids, a]) => {
+    localStorage.setItem('pk.saved', JSON.stringify(ids));
+    localStorage.setItem('pk.days', JSON.stringify({ [a]: '2026-09-23' }));
+  }, [zwanzig, ankerA]);
+  await q.reload({ waitUntil: 'networkidle' });
+  await q.waitForSelector('#app:not([hidden])');
+  await zumPlan(q);
+  await q.locator('[data-dayopen="2026-09-23"]').click();
+  await q.waitForTimeout(600);
+
+  ok('ein belegter Tag nennt seinen Anker beim Namen',
+    (await q.locator('.tagsheet__lead').textContent()).trim(),
+    'Nach Nähe zu ' + byId[ankerA].name);
+  const abAnker = await namenImSheet();
+  const sollAnker = zwanzig.filter((id) => id !== ankerA).map((id) => byId[id])
+    .sort((x, y) => luft(byId[ankerA].geo, x.geo) - luft(byId[ankerA].geo, y.geo))
+    .map((o) => o.name);
+  ok('… und sortiert nach der Luftlinie dorthin', abAnker, sollAnker);
+
+  /* (c) Zwei weit auseinanderliegende Orte am Tag. Der entscheidende Fall:
+     gemessen wird gegen den NAECHSTEN von beiden, nicht gegen ihren
+     Mittelpunkt. Beim Mittelpunkt faellt der Bezug auf ein Feld dazwischen,
+     und die Reihenfolge waere nach niemandem sortiert. */
+  const weitWeg = daten.orte
+    .filter((o) => o.geo && luft(daten.base, o.geo) > 20)
+    .sort((x, y) => luft(daten.base, y.geo) - luft(daten.base, x.geo))[0];
+  ok('es gibt einen Ort ueber 20 km entfernt fuer den Gegentest', !!weitWeg);
+  if (weitWeg) {
+    const zwei = [zwanzig[0], weitWeg.id];
+    const rest = zwanzig.filter((id) => id !== zwei[0] && id !== zwei[1]);
+    await q.evaluate(([alle, a, b2]) => {
+      localStorage.setItem('pk.saved', JSON.stringify(alle));
+      localStorage.setItem('pk.days', JSON.stringify({ [a]: '2026-09-23', [b2]: '2026-09-23' }));
+    }, [zwanzig.concat([weitWeg.id]), zwei[0], zwei[1]]);
+    await q.reload({ waitUntil: 'networkidle' });
+    await q.waitForSelector('#app:not([hidden])');
+    await zumPlan(q);
+    await q.locator('[data-dayopen="2026-09-23"]').click();
+    await q.waitForTimeout(600);
+
+    ok('bei mehreren Orten nennt der Kopf keinen einzelnen',
+      (await q.locator('.tagsheet__lead').textContent()).trim(),
+      'Nach Nähe zum nächsten Ort dieses Tages');
+    const abZwei = await namenImSheet();
+    const sollZwei = rest.map((id) => byId[id])
+      .map((o) => ({ o: o, d: Math.min(luft(byId[zwei[0]].geo, o.geo),
+                                       luft(weitWeg.geo, o.geo)) }))
+      .sort((x, y) => x.d - y.d)
+      .map((x) => x.o.name);
+    ok('… und misst gegen den naechsten der beiden, nicht gegen die Mitte',
+      abZwei, sollZwei);
+  }
+
+  ok('keine JS-Fehler beim Sortieren', errs5.length ? errs5.join(' | ') : 0, 0);
+  await c5.close();
+}
+
 ok('keine JS-Fehler auf dem ganzen Weg', errs.length ? errs.join(' | ') : 0, 0);
 await ctx.close();
 await browser.close();

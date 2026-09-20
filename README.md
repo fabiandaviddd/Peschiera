@@ -464,6 +464,18 @@ Seit `v31` öffnet jede Tageszelle ein Sheet für diesen Tag:
 - **„Aus deiner Merkliste"** — alles ohne Tag, jedes mit einem `+`. Steht an
   dem Tag ein Ruhetag an, sagt die Zeile das schon hier: der richtige Zeitpunkt
   für diese Auskunft ist der, an dem man den Tag wählt.
+- **Sortiert nach Nähe** (seit `v32`). Bis dahin stand die Merkliste in der
+  Reihenfolge, in der man gemerkt hat — bei zwanzig Einträgen sucht man darin.
+  Gemessen wird gegen den **nächsten** schon verplanten Ort des Tages, nicht
+  gegen deren Mittelpunkt: liegen Verona und Peschiera an einem Tag, fällt der
+  Mittelpunkt auf ein Feld dazwischen, und die Reihenfolge wäre nach niemandem
+  sortiert. Die Frage lautet „was kann ich mitnehmen, wenn ich schon dort
+  bin" — und das misst sich am nächsten Nachbarn. Ist der Tag leer, gilt der
+  Bezugspunkt der ganzen App: der Gerätestandort, sonst der Zeltplatz.
+  Die **Entfernung steht an jeder Zeile**, der **Grund der Sortierung im
+  Kopf** („Nach Nähe zu Porta Verona"). Eine Reihenfolge, die man nicht
+  erklären kann, ist schlechter als gar keine — dann rät man, warum
+  ausgerechnet das oben steht. Luftlinie, keine Gehzeit.
 - **Das Sheet bleibt beim Hinzufügen offen.** Einen Tag füllt man selten mit
   einem einzigen Ort, und jedes Mal neu zu öffnen wäre eine Strafe fürs Planen
   — dieselbe Entscheidung wie beim Filter-Sheet.

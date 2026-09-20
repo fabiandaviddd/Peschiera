@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v31 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v32 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -2979,6 +2979,65 @@
     var min = 0, minN = 0;
     drin.forEach(function (p) { if (has(p.time_min)) { min += p.time_min; minN++; } });
 
+    /* Die Merkliste nach Naehe sortieren.
+
+       Bis v31 stand sie in der Reihenfolge, in der man gemerkt hat -- bei
+       zwanzig Eintraegen sucht man darin. Gemessen wird gegen den NAECHSTEN
+       schon verplanten Ort des Tages, nicht gegen deren Mittelpunkt: liegen
+       Verona und Peschiera an einem Tag, faellt der Mittelpunkt auf ein Feld
+       dazwischen, und die Reihenfolge waere nach niemandem sortiert. Die
+       Frage lautet "was kann ich mitnehmen, wenn ich schon dort bin" -- und
+       das misst sich am naechsten Nachbarn.
+
+       Ist der Tag leer, gibt es keinen Anker im Tag. Dann gilt der
+       Bezugspunkt der ganzen App: der Geraetestandort, wenn gesetzt, sonst
+       der Zeltplatz.
+
+       Die Entfernung steht an jeder Zeile und der Grund der Sortierung im
+       Kopf. Eine Reihenfolge, die man nicht erklaeren kann, ist schlechter
+       als gar keine -- dann raet man, warum ausgerechnet das oben steht.
+
+       Luftlinie, keine Gehzeit: aus der Luftlinie wird in dieser App nie
+       eine Wegzeit, der Weg ums Becken herum ist nicht die Strecke darueber. */
+    var anker = drin.slice();
+    var ankerText = '';
+    if (drin.length) {
+      ankerText = drin.length === 1
+        ? 'Nach Nähe zu ' + esc(drin[0].name)
+        : 'Nach Nähe zum nächsten Ort dieses Tages';
+    } else if (S.here) {
+      anker = [{ geo: { lat: S.here.lat, lon: S.here.lon } }];
+      ankerText = 'Nach Entfernung von deinem Standort';
+    } else if (D.meta && D.meta.base_geo) {
+      anker = [{ geo: D.meta.base_geo }];
+      ankerText = 'Nach Entfernung vom Zeltplatz';
+    }
+
+    /* Kleinste Luftlinie zu einem der Ankerpunkte; null, wenn nicht
+       bestimmbar. Orte ohne Wert stehen hinten, nicht vorne -- dieselbe
+       Regel wie bei der Sortierung in der Ortsliste. */
+    function naehe(o) {
+      var klein = null;
+      for (var i = 0; i < anker.length; i++) {
+        var d = airKm(o, anker[i]);
+        if (d === null) continue;
+        if (klein === null || d < klein) klein = d;
+      }
+      return klein;
+    }
+
+    var weit = {};
+    frei.forEach(function (o) { weit[o.id] = anker.length ? naehe(o) : null; });
+    if (anker.length) {
+      frei = frei.slice().sort(function (a, b) {
+        var da = weit[a.id], db = weit[b.id];
+        if (da === null && db === null) return 0;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return da - db;
+      });
+    }
+
     var h = '<p class="sheet__cat">Reisetag' + (iso === heute ? ' · heute' : '') + '</p>'
       + '<h2 class="sheet__name" id="sheet-name">' + esc(tag.lang) + '</h2>';
 
@@ -3010,13 +3069,15 @@
     if (frei.length) {
       h += '<p class="tagsheet__h">Aus deiner Merkliste'
         + '<span class="tagsheet__n">' + frei.length + '</span></p>'
+        + (ankerText ? '<p class="tagsheet__lead">' + ankerText + '</p>' : '')
         + '<div class="tagsheet__l">'
         + frei.map(function (p) {
             return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
               + '<span class="tagsheet__txt">'
               + '<span class="tagsheet__name">' + esc(p.name) + '</span>'
               + '<span class="tagsheet__m">' + esc(catLabel(p.category))
-              + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
+              + (weit[p.id] !== null && weit[p.id] !== undefined
+                  ? ' · <span class="tagsheet__weit">' + esc(km(weit[p.id])) + '</span>' : '')
               + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
               + (closedToday(p, new Date(iso + 'T12:00:00'))
                   ? ' · <span class="tagsheet__zu">an dem Tag zu</span>' : '')
