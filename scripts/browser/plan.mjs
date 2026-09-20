@@ -83,10 +83,13 @@ await p.selectOption(`select[data-day="${orte[2].id}"]`, '2026-09-21');
 await p.waitForTimeout(250);
 
 ok('drei Gruppen: zwei Tage und "offen"', await p.locator('.plantag').count(), 3);
-ok('die Tage stehen in ihrer Reihenfolge, "offen" zuletzt',
+/* "Gem" ist "Gemerkt, noch ohne Tag" -- seit v30 heisst der Rest so. Vorher
+   stand dort "Noch keinem Tag zugeordnet", und das klang nach Restehaufen
+   statt nach dem Vorrat, aus dem man in Tage zieht. */
+ok('die Tage stehen in ihrer Reihenfolge, die Merkliste zuletzt',
   await p.evaluate(() => [...document.querySelectorAll('.plantag__t')]
     .map((t) => t.textContent.trim().slice(0, 3))),
-  ['Son', 'Mon', 'Noc']);
+  ['Son', 'Mon', 'Gem']);
 
 /* Die Tagessumme muss aus den Daten kommen. Gegengerechnet wird mit denselben
    Minuten, die oben aus places.json gelesen wurden -- nicht mit dem, was die
@@ -335,6 +338,129 @@ await p.locator('.planheut__tick').first().click();
 await p.waitForTimeout(400);
 ok('zuruecknehmen geht', (await p.locator('.planheut__n').textContent()).trim(), '2 von 3');
 ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1');
+
+/* --- 12. Die Reiseuebersicht --------------------------------------------- */
+/* An einem realistischen Stand gemessen -- 20 gemerkte Orte, sieben auf drei
+   Tage verteilt -- war die Planansicht 3402 px hoch. Sichtbar waren die drei
+   verplanten Tage; unsichtbar blieb, welche der fuenfzehn noch frei sind.
+   Genau das ist beim Planen die Frage. */
+{
+  const c4 = await mach();
+  const q = await c4.newPage();
+  const errs4 = []; q.on('pageerror', (e) => errs4.push(e.message));
+  await q.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await q.waitForSelector('#app:not([hidden])');
+  const viele = await q.evaluate(async () => {
+    const d = await (await fetch('./data/places.json')).json();
+    return d.places.slice(0, 20).map((x) => x.id);
+  });
+
+  /* Ohne Zuordnung: kein Raster. Ein leeres Raster ueber einer Merkliste
+     waere Zierde. */
+  await q.evaluate((ids) => {
+    localStorage.setItem('pk.saved', JSON.stringify(ids));
+    localStorage.setItem('pk.days', '{}');
+    localStorage.setItem('pk.seen', '[]');
+  }, viele);
+  await q.reload({ waitUntil: 'networkidle' });
+  await q.waitForSelector('#app:not([hidden])');
+  await zumPlan(q);
+  ok('ohne Zuordnung kein Reiseplan-Raster', await q.locator('.uebs').count(), 0);
+  /* Dann ist die Merkliste der Plan, und die Gesamtzeit ist eine sinnvolle
+     Aussage: so lange braeuchte man fuer alles. */
+  ok('… und die Summenzeile nennt die Gesamtzeit',
+    /Aufenthalt/.test(await q.locator('.plan__sum').textContent()));
+
+  /* Sieben Orte auf drei Tage. */
+  await q.evaluate((ids) => {
+    localStorage.setItem('pk.days', JSON.stringify({
+      [ids[0]]: '2026-09-20', [ids[1]]: '2026-09-20',
+      [ids[2]]: '2026-09-21', [ids[3]]: '2026-09-21', [ids[4]]: '2026-09-21',
+      [ids[5]]: '2026-09-24', [ids[6]]: '2026-09-24'
+    }));
+  }, viele);
+  await q.reload({ waitUntil: 'networkidle' });
+  await q.waitForSelector('#app:not([hidden])');
+  await zumPlan(q);
+
+  const g = await q.evaluate(() => {
+    const raster = document.querySelector('.uebs__g');
+    const r = raster.getBoundingClientRect();
+    return {
+      zellen: raster.querySelectorAll('.uebs__d').length,
+      voll: raster.querySelectorAll('.uebs__d--voll').length,
+      leer: raster.querySelectorAll('.uebs__d--leer').length,
+      knoepfe: raster.querySelectorAll('button.uebs__d').length,
+      heute: raster.querySelectorAll('.uebs__d--heute').length,
+      links: Math.round(r.left), rechts: Math.round(r.right),
+      spalten: getComputedStyle(raster).gridTemplateColumns.split(' ').length,
+      zahlen: [...raster.querySelectorAll('.uebs__d--voll .uebs__c')].map((e) => e.textContent)
+    };
+  });
+  ok('das Raster zeigt alle 15 Reisetage', g.zellen, 15);
+  ok('… in fuenf Spalten, also ohne Schieben', g.spalten, 5);
+  ok('… drei davon verplant', g.voll, 3);
+  ok('… zwoelf frei', g.leer, 12);
+  ok('… mit der Zahl der Orte je Tag', g.zahlen, ['2', '3', '2']);
+  ok('… und innerhalb der Seitenraender', g.links >= 12 && g.rechts <= 390);
+  ok('nur volle Tage sind Knoepfe', g.knoepfe, 3);
+  ok('die Seite bleibt seitwaerts unverschiebbar',
+    await q.evaluate(() => document.documentElement.scrollWidth), 402);
+
+  /* Die Ansage fuer Vorleser: leere Zellen sind aria-hidden, sonst werden
+     zwoelf Datumsangaben ohne Inhalt vorgelesen. */
+  ok('leere Zellen sind fuer Vorleser stumm', await q.evaluate(() =>
+    [...document.querySelectorAll('.uebs__d--leer')]
+      .every((e) => e.getAttribute('aria-hidden') === 'true')));
+  ok('volle Zellen sagen, wohin sie fuehren', await q.evaluate(() =>
+    /hinspringen$/.test(document.querySelector('button.uebs__d').getAttribute('aria-label') || '')));
+  ok('… und wie viel dort steht', await q.evaluate(() =>
+    /, \d+ Orte?/.test(document.querySelector('button.uebs__d').getAttribute('aria-label') || '')));
+
+  /* --- 13. Der Sprung ---------------------------------------------------- */
+  ok('vor dem Sprung steht die Seite oben',
+    await q.evaluate(() => Math.round(window.scrollY)), 0);
+  await q.locator('.uebs__d--voll[data-goto="2026-09-24"]').click();
+  await q.waitForTimeout(900);
+  const sprung = await q.evaluate(() => {
+    const z = document.getElementById('tag-2026-09-24');
+    const bar = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bar-full'), 10) || 0;
+    return { y: Math.round(window.scrollY), oben: Math.round(z.getBoundingClientRect().top), bar: bar };
+  });
+  ok('der Tipp springt wirklich', sprung.y > 100);
+  /* Nicht unter den fixierten Kopf: scroll-padding-top auf html haelt ihn
+     frei, und genau das soll hier bestaetigt werden. */
+  ok('… und das Ziel landet unter dem Kopf, nicht darunter verdeckt',
+    sprung.oben >= sprung.bar - 6 && sprung.oben < 400);
+
+  /* --- 14. Die Summenzeile luegt nicht mehr ------------------------------ */
+  /* "20 Orte · 30,8 h Aufenthalt" addierte drei verplante Tage und dreizehn
+     unverplante Orte zu einer Stunde, die nirgends vorkommt. */
+  const summe = (await q.locator('.plan__sum').textContent()).trim();
+  ok('die Summenzeile zaehlt Verplantes und Uebriges getrennt',
+    summe, '7 Orte an 3 Tagen · 13 noch ohne Tag');
+  ok('… und nennt keine Gesamtstundenzahl mehr', /Aufenthalt|Weg/.test(summe), false);
+
+  /* --- 15. Die Merkliste heisst Merkliste -------------------------------- */
+  const offenKopf = await q.evaluate(() => {
+    const k = document.querySelector('.plantag--offen');
+    return { t: k.querySelector('.plantag__t').textContent.trim(),
+      n: k.querySelector('.plantag__sum').textContent.trim() };
+  });
+  ok('der Rest heisst nicht mehr "noch keinem Tag zugeordnet"',
+    offenKopf.t, 'Gemerkt, noch ohne Tag');
+  ok('… mit seiner Zahl', offenKopf.n, '13');
+  ok('… und einem Hinweis, wie man daraus einen Tag macht',
+    /Tag-Wähler/.test(await q.locator('.plan__hint').textContent()));
+
+  /* Die Leiste oben zaehlt Gemerktes, nicht Verplantes -- vorher standen
+     "20 im Plan" und "7 Orte an 3 Tagen" widersprechend uebereinander. */
+  ok('die Teilen-Leiste zaehlt ehrlich',
+    (await q.locator('#sharebar-t').textContent()).trim(), '20 gemerkt · 0 gesehen');
+
+  ok('keine JS-Fehler in der Uebersicht', errs4.length ? errs4.join(' | ') : 0, 0);
+  await c4.close();
+}
 
 ok('keine JS-Fehler auf dem ganzen Weg', errs.length ? errs.join(' | ') : 0, 0);
 await ctx.close();

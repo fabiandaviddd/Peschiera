@@ -1260,6 +1260,76 @@ body.is-typing .tabs { transform: translateY(110%); }
   stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .pmove[disabled] { opacity: .25; cursor: default; }
 
+/* --- Reiseuebersicht: alle Reisetage auf einen Blick -------------------- */
+/* Fuenf Spalten, drei Reihen -- fuenfzehn Reisetage passen damit bei 402 px
+   ohne Schieben ins Bild. Ein waagerechter Streifen haette dieselbe Zahl
+   Zellen gebraucht und die Haelfte davon versteckt; ein Tag, den man erst
+   hervorschieben muss, beantwortet die Frage "welche Tage sind noch frei"
+   nicht. */
+/* padding-inline zurueck: .uebs liegt in #list, und #list zieht sich mit
+   margin-inline: -1rem ueber die volle Breite. Ohne das lief das Raster
+   ueber beide Raender hinaus und "3 von 15 Tagen verplant" war rechts
+   abgeschnitten. */
+.uebs { padding: .2rem 1rem 1rem; }
+.uebs__h {
+  display: flex; align-items: baseline; gap: .5rem;
+  font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
+  margin-bottom: .5rem;
+}
+.uebs__s { margin-left: auto; font-family: var(--font-body); font-weight: 500;
+  font-size: var(--t-meta); color: var(--soft); font-variant-numeric: tabular-nums; }
+
+.uebs__g { display: grid; grid-template-columns: repeat(5, 1fr); gap: .3rem; }
+.uebs__d {
+  position: relative;
+  min-height: 2.9rem; padding: .3rem .1rem;
+  display: grid; justify-items: center; align-content: center; gap: 0;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg);
+  font-family: var(--font-body); line-height: 1.15;
+}
+.uebs__w { font-size: var(--t-micro); font-weight: 700; color: var(--soft); }
+.uebs__n { font-size: var(--t-meta); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* Verplante Tage sind Knoepfe und springen zu ihrer Gruppe. Bei viereinhalb
+   Bildschirmen Planlaenge ist das der Unterschied zwischen Nachschlagen und
+   Suchen. */
+.uebs__d--voll {
+  background: var(--card); border-color: var(--lake);
+  cursor: pointer;
+}
+.uebs__d--voll .uebs__w { color: var(--lake-ink); }
+/* Die Zahl als kleine Marke oben rechts -- dieselbe Form wie die Marke am
+   Plan-Reiter, damit man sie nicht neu lernen muss. */
+.uebs__c {
+  position: absolute; top: -5px; right: -4px;
+  min-width: 1.1rem; padding: .05rem .2rem;
+  font-size: var(--t-micro); font-weight: 700; line-height: 1.3;
+  color: var(--card); background: var(--lake);
+  border-radius: var(--r-pill); font-variant-numeric: tabular-nums;
+}
+.uebs__d--leer .uebs__c { display: none; }
+
+/* Leere Tage: gestrichelt, wie die vergangenen Abschnitte in "Heute" -- im
+   Haus heisst gestrichelt "da, aber nichts los". Kein Knopf: es gibt nichts,
+   wohin er springen koennte. */
+.uebs__d--leer {
+  border-style: dashed; background: none;
+}
+.uebs__d--leer .uebs__n { color: var(--soft); }
+
+/* Heute: dieselbe seeblaue Marke wie am Tageskopf. */
+.uebs__d--heute { box-shadow: inset 0 0 0 2px var(--lake); }
+.uebs__d--heute .uebs__n { font-weight: 700; }
+
+/* Der Hinweis unter dem Merklisten-Kopf. */
+.plan__hint {
+  padding: .5rem 1rem .6rem;
+  font-size: var(--t-meta); color: var(--soft);
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
 /* Der Tageskopf im gruppierten Plan. Fraunces wie jede Ueberschrift des
    Hauses; die Summe rechts in Meta-Grau. "heute" als seeblaue Marke — die
    Farbe, die im Haus "hier ist etwas an" heisst. */

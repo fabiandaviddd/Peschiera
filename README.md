@@ -424,6 +424,49 @@ jeder gemerkte Ort **einem Reisetag**.
 Gespeichert unter `pk.days` als `{ ortId: 'JJJJ-MM-TT' }`. Eine Zuordnung
 außerhalb des Reisezeitraums zählt als „offen" statt als Tag.
 
+### Die Reiseübersicht
+
+An einem realistischen Stand gemessen — 20 gemerkte Orte, sieben auf drei Tage
+verteilt — war die Planansicht **3402 px hoch**, also viereinhalb Bildschirme.
+Sichtbar waren die drei verplanten Tage. Unsichtbar blieb, was man beim Planen
+eigentlich wissen will: **welche der fünfzehn Tage noch frei sind.** Sonntag,
+Montag und Donnerstag standen da; Dienstag und Mittwoch kamen in der ganzen
+Ansicht nicht vor.
+
+Seit `v30` steht oben im Plan ein Raster über alle Reisetage:
+
+- **Fünf Spalten, drei Reihen** — fünfzehn Tage passen damit bei 402 px ohne
+  Schieben ins Bild. Ein waagerechter Streifen hätte die Hälfte versteckt, und
+  ein Tag, den man erst hervorschieben muss, beantwortet die Frage nicht.
+- **Verplante Tage sind Knöpfe** und springen zu ihrer Gruppe. Bei viereinhalb
+  Bildschirmen ist das der Unterschied zwischen Nachschlagen und Suchen. Die
+  Zahl in der Marke sagt, wie viele Orte dort stehen.
+- **Freie Tage sind gestrichelt** — im Haus heißt gestrichelt „da, aber nichts
+  los", wie die vergangenen Abschnitte in „Heute". Sie sind **keine Knöpfe**:
+  es gibt nichts, wohin sie springen könnten, und ein Knopf, der nichts tut,
+  ist schlimmer als keiner.
+- **Für Vorleser** tragen leere Zellen `aria-hidden` — sonst werden zwölf
+  Datumsangaben ohne Inhalt vorgelesen. Stattdessen steht dort ein Satz: „12
+  Tage sind noch ohne Plan."
+- **Das Raster erscheint erst mit der ersten Zuordnung**, wie die Tagesgruppen.
+  Ohne Zuordnung wäre es ein leeres Raster über einer Merkliste.
+
+Dazu zwei Zeilen, die vorher nicht stimmten:
+
+- **Die Summenzeile** sagte „20 Orte · 30,8 h Aufenthalt · 8 h Weg" — sie
+  addierte drei verplante Tage und dreizehn unverplante Orte zu einer Stunde,
+  die nirgends vorkommt. Jetzt: „7 Orte an 3 Tagen · 13 noch ohne Tag". Die
+  Zeit je Tag steht ohnehin an jedem Tageskopf. Ist **nichts** zugeordnet,
+  bleibt die alte Zeile: dann ist die Merkliste der Plan, und die Gesamtzeit
+  ist eine sinnvolle Aussage.
+- **Die Teilen-Leiste** sagte „20 im Plan", während die Summenzeile darunter
+  „7 Orte an 3 Tagen" sagte — zwei Zahlen für dieselbe Ansicht, die sich
+  widersprechen. Sie zählt Gemerktes und heißt jetzt auch so.
+
+Und der Rest heißt nicht mehr „Noch keinem Tag zugeordnet", sondern **„Gemerkt,
+noch ohne Tag"** — das ist kein Restehaufen, sondern der Vorrat, aus dem man in
+Tage zieht. Ein Hinweis darunter sagt, wie.
+
 ### Die Brücke zu „Heute"
 
 Bis `v28` wussten die beiden Hälften der App **nichts voneinander**: `S.days`

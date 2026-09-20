@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v29 · 2026-09-19';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v30 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -2873,6 +2873,66 @@
 
   var PLAN_FAR = 1.2;   // ab hier ist der Weg zwischen zwei Stationen erwaehnenswert
 
+  /* Die Reiseuebersicht: alle Reisetage auf einen Blick.
+
+     Gemessen an einem realistischen Stand -- 20 gemerkte Orte, sieben davon
+     auf drei Tage verteilt -- war die Planansicht 3402 px hoch, also viereinhalb
+     Bildschirme. Sichtbar waren die drei verplanten Tage; unsichtbar blieb,
+     was man beim Planen eigentlich wissen will: WELCHE der fuenfzehn Tage
+     noch frei sind. Sonntag, Montag und Donnerstag standen da, Dienstag und
+     Mittwoch kamen in der ganzen Ansicht nicht vor.
+
+     Ein Raster, kein waagerechter Streifen: fuenfzehn Zellen nebeneinander
+     muessten geschoben werden, und ein Tag, den man erst hervorschieben muss,
+     beantwortet die Frage nicht. Fuenf Spalten passen bei 402 px ohne
+     Schieben, drei Reihen zeigen die ganze Reise.
+
+     Volle Tage sind Knoepfe und springen zu ihrer Gruppe -- bei viereinhalb
+     Bildschirmen ist das der Unterschied zwischen Nachschlagen und Suchen.
+     Leere Tage sind keine Knoepfe: es gibt nichts, wohin sie springen
+     koennten, und ein Knopf, der nichts tut, ist schlimmer als keiner. */
+  function uebersichtHtml(gueltig, heute) {
+    var tage = tripTage();
+    if (!tage.length) return '';
+
+    var zahl = {};
+    S.saved.forEach(function (id) {
+      var t = planTagVon(id, gueltig);
+      if (t) zahl[t] = (zahl[t] || 0) + 1;
+    });
+    /* Wie die Tagesgruppen: erscheint erst, wenn etwas zugeordnet ist. Ohne
+       Zuordnung waere es ein leeres Raster ueber einer Merkliste. */
+    var verplant = Object.keys(zahl).length;
+    if (!verplant) return '';
+
+    var zellen = tage.map(function (t) {
+      var n = zahl[t.iso] || 0;
+      var ist = t.iso === heute;
+      var kl = 'uebs__d' + (n ? ' uebs__d--voll' : ' uebs__d--leer') + (ist ? ' uebs__d--heute' : '');
+      var innen = '<span class="uebs__w">' + t.kurz.slice(0, 2) + '</span>'
+        + '<span class="uebs__n">' + t.kurz.slice(3).replace(/\.\d\d\.$/, '.') + '</span>'
+        + '<span class="uebs__c">' + (n || '') + '</span>';
+      if (!n) {
+        return '<span class="' + kl + '" aria-hidden="true">' + innen + '</span>';
+      }
+      return '<button type="button" class="' + kl + '" data-goto="' + t.iso + '"'
+        + ' aria-label="' + t.lang + ', ' + n + (n === 1 ? ' Ort' : ' Orte')
+        + (ist ? ', heute' : '') + ' — hinspringen">' + innen + '</button>';
+    }).join('');
+
+    /* Die Zusammenfassung sagt, was das Raster zeigt -- fuer alle, die es
+       nicht sehen koennen. Die leeren Zellen tragen aria-hidden, sonst liest
+       ein Vorleser fuenfzehn Datumsangaben ohne Inhalt vor. */
+    var frei = tage.length - verplant;
+    return '<section class="uebs">'
+      + '<p class="uebs__h">Reiseplan'
+      + '<span class="uebs__s">' + verplant + ' von ' + tage.length + ' Tagen verplant</span></p>'
+      + '<div class="uebs__g">' + zellen + '</div>'
+      + (frei ? '<p class="sr-only">' + frei + (frei === 1 ? ' Tag ist' : ' Tage sind')
+          + ' noch ohne Plan.</p>' : '')
+      + '</section>';
+  }
+
   function planHtml() {
     var list = planList();
     if (!list.length) return '';
@@ -2885,13 +2945,6 @@
 
     /* Die Summe sagt dazu, worauf sie sich stuetzt — sonst liest sie sich
        als Gesamtzeit, obwohl Orte ohne Wert fehlen. */
-    var sum = '<p class="plan__sum">' + list.length + (list.length === 1 ? ' Ort' : ' Orte')
-      + (stayN ? ' · ' + esc(dur(stay)) + ' Aufenthalt'
-          + (stayN < list.length ? ' (' + stayN + ' von ' + list.length + ')' : '') : '')
-      + (walkN ? ' · ' + esc(dur(walk)) + ' Weg'
-          + (walkN < list.length ? ' (' + walkN + ' von ' + list.length + ')' : '') : '')
-      + '</p>';
-
     var gueltig = tagKennungen();
     var tage = tripTage();
     var heute = isoTag(new Date());
@@ -2951,11 +3004,36 @@
     var zu = list.filter(function (p) { return planTagVon(p.id, gueltig); });
     var offen = list.filter(function (p) { return !planTagVon(p.id, gueltig); });
 
+    /* Die Summenzeile. Ohne Zuordnung ist die Merkliste der Plan, und "20
+       Orte, 30,8 h Aufenthalt" ist dann eine sinnvolle Aussage: so lange
+       braeuchte man fuer alles. Sobald Tage im Spiel sind, ist dieselbe Zahl
+       falsch -- sie addiert drei verplante Tage und dreizehn unverplante
+       Orte zu einer Stunde, die nirgends vorkommt. Dann sagt die Zeile
+       stattdessen, wie viel verplant ist und wie viel noch daneben liegt;
+       die Zeit je Tag steht ohnehin an jedem Tageskopf. */
+    var sum;
+    if (!zu.length) {
+      sum = '<p class="plan__sum">' + list.length + (list.length === 1 ? ' Ort' : ' Orte')
+        + (stayN ? ' · ' + esc(dur(stay)) + ' Aufenthalt'
+            + (stayN < list.length ? ' (' + stayN + ' von ' + list.length + ')' : '') : '')
+        + (walkN ? ' · ' + esc(dur(walk)) + ' Weg'
+            + (walkN < list.length ? ' (' + walkN + ' von ' + list.length + ')' : '') : '')
+        + '</p>';
+    } else {
+      var tageMitOrt = {};
+      zu.forEach(function (p) { tageMitOrt[planTagVon(p.id, gueltig)] = true; });
+      var nTage = Object.keys(tageMitOrt).length;
+      sum = '<p class="plan__sum">' + zu.length + (zu.length === 1 ? ' Ort' : ' Orte')
+        + ' an ' + nTage + (nTage === 1 ? ' Tag' : ' Tagen')
+        + (offen.length ? ' · ' + offen.length + ' noch ohne Tag' : '')
+        + '</p>';
+    }
+
     /* Solange nichts zugeordnet ist, sieht der Plan aus wie immer — eine
        Liste ohne Koepfe. Gruppen erscheinen mit der ersten Zuordnung. */
     if (!zu.length) return sum + '<div class="plan">' + gruppeHtml(offen) + '</div>';
 
-    var h = sum + '<div class="plan">';
+    var h = uebersichtHtml(gueltig, heute) + sum + '<div class="plan">';
     tage.forEach(function (t) {
       var orte = zu.filter(function (p) { return planTagVon(p.id, gueltig) === t.iso; });
       if (!orte.length) return;
@@ -2967,7 +3045,8 @@
          mit Wegen hergibt. Die Grenze ist eine Annahme und steht deshalb
          woertlich im Text. */
       var voll = min > 600;
-      h += '<div class="plantag' + (istHeute ? ' plantag--heute' : '') + '">'
+      h += '<div class="plantag' + (istHeute ? ' plantag--heute' : '') + '"'
+        + ' id="tag-' + t.iso + '">'
         + '<span class="plantag__t">' + t.lang + '</span>'
         + (istHeute ? '<span class="plantag__jetzt">heute</span>' : '')
         + (minN ? '<span class="plantag__sum' + (voll ? ' plantag__sum--voll' : '') + '">'
@@ -2978,9 +3057,14 @@
         + gruppeHtml(orte);
     });
     if (offen.length) {
+      /* "Noch keinem Tag zugeordnet" klang nach Restehaufen. Es ist die
+         Merkliste: der Vorrat, aus dem man in Tage zieht. Der Zusatz sagt,
+         wie -- der Waehler an jeder Zeile ist sonst leicht zu uebersehen. */
       h += '<div class="plantag plantag--offen">'
-        + '<span class="plantag__t">Noch keinem Tag zugeordnet</span>'
+        + '<span class="plantag__t">Gemerkt, noch ohne Tag</span>'
         + '<span class="plantag__sum">' + offen.length + '</span></div>'
+        + '<p class="plan__hint">Über den Tag-Wähler an einer Zeile wandert '
+        + 'ein Ort in einen Reisetag.</p>'
         + gruppeHtml(offen);
     }
     return h + '</div>';
@@ -2991,8 +3075,12 @@
     if (S.view !== 'gemerkt') { bar.hidden = true; return; }
     bar.hidden = false;
     var n = S.saved.length, g = S.seen.length;
+    /* "20 im Plan" stand hier, waehrend die Summenzeile darunter "7 Orte an
+       3 Tagen" sagte -- zwei Zahlen fuer dieselbe Ansicht, die sich
+       widersprechen. Die Leiste zaehlt, was gemerkt ist; verplant ist eine
+       Teilmenge davon, und die steht eine Zeile tiefer. */
     $('sharebar-t').textContent = n || g
-      ? n + ' im Plan · ' + g + ' gesehen'
+      ? n + ' gemerkt · ' + g + ' gesehen'
       : 'Noch nichts markiert';
     var btn = $('share-btn');
     btn.hidden = !(n || g);
@@ -3169,6 +3257,17 @@
       var next = btns[(i + (e.key === 'ArrowRight' ? 1 : btns.length - 1)) % btns.length];
       next.focus();
       setView(next.getAttribute('data-tab'));
+    });
+
+    $('list').addEventListener('click', function (e) {
+      var go = e.target.closest('[data-goto]');
+      if (!go) return;
+      var ziel = document.getElementById('tag-' + go.getAttribute('data-goto'));
+      if (!ziel) return;
+      /* scroll-padding-top steht auf html und haelt den fixierten Kopf frei
+         -- deshalb reicht scrollIntoView, ohne selbst zu rechnen. */
+      try { ziel.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+      catch (err) { ziel.scrollIntoView(true); }
     });
 
     $('list').addEventListener('change', function (e) {
