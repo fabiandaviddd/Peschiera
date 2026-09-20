@@ -297,7 +297,14 @@ await p.evaluate(() => {
 await p.reload({ waitUntil: 'networkidle' });
 await p.waitForSelector('#app:not([hidden])');
 await zuHeute(p);
-ok('ist fuer heute nichts geplant, steht kein Block da', await p.locator('.planheut').count(), 0);
+/* Bis v34 stand hier gar nichts -- und die Ansicht fing mit einem Vorschlag
+   an, ohne je zu erwaehnen, dass es einen Tagesplan gibt. Wer nie einen
+   anlegt, erfaehrt nicht, dass er koennte. Seit v35 steht der Block da und
+   sagt, was fehlt, mit einem Weg zum Fuellen. */
+ok('ist fuer heute nichts geplant, sagt der Block das',
+  await p.locator('.planheut--leer').count(), 1);
+ok('… mit einem Weg zum Fuellen', await p.locator('#planheut-los').count(), 1);
+ok('… und ohne Stationszeilen', await p.locator('.planheut__row').count(), 0);
 ok('… und die Marke zaehlt dann die ganze Merkliste',
   await p.locator('#tab-n').textContent(), '5');
 
@@ -314,7 +321,10 @@ await zuHeute(p);
 
 ok('mit Tagesplan steht der Block da', await p.locator('.planheut').count(), 1);
 ok('… mit einer Zeile je Station', await p.locator('.planheut__row').count(), 3);
-ok('… und einem Fortschritt', (await p.locator('.planheut__n').textContent()).trim(), '0 von 3');
+/* Seit v35 nennt der Kopf auch die Restzeit: "0 von 3 · noch 6,5 h". Die
+   Stunden haengen an den Daten, also wird nur der Anfang festgenagelt. */
+ok('… und einem Fortschritt',
+  /^0 von 3 · noch /.test((await p.locator('.planheut__n').textContent()).trim()));
 ok('… nur die Orte von heute, nicht die vom 27.',
   await p.evaluate(() => document.querySelectorAll('.planheut__row').length), 3);
 
@@ -341,15 +351,24 @@ ok('das Kaestchen ist 44 mal 44', [kasten.w, kasten.h], [44, 44]);
 ok('… und sichtbar umrandet', kasten.rand >= 2);
 ok('… mit einer Ansage fuer Vorleser', /abhaken$/.test(kasten.label.trim()));
 
-/* --- 10. Abhaken direkt in "Heute" --------------------------------------- */
-const restVorher = (await p.locator('.planheut__f').textContent()).trim();
+/* --- 10. Abhaken direkt in "Jetzt" --------------------------------------- */
+/* Seit v35 steht der Fortschritt im Kopf der Karte statt im Fuss: "0 von 3 ·
+   noch 2,5 h", darunter ein Balken. Der Fuss sagt nur noch, was der Kopf
+   nicht sagen kann -- dass die Restzeit sich auf weniger Stationen stuetzt,
+   als dastehen, oder dass alles erledigt ist. */
+const kopfVorher = (await p.locator('.planheut__n').textContent()).trim();
+const balken = () => p.evaluate(() =>
+  document.querySelector('.planheut__bar i').style.width);
+ok('der Fortschritt steht im Kopf', /^0 von 3( · noch )?/.test(kopfVorher));
+ok('… und der Balken steht auf null', await balken(), '0%');
 await p.locator('.planheut__tick').first().click();
 await p.waitForTimeout(400);
-ok('abhaken zaehlt hoch', (await p.locator('.planheut__n').textContent()).trim(), '1 von 3');
+const kopfNachher = (await p.locator('.planheut__n').textContent()).trim();
+ok('abhaken zaehlt hoch', /^1 von 3/.test(kopfNachher));
 ok('… streicht die Zeile durch', await p.locator('.planheut__row--ab').count(), 1);
 ok('… laesst sie aber stehen', await p.locator('.planheut__row').count(), 3);
-const restNachher = (await p.locator('.planheut__f').textContent()).trim();
-ok('… und rechnet die Restzeit neu', restNachher !== restVorher);
+ok('… und rechnet die Restzeit neu', kopfNachher !== kopfVorher);
+ok('… der Balken zieht mit', await balken(), '33%');
 ok('… die Marke zaehlt die offenen von heute',
   await p.locator('#tab-n').textContent(), '2');
 ok('… und sagt das auch dem Vorleser',
@@ -369,12 +388,14 @@ ok('alles abgehakt: der Kopf sagt es',
   (await p.locator('.planheut__t').textContent()).trim(), 'Heute erledigt');
 ok('… der Fuss auch',
   /Alle 3 Stationen abgehakt/.test(await p.locator('.planheut__f').textContent()));
+ok('… und der Balken ist voll', await balken(), '100%');
 ok('… und die Marke ist weg', await p.locator('#tab-n').isVisible(), false);
 
 /* Zuruecknehmen muss gehen -- ein Fehltipp darf nichts kosten. */
 await p.locator('.planheut__tick').first().click();
 await p.waitForTimeout(400);
-ok('zuruecknehmen geht', (await p.locator('.planheut__n').textContent()).trim(), '2 von 3');
+ok('zuruecknehmen geht',
+  /^2 von 3 · noch /.test((await p.locator('.planheut__n').textContent()).trim()));
 ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1');
 
 /* --- 12. Die Reiseuebersicht --------------------------------------------- */

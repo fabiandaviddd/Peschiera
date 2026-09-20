@@ -12,7 +12,10 @@ const ctx = await browser.newContext({viewport:{width:402,height:754},deviceScal
   userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1'});
 const page = await ctx.newPage();
 const errs=[]; page.on('pageerror',e=>errs.push(e.message));
-await page.goto(`${BASE}/index.html`,{waitUntil:'networkidle'});
+/* ?v=orte, nicht die Startansicht: seit v35 steht das Suchfeld nur noch
+   dort, wo gesucht wird. In "Jetzt" kostete es oben rund 60 px, und dort
+   steht jetzt der Tagesplan. */
+await page.goto(`${BASE}/index.html?v=orte`,{waitUntil:'networkidle'});
 await page.waitForSelector('#app:not([hidden])');
 await page.fill('#q','Sirmione'); await page.waitForTimeout(120);
 await page.evaluate(()=>{

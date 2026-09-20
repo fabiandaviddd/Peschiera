@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v34 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v35 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -582,6 +582,18 @@
     return { v: null, q: 'offen', at: '' };
   }
 
+  /* Die Hundregel in drei Zeichen, fuer Zeilen, die schon voll sind. */
+  function dogKurz(p) {
+    var z = dogState(p);
+    if (z === 'ja' || z === 'ihr') {
+      return ' · <span class="planheut__dog">Jum ok</span>';
+    }
+    if (z === 'nein' || z === 'ihrnein') {
+      return ' · <span class="planheut__dog planheut__dog--nein">ohne Jum</span>';
+    }
+    return ' · <span class="planheut__dog planheut__dog--offen">Hund offen</span>';
+  }
+
   /* Der Zustand als ein Wort -- fuer Klassennamen und Zaehlungen. */
   function dogState(p) {
     var d = dogOf(p);
@@ -629,12 +641,27 @@
 
   /* ------------------------------------------------------------------ Tabs */
 
+  /* Die Reiter heissen seit v35 nach ihrer Frage, nicht nach ihrem Inhalt:
+
+       Jetzt      Was ist gerade dran?
+       Entdecken  Was gibt es ueberhaupt?
+       Reise      Was steht in fuenfzehn Tagen an?
+       Wissen     Was muss ich wissen?
+
+     "Heute" und "Plan" beantworteten beide die erste Frage und stritten sich
+     darum (siehe planHeuteHtml und planHtml). "Orte" beschrieb die Datei,
+     nicht die Handlung.
+
+     Die KENNUNGEN bleiben, wie sie sind -- 'heute', 'orte', 'gemerkt',
+     'info'. An ihnen haengen ?v=-Lesezeichen und der Speicher; sie
+     umzubenennen braeche jeden gespeicherten Link, ohne etwas zu gewinnen.
+     Dieselbe Entscheidung wie bei 'info' → "Wissen" in v26. */
   var TABS = [
-    { id: 'heute', label: 'Heute', icon: ICON.sun },
-    { id: 'orte', label: 'Orte', icon: ICON.list },
+    { id: 'heute', label: 'Jetzt', icon: ICON.sun },
+    { id: 'orte', label: 'Entdecken', icon: ICON.list },
     /* Die Kennung bleibt "gemerkt": daran haengen der Teilen-Link und der
        Speicher. Sichtbar ist es ein Plan. */
-    { id: 'gemerkt', label: 'Plan', icon: ICON.star },
+    { id: 'gemerkt', label: 'Reise', icon: ICON.star },
     /* Die Ansicht heisst innen "Gut zu wissen" und traegt Hunderegeln,
        Notruf, Trinkgeld, Bus-Zeiten und die offenen Punkte -- eine der
        nuetzlichsten Ansichten der App. "Info" mit i-Kringel versprach ein
@@ -1131,18 +1158,49 @@
 
   /* -------------------------------------------------------------- Rendern */
 
+  /* Was oben links steht. Bis v34 stand dort auf jeder der vier Ansichten
+     derselbe App-Name -- eine Zeile, die man einmal liest und danach nie
+     wieder braucht, und die auf 402 px rund ein Sechstel der Kopfhoehe
+     kostete. Jetzt sagt sie, wo man ist und was gerade gilt. */
+  function kopfzeileHtml() {
+    var now = new Date();
+    if (S.view === 'heute') {
+      var trip = tripDay(now);
+      return '<em>' + WTAGE[now.getDay()] + ' ' + pad2(now.getDate()) + '.'
+        + pad2(now.getMonth() + 1) + '.</em>'
+        + (trip ? '<span>Tag ' + trip.n + ' von ' + trip.of + '</span>' : '');
+    }
+    if (S.view === 'gemerkt') {
+      /* Der Zeitraum, ohne den Ortsnamen dahinter: "14.–28. September 2026"
+         aus "14.–28. September 2026 · Gardasee". Im Kopf ist Platz fuer die
+         Zahl, nicht fuer die Herkunft. */
+      var sub = has(D.meta.subtitle) ? String(D.meta.subtitle).split(' · ')[0] : '';
+      return '<em>Reise</em>' + (sub ? '<span>' + esc(sub) + '</span>' : '');
+    }
+    if (S.view === 'info') return '<em>Wissen</em>';
+    return '<em>Entdecken</em><span>' + D.places.length + ' Orte</span>';
+  }
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
   function render() {
     syncChips();
+    $('bar-title').innerHTML = kopfzeileHtml();
     var isPlan = S.view === 'gemerkt';
     var bare = S.view === 'info' || S.view === 'heute';
     /* Der Plan ist eine Liste, die man selbst gebaut hat — Suchen, Filtern
        und Sortieren haetten dort nichts zu suchen und wuerden die
        Reihenfolge zerschiessen, um die es gerade geht. */
     $('filters').hidden = bare || isPlan;
-    /* Auf "Heute" bleibt das Suchfeld stehen. Ohne es ist von der Startansicht
-       aus nicht zu sehen, dass hinter dem einen Vorschlag ein ganzer Bestand
-       liegt — der Weg dorthin stand bisher nur unten am Ende der Seite. */
-    $('search-wrap').hidden = S.view === 'info' || isPlan;
+    /* Seit v35 steht die Suche nur noch dort, wo gesucht wird.
+
+       Bis v34 stand sie auch auf der Startansicht, mit gutem Grund: der
+       Reiter hiess "Orte", und von der Startansicht aus war nicht zu sehen,
+       dass hinter dem einen Vorschlag ein ganzer Bestand liegt. Der Reiter
+       heisst jetzt "Entdecken" und sagt das selbst; dazu steht am Ende der
+       Ansicht weiterhin "Alle 101 Orte durchsuchen". Das Feld kostete oben
+       rund 60 px, und dort steht jetzt der Tagesplan. */
+    $('search-wrap').hidden = bare || isPlan;
     $('meta-row').hidden = bare || isPlan;
     renderShareBar();
     measureBarWennNoetig();
@@ -1457,7 +1515,11 @@
   /* Tagesabschnitte. "until" ist das Ende in Minuten seit Mitternacht und
      dient zugleich als Frage "geht sich das heute noch aus?". */
   var MOMENTS = [
-    { id: 'frueh',      label: 'Morgen',     until: 11 * 60,      kicker: 'Für den Morgen' },
+    /* "Vormittag", nicht "Morgen": dieselbe Ansicht traegt eine Zeile
+       darueber "Morgen früh" fuer den Vorausblick auf den naechsten Tag.
+       Zwei Bedeutungen desselben Wortes auf einem Bildschirm sind eine zu
+       viel; die Kennung 'frueh' bleibt, an ihr haengen die Daten. */
+    { id: 'frueh',      label: 'Vormittag',  until: 11 * 60,      kicker: 'Für den Vormittag' },
     { id: 'mittag',     label: 'Mittag',     until: 14 * 60 + 30, kicker: 'Für den Mittag' },
     { id: 'nachmittag', label: 'Nachmittag', until: 18 * 60,      kicker: 'Für den Nachmittag' },
     { id: 'abend',      label: 'Abend',      until: 23 * 60,      kicker: 'Für heute Abend' }
@@ -1929,7 +1991,23 @@
   function planHeuteHtml(now) {
     var heute = isoTag(now);
     var orte = planList().filter(function (p) { return S.days[p.id] === heute; });
-    if (!orte.length) return '';
+    /* Bis v34 stand hier gar nichts, wenn fuer heute nichts geplant war --
+       und die Ansicht fing mit einem Vorschlag an, ohne je zu erwaehnen,
+       dass es einen Tagesplan gibt. Wer nie einen anlegt, erfaehrt nicht,
+       dass er koennte. */
+    if (!orte.length) {
+      var vorrat = planList().filter(function (p) {
+        return !planTagVon(p.id, tagKennungen());
+      }).length;
+      return '<section class="planheut planheut--leer">'
+        + '<p class="planheut__h"><span class="planheut__t">Heute</span></p>'
+        + '<p class="planheut__f">Für heute ist nichts geplant.'
+        + (vorrat ? ' ' + vorrat + (vorrat === 1 ? ' Ort liegt' : ' Orte liegen')
+            + ' im Vorrat.' : '')
+        + '</p>'
+        + '<button type="button" class="btn btn--wide" id="planheut-los">'
+        + 'Tag planen</button></section>';
+    }
 
     var fertig = orte.filter(function (p) { return S.seen.indexOf(p.id) >= 0; }).length;
     var alles = fertig === orte.length;
@@ -1938,9 +2016,18 @@
       if (S.seen.indexOf(p.id) < 0 && has(p.time_min)) { rest += p.time_min; restN++; }
     });
 
+    /* "Heute", nicht "Dein Plan für heute": seit v35 ist der Tagesplan der
+       Hauptinhalt dieser Ansicht und nicht mehr ein Block ueber einem
+       Vorschlag. Rechts steht, was die Frage beantwortet, mit der man
+       morgens draufschaut -- wie weit bin ich, und wie lange noch. */
     var kopf = '<p class="planheut__h">'
-      + '<span class="planheut__t">' + (alles ? 'Heute erledigt' : 'Dein Plan für heute') + '</span>'
-      + '<span class="planheut__n">' + fertig + ' von ' + orte.length + '</span></p>';
+      + '<span class="planheut__t">' + (alles ? 'Heute erledigt' : 'Heute') + '</span>'
+      + '<span class="planheut__n">' + fertig + ' von ' + orte.length
+      + (restN && !alles ? ' · noch ' + esc(dur(rest)) : '') + '</span></p>'
+      /* Ein Balken sagt in einem Blick, was "2 von 5" erst gelesen werden
+         muss. aria-hidden, weil die Zahl daneben dasselbe schon sagt. */
+      + '<div class="planheut__bar" aria-hidden="true"><i style="width:'
+      + Math.round((fertig / orte.length) * 100) + '%"></i></div>';
 
     var zeilen = orte.map(function (p) {
       var ab = S.seen.indexOf(p.id) >= 0;
@@ -1956,6 +2043,10 @@
         + '<span class="planheut__m">' + esc(catLabel(p.category))
         + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
         + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
+        /* Die Hundregel steht an jeder Station. Was in der Ortsliste gilt,
+           gilt hier erst recht: man liest diesen Block morgens und will
+           nicht fuer jede Station einzeln nachschlagen, ob Jum mit darf. */
+        + (S.jum ? dogKurz(p) : '')
         + (closedToday(p, now) ? ' · <span class="planheut__zu">heute zu</span>' : '')
         + '</span></button>'
         + '</div>';
@@ -1965,12 +2056,17 @@
        das. Die Zeitangabe zaehlt nur die offenen Stationen: die erledigten
        sind schon vorbei, sie in der Restzeit zu fuehren waere schlicht
        falsch. */
+    /* Die Restzeit steht seit v35 oben im Kopf. Hier unten bleibt nur, was
+       sie nicht sagt: dass sie sich auf weniger Stationen stuetzt, als
+       dastehen, oder dass alles erledigt ist. */
+    var offen = orte.length - fertig;
     var fuss = alles
       ? '<p class="planheut__f planheut__f--fertig">' + ICON.check
         + 'Alle ' + orte.length + ' Stationen abgehakt.</p>'
-      : (restN ? '<p class="planheut__f">Noch ' + esc(dur(rest)) + ' eingeplant'
-          + (restN < orte.length - fertig ? ' (' + restN + ' von ' + (orte.length - fertig) + ')' : '')
-          + '</p>' : '');
+      : (restN && restN < offen
+          ? '<p class="planheut__f">Die Restzeit stützt sich auf ' + restN
+            + ' von ' + offen + ' offenen Stationen.</p>'
+          : '');
 
     return '<section class="planheut' + (alles ? ' planheut--fertig' : '') + '">'
       + kopf + '<div class="planheut__l">' + zeilen + '</div>' + fuss + '</section>';
@@ -2001,10 +2097,31 @@
     var others = list.filter(function (p) { return !pick || p.id !== pick.id; });
     var shown = S.moreOpen ? others : others.slice(0, 3);
 
-    var head = '<p class="today__date">' + WEEKDAYS[now.getDay()] + ', ' + now.getDate() + '. '
-      + MONTHS_LONG[now.getMonth()]
-      + (trip ? ' · Tag ' + trip.n + ' von ' + trip.of : '') + '</p>'
-      + '<h2 class="today__now">' + (tomorrow ? 'Morgen früh' : (!chosen && mn.soon ? 'Gleich: ' : '') + m.label)
+    /* Steht fuer heute schon ein Plan, heisst der Vorschlag anders -- er ist
+       dann eine Ergaenzung, keine Antwort auf "was mache ich". */
+    var heuteGeplant = planList().some(function (p) {
+      return S.days[p.id] === isoTag(now);
+    });
+
+    /* Was oben schon steht, darf unten nicht noch einmal kommen.
+
+       Bis v34 zeigte "Sonst noch" den Morgen und "Mittag dann" den Mittag,
+       jeder fuer sich richtig -- nur stand derselbe Ort dann zweimal
+       untereinander im selben Ausschnitt (Spiaggia Lido ai Pioppi am
+       20.09.). Ein Vorschlag, der sich selbst wiederholt, wirkt wie ein
+       Fehler, auch wenn er keiner ist. */
+    var schonDa = {};
+    if (pick) schonDa[pick.id] = true;
+    shown.forEach(function (o) { schonDa[o.id] = true; });
+    planList().forEach(function (o) {
+      /* Was heute im Plan steht, ist oben abgehakt oder wartet dort. Es
+         gehoert nicht zusaetzlich unter "Sonst noch". */
+      if (S.days[o.id] === isoTag(now)) schonDa[o.id] = true;
+    });
+
+    /* Das Datum steht seit v35 in der Kopfleiste -- dort, wo vorher der
+       App-Name stand. Hier faengt die Ansicht mit dem an, was gerade gilt. */
+    var head = '<h2 class="today__now">' + (tomorrow ? 'Morgen früh' : (!chosen && mn.soon ? 'Gleich: ' : '') + m.label)
       + '<span class="today__clock">' + hhmm(mins) + '</span></h2>'
       /* Der eigene Plan vor dem Vorschlag: was man sich vorgenommen hat,
          schlaegt, was die App anbietet. */
@@ -2046,7 +2163,11 @@
     var body;
     if (pick) {
       body = '<div class="today__pick">'
-        + '<p class="today__kicker">' + (tomorrow ? 'Für morgen früh' : m.kicker)
+        /* "Dazu passt jetzt" statt des Abschnittsnamens: der steht schon
+           gross darueber, und was hier zaehlt, ist die Beziehung zum Tag --
+           nicht noch einmal die Uhrzeit. */
+        + '<p class="today__kicker">'
+        + (tomorrow ? 'Für morgen früh' : heuteGeplant ? 'Dazu passt jetzt' : m.kicker)
         + (S.jum ? ' · mit Jum' : '')
         /* "Anderer" lief bis v13 blind durch die Liste: kein Zaehler, kein
            Zurueck. Wer einmal zu weit tippte, fand den Vorschlag nicht wieder. */
@@ -2084,7 +2205,7 @@
               ? 'ein Ort' : jumNeinHeute + ' Orte') + ' mit ausdrücklichem „ohne Jum“ heraus.' : '') + '</p></div>';
     }
 
-    return head + weather + body + aheadHtml(m.id, ref)
+    return head + weather + body + aheadHtml(m.id, ref, schonDa)
       + '<button type="button" class="today__all" id="today-all">'
       + 'Alle ' + D.places.length + ' Orte durchsuchen'
       + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>';
@@ -2092,11 +2213,17 @@
 
   /* Ein Blick nach vorn. Wer um 15:16 auf "Heute" geht, plant oft schon das
      Abendessen — bis v13 musste man dafuer erst den Abschnitt erraten. */
-  function aheadHtml(mid, ref) {
+  function aheadHtml(mid, ref, schonDa) {
     var i = momentIndex(mid);
     if (i >= MOMENTS.length - 1) return '';
     var nx = MOMENTS[i + 1];
-    var list = todayList(nx.id, 0, nx.until, ref);
+    /* Ueberspringt, was in dieser Ansicht schon oben steht. Viele Orte
+       tragen mehrere Abschnitte in moment[]; ohne diese Zeile schlaegt der
+       Ausblick denselben Ort vor, den man zwei Zeilen darueber gerade
+       gelesen hat. */
+    var list = todayList(nx.id, 0, nx.until, ref).filter(function (p) {
+      return !(schonDa && schonDa[p.id]);
+    });
     if (!list.length) return '';
     return '<p class="today__lead">' + esc(nx.label === 'Abend' ? 'Abends dann' : nx.label + ' dann')
       + '</p><div class="today__smalls">' + smallHtml(list[0], ref) + '</div>';
@@ -4011,6 +4138,10 @@
 
     $('today').addEventListener('click', function (e) {
       if (e.target.closest('#today-all')) { setView('orte'); return; }
+      /* Der Weg vom leeren Tagesplan zum Fuellen: dasselbe Sheet, das auch
+         das Reiseraster oeffnet. Kein zweites Bedienmuster fuer dieselbe
+         Sache. */
+      if (e.target.closest('#planheut-los')) { openDaySheet(isoTag(new Date())); return; }
       var seg = e.target.closest('[data-mid]');
       if (seg) {
         S.mid = seg.getAttribute('data-mid');

@@ -81,7 +81,10 @@
     <div class="bar__top" id="bar-top">
       <div class="wrap">
         <div class="bar__row">
-          <h1 class="bar__title"><em>Peschiera</em> kompakt</h1>
+          <!-- Inhalt setzt render() je Ansicht: seit v35 steht hier, wo man
+               ist und was gerade gilt, statt auf allen vier Ansichten
+               derselbe App-Name. -->
+          <h1 class="bar__title" id="bar-title"><em>Peschiera</em> kompakt</h1>
           <button type="button" class="switch" id="jum-btn" role="switch" aria-checked="false">
             <span class="switch__box" aria-hidden="true"><span class="switch__knob"></span></span>
             <span class="switch__lbl">Mit Jum</span>

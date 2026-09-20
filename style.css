@@ -302,10 +302,20 @@ body.is-compact .bar__top {
    der Schalter darunter, was den Kopf eine ganze Zeile hoeher machte. */
 .bar__row { display: flex; align-items: center; gap: .6rem; padding: .3rem 0 .35rem; }
 
-/* min-width:0, damit der Titel bei schmalen Geraeten kuerzen darf. */
+/* min-width:0, damit die Zeile bei schmalen Geraeten kuerzen darf.
+   Seit v35 steht hier nicht mehr der App-Name, sondern die Ansicht: links
+   ihr Name in Fraunces, rechts daneben die Zahl, die gerade gilt (Reisetag,
+   Zeitraum, Ortszahl). Der Name der App stand auf allen vier Ansichten
+   gleich da und kostete auf 402 px ein Sechstel der Kopfhoehe. */
 .bar__title { flex: 1 1 auto; min-width: 0; font-size: var(--t-title); letter-spacing: -.015em;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bar__title em { font-style: normal; color: var(--lake-ink); }
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: baseline; gap: .45rem; }
+.bar__title em { font-style: normal; color: var(--lake-ink); flex: 0 0 auto; }
+.bar__title span {
+  font-family: var(--font-body); font-size: var(--t-meta); font-weight: 500;
+  color: var(--soft); min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
 
 /* Dauerschalter für den Hund. Kein Chip — ein Chip sagt "jetzt gerade",
    ein Schalter sagt "immer", und genau das ist gemeint. */
@@ -1042,6 +1052,28 @@ body.is-typing .tabs { transform: translateY(110%); }
   display: flex; align-items: baseline; gap: .5rem;
   padding: .7rem .9rem .5rem;
 }
+
+/* Ein Balken sagt in einem Blick, was "2 von 5" erst gelesen werden muss.
+   3 px: er ist eine Auskunft am Rande, kein Bedienelement. */
+.planheut__bar {
+  height: 3px; margin: 0 .85rem .55rem; border-radius: 2px;
+  background: var(--line); overflow: hidden;
+}
+.planheut__bar i { display: block; height: 100%; background: var(--verde);
+  border-radius: 2px; }
+
+/* Bis v34 stand hier gar nichts, wenn fuer heute nichts geplant war -- und
+   die Ansicht fing mit einem Vorschlag an, ohne je zu erwaehnen, dass es
+   einen Tagesplan gibt. */
+/* Die Hundmarke an einer Station. Dieselben drei Farben wie in der
+   Ortsliste -- Verde fuer belegt, Gold fuer offen, gedaempft fuer nein. */
+.planheut__dog { font-weight: 500; color: var(--verde-ink); }
+.planheut__dog--offen { color: var(--gold-ink); }
+.planheut__dog--nein { color: var(--soft); }
+
+.planheut--leer { border-left-color: var(--line); border-style: dashed; }
+.planheut--leer .planheut__f { padding-bottom: .2rem; }
+.planheut--leer .btn { margin: 0 .85rem .85rem; width: calc(100% - 1.7rem); }
 .planheut__t { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name); }
 .planheut__n {
   margin-left: auto; font-size: var(--t-meta); color: var(--soft);
