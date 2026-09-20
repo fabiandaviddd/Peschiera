@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Arilica — Konzeptvisualisierungen</title>
+<!--
+  Quelldatei der Konzept-Mockups zu docs/app-relaunch-konzept.md.
+  Gehoert NICHT zur App und ist aus ihr nicht verlinkt -- wie selbsttest.html
+  und koordinaten.html eine Werkstattseite.
+
+  Gerendert mit:  node scripts/make-mockups.mjs
+  Ergebnis:       docs/bilder/konzept/*.png  (402x754 @3x, wie das Zielgeraet)
+
+  Die Schriften kommen aus fonts/ im Repo, die Farbmarken aus style.css --
+  die Bilder liegen damit in derselben Welt wie die App und nicht in einem
+  Designwerkzeug, das niemand nachbauen kann.
+
+  ACHTUNG: Das sind Entwuerfe, keine Bildschirmabzuege der laufenden App.
+  Jedes Bild traegt deshalb eine Fussleiste "Entwurf ... kein Bildschirmabzug".
+  Sie liegt AUSSERHALB der 402x754 -- sie ist eine Bildunterschrift und keine
+  Oberflaeche, wird aber mitfotografiert, damit die Auskunft auch dann
+  mitwandert, wenn ein Bild allein weitergereicht wird.
+
+  Alle Zahlen, Namen, Bewertungen, Gehzeiten und Aufenthaltsdauern stammen
+  aus data/places.json. Die Weg- und Fahrzeiten sind gerechnet: Luftlinie
+  ueber airKmPoint() mal 1,50 (der Umwegfaktor, den scripts/test-logic.mjs
+  aus den 48 gemessenen Fusswegen ermittelt), dann durch 4,5 km/h bzw.
+  15 km/h. Sie tragen deshalb ein "≈". Erfunden ist hier nichts.
+-->
+<style>
+@font-face { font-family:'Fraunces'; font-weight:500 600; font-display:block;
+  src:url('../../../fonts/fraunces-latin.woff2') format('woff2'); }
+@font-face { font-family:'Karla'; font-weight:400 700; font-display:block;
+  src:url('../../../fonts/karla-latin.woff2') format('woff2'); }
+
+:root{
+  --bg:#F4F0E6; --card:#FFFDF7; --ink:#20201C; --soft:#5E594C; --line:#E2DBC8;
+  --lake:#1E5F73; --gold:#B8912A; --brick:#A3462F; --verde:#2F6B5C; --stein:#6B6152;
+  --gold-ink:#7A5E12;
+  --shadow:0 1px 2px rgba(32,32,28,.05), 0 4px 14px rgba(32,32,28,.06);
+  --r:14px; --pill:999px;
+  --head:'Fraunces',Georgia,serif; --body:'Karla',system-ui,sans-serif;
+  --t-display:1.625rem; --t-title:1.25rem; --t-name:1.0625rem;
+  --t-body:.9375rem; --t-meta:.8125rem; --t-micro:.75rem;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#8a8577;font-family:var(--body);display:flex;flex-wrap:wrap;gap:26px;padding:26px}
+/* Huelle: der Rahmen plus eine Fussleiste, die sagt, was das Bild ist.
+   Die Leiste liegt AUSSERHALB der 402x754 -- sie ist keine Oberflaeche,
+   sondern eine Bildunterschrift, und darf deshalb nicht mit der App
+   verwechselt werden. */
+.shot{width:402px;background:#2B2A24}
+.shot__cap{display:flex;align-items:center;gap:8px;padding:7px 12px;
+  font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
+  color:#CFC8B6}
+.shot__cap b{color:#F0E9D6}
+.shot__cap i{width:7px;height:7px;border-radius:50%;background:#B8912A;
+  display:block;flex:0 0 auto}
+
+.frame{
+  width:402px;height:754px;position:relative;overflow:hidden;
+  background:var(--bg);color:var(--ink);font-size:16px;
+  display:flex;flex-direction:column;
+}
+.frame--dark{
+  --bg:#14150F; --card:#1D1E17; --ink:#EFEADD; --soft:#A8A192; --line:#2E2F25;
+  --lake:#6FB3C7; --gold:#E0BC5B; --brick:#E08C72; --verde:#77C0AC; --stein:#A79C86;
+  --gold-ink:#E0BC5B; --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.34);
+}
+
+/* --- Kopf ------------------------------------------------------------- */
+.hd{padding:14px 16px 10px;background:var(--bg);flex:0 0 auto}
+.hd__row{display:flex;align-items:center;gap:8px}
+.hd__day{font-family:var(--body);font-weight:700;font-size:var(--t-micro);
+  letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
+.hd__sp{margin-left:auto;display:flex;align-items:center;gap:6px}
+.jumpill{display:flex;align-items:center;gap:6px;border:1px solid var(--verde);
+  border-radius:var(--pill);padding:4px 10px 4px 6px;font-size:var(--t-micro);
+  font-weight:700;color:var(--verde)}
+.jumpill b{width:16px;height:16px;border-radius:50%;background:var(--verde);display:block}
+.hd__big{font-family:var(--head);font-weight:600;font-size:var(--t-display);
+  line-height:1.1;margin-top:4px;display:flex;align-items:baseline;gap:9px}
+.hd__big small{font-family:var(--body);font-weight:400;font-size:var(--t-body);color:var(--soft)}
+
+/* --- Suchzeile -------------------------------------------------------- */
+.srch{display:flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--pill);padding:10px 14px;
+  color:var(--soft);font-size:var(--t-body)}
+.srch svg{width:17px;height:17px;flex:0 0 auto;fill:none;stroke:var(--soft);stroke-width:2}
+.bar2{display:flex;gap:7px;margin-top:9px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:var(--pill);
+  padding:7px 12px;font-size:var(--t-meta);font-weight:500;color:var(--ink);
+  display:flex;align-items:center;gap:5px;white-space:nowrap}
+.chip--on{background:var(--lake);border-color:var(--lake);color:#fff}
+.chip small{color:var(--soft);font-weight:400}
+.chip--on small{color:rgba(255,255,255,.8)}
+.seg{margin-left:auto;display:flex;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--pill);padding:2px}
+.seg span{font-size:var(--t-meta);font-weight:500;padding:5px 11px;border-radius:var(--pill);color:var(--soft)}
+.seg span.on{background:var(--ink);color:var(--bg)}
+
+/* --- Inhalt ----------------------------------------------------------- */
+.bd{flex:1 1 auto;overflow:hidden;padding:0 16px}
+.bd--flush{padding:0}
+.cnt{font-size:var(--t-meta);color:var(--soft);padding:8px 0 10px;line-height:1.45}
+.cnt b{color:var(--ink);font-weight:700}
+
+/* --- Tagesplan-Karte -------------------------------------------------- */
+.plan{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--lake);
+  border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+.plan__h{display:flex;align-items:baseline;gap:8px;padding:12px 14px 9px}
+.plan__h h2{font-family:var(--head);font-weight:600;font-size:var(--t-name)}
+.plan__h em{margin-left:auto;font-style:normal;font-size:var(--t-meta);color:var(--soft);
+  font-variant-numeric:tabular-nums}
+.prog{height:3px;background:var(--line);margin:0 14px 10px;border-radius:2px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--verde);border-radius:2px}
+.st{display:flex;align-items:center;gap:11px;padding:9px 14px;border-top:1px solid var(--line)}
+.st__box{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);flex:0 0 auto}
+.st__box--on{background:var(--verde);border-color:var(--verde);position:relative}
+.st__box--on:after{content:"";position:absolute;left:7px;top:4px;width:6px;height:11px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg)}
+.st__t{font-family:var(--head);font-weight:600;font-size:var(--t-name);line-height:1.25}
+.st__m{font-size:var(--t-meta);color:var(--soft);margin-top:1px;display:flex;gap:6px;align-items:center}
+.st--done .st__t{text-decoration:line-through;color:var(--soft)}
+.leg{display:flex;align-items:center;gap:10px;padding:0 14px 0 26px;height:26px;
+  font-size:var(--t-micro);color:var(--soft)}
+.leg:before{content:"";width:2px;height:100%;background:var(--line);border-radius:1px;
+  flex:0 0 auto;margin-left:11px}
+.plan__f{padding:10px 14px;border-top:1px solid var(--line);font-size:var(--t-meta);
+  color:var(--soft);line-height:1.45}
+.plan__f b{color:var(--ink);font-weight:700}
+
+/* --- Vorschlagsblock -------------------------------------------------- */
+.sec{font-size:var(--t-micro);font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--soft);padding:12px 0 7px;display:flex;align-items:baseline;gap:7px}
+.sec em{font-style:normal;letter-spacing:0;text-transform:none;font-weight:400;color:var(--soft)}
+.sug{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:13px 14px;border-left:3px solid var(--brick)}
+.sug h3{font-family:var(--head);font-weight:600;font-size:var(--t-title);line-height:1.2}
+.sug .why{font-size:var(--t-meta);color:var(--soft);margin-top:5px;line-height:1.45}
+.sug .why b{color:var(--ink);font-weight:700}
+.acts{display:flex;gap:7px;margin-top:11px}
+.btn{border-radius:var(--pill);padding:9px 14px;font-size:var(--t-meta);font-weight:700;
+  border:1px solid var(--line);background:var(--card);color:var(--ink);white-space:nowrap}
+.btn--p{background:var(--lake);border-color:var(--lake);color:#fff}
+.btn--g{flex:1 1 auto;text-align:center}
+
+/* --- Listenzeile ------------------------------------------------------ */
+.rows{border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;
+  column-gap:10px;padding:10px 16px 11px;background:var(--card);
+  border-bottom:1px solid var(--line);border-left:3px solid var(--accent,var(--line))}
+.row>div{grid-column:1;grid-row:1/3}
+.row h3{font-family:var(--head);font-weight:600;font-size:var(--t-name);line-height:1.2}
+.row .cat{font-size:var(--t-micro);font-weight:700;color:var(--soft);letter-spacing:.04em}
+.row .fx{display:flex;gap:9px;font-size:var(--t-meta);color:var(--soft);
+  margin-top:4px;font-variant-numeric:tabular-nums;align-items:center;flex-wrap:wrap}
+.row .rt{grid-column:2;grid-row:1;align-self:start;font-size:var(--t-meta);font-weight:700;
+  font-variant-numeric:tabular-nums;text-align:right;line-height:1.3}
+.row .rt s{text-decoration:none;color:var(--soft);font-weight:400;font-size:var(--t-micro);display:block}
+.row .dayc{grid-column:2;grid-row:2;justify-self:end;align-self:end}
+.a-brick{--accent:var(--brick)} .a-gold{--accent:var(--gold)}
+.a-verde{--accent:var(--verde)} .a-lake{--accent:var(--lake)} .a-stein{--accent:var(--stein)}
+
+/* Hundzeichen: Form und Zeichen, nie Farbe allein.
+   Vier Zustaende -- belegt ja, belegt nein, offen, von euch bestaetigt. */
+.dog{display:inline-flex;align-items:center;gap:5px;font-size:var(--t-micro);font-weight:700}
+.dog i{width:15px;height:15px;border-radius:5px;flex:0 0 auto;display:grid;
+  place-items:center;font-size:10px;line-height:1;font-style:normal;font-weight:700}
+.dog--ok{color:var(--verde)}   .dog--ok i{background:var(--verde);color:var(--card)}
+.dog--no{color:var(--brick)}   .dog--no i{border:1.5px solid var(--brick);color:var(--brick)}
+.dog--q{color:var(--gold-ink)} .dog--q i{border:1.5px dashed var(--gold-ink);color:var(--gold-ink)}
+.dog--you{color:var(--verde)}  .dog--you i{background:var(--verde);color:var(--card);
+  box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--verde)}
+
+.dayc{border:1px dashed var(--line);border-radius:var(--pill);padding:5px 10px;
+  font-size:var(--t-micro);font-weight:700;color:var(--soft);white-space:nowrap}
+.dayc--on{border-style:solid;border-color:var(--lake);color:var(--lake);
+  background:rgba(30,95,115,.07)}
+
+/* --- Tableiste -------------------------------------------------------- */
+.tb{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--line);background:var(--card);padding:7px 0 13px}
+.tb a{display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:var(--t-micro);font-weight:700;color:var(--soft);position:relative}
+.tb a.on{color:var(--lake)}
+.tb svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.tb .n{position:absolute;top:-4px;left:calc(50% + 7px);background:var(--lake);color:#fff;
+  font-size:10px;min-width:16px;height:16px;border-radius:9px;display:grid;place-items:center;padding:0 4px}
+
+/* --- Karte ------------------------------------------------------------ */
+.map{position:absolute;inset:0;background:#E8E3D3}
+.frame--dark .map{background:#191A14}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);
+  border-radius:20px 20px 0 0;box-shadow:0 -6px 28px rgba(32,32,28,.18);
+  padding:9px 0 0;z-index:20}
+.grip{width:38px;height:4px;background:var(--line);border-radius:3px;margin:0 auto 9px}
+.pin{position:absolute;width:15px;height:15px;border-radius:50%;border:2.5px solid var(--card);
+  transform:translate(-50%,-50%)}
+.pin--cl{width:34px;height:34px;display:grid;place-items:center;color:#fff;font-size:13px;
+  font-weight:700;background:var(--stein)}
+.pin--base{background:#3A342A;width:13px;height:13px}
+.lbl{position:absolute;transform:translate(-50%,0);background:var(--card);
+  border:1px solid var(--line);border-radius:var(--pill);padding:2px 8px;
+  font-size:var(--t-micro);font-weight:700;white-space:nowrap}
+
+/* --- Sheet-Inhalte ---------------------------------------------------- */
+.sh{padding:0 16px 14px}
+.sh__cat{display:inline-block;font-size:var(--t-micro);font-weight:700;color:var(--brick);
+  background:rgba(163,70,47,.10);border-radius:var(--pill);padding:3px 10px}
+.sh h2{font-family:var(--head);font-weight:600;font-size:var(--t-display);line-height:1.12;margin-top:8px}
+.sh .sub{font-size:var(--t-meta);color:var(--soft);margin-top:4px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:13px}
+.tile{background:var(--bg);border-radius:11px;padding:11px 6px;text-align:center}
+.tile b{display:block;font-family:var(--head);font-weight:600;font-size:var(--t-title)}
+.tile span{display:block;font-size:var(--t-micro);color:var(--soft);margin-top:2px}
+.dogbox{margin-top:11px;border-radius:11px;padding:11px 13px;
+  border:1.5px solid var(--verde);background:rgba(47,107,92,.08)}
+.dogbox--q{border:1.5px dashed var(--gold-ink);background:rgba(184,145,42,.09)}
+.dogbox>b{font-size:var(--t-body);font-weight:700;color:var(--verde);display:flex;
+  align-items:center;gap:7px}
+.dogbox p b{color:inherit;font-weight:700}
+.dogbox--q>b{color:var(--gold-ink)}
+.dogbox p{font-size:var(--t-meta);color:var(--soft);margin-top:4px;line-height:1.45}
+.kv{display:grid;grid-template-columns:5.6rem 1fr;gap:5px 10px;margin-top:13px;
+  font-size:var(--t-body)}
+.kv dt{font-size:var(--t-meta);color:var(--soft);font-weight:700}
+
+/* --- Reise ------------------------------------------------------------ */
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:4px 0 14px}
+.gd{border-radius:10px;border:1px solid var(--line);background:var(--card);
+  padding:7px 3px 6px;text-align:center;position:relative}
+.gd u{display:block;text-decoration:none;font-size:var(--t-micro);color:var(--soft);font-weight:700}
+.gd b{display:block;font-family:var(--head);font-weight:600;font-size:var(--t-body);margin-top:1px}
+.gd .n{position:absolute;top:-5px;right:-4px;background:var(--lake);color:#fff;font-size:10px;
+  min-width:16px;height:16px;border-radius:9px;display:grid;place-items:center;font-weight:700}
+.gd--past{opacity:.38}
+.gd--free{border-style:dashed;background:none}
+.gd--today{border-color:var(--lake);border-width:2px}
+.dcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px 14px;margin-bottom:9px;border-left:3px solid var(--lake);box-shadow:var(--shadow)}
+.dcard h3{font-family:var(--head);font-weight:600;font-size:var(--t-name);
+  display:flex;align-items:baseline;gap:7px}
+.dcard h3 em{font-style:normal;margin-left:auto;font-family:var(--body);font-weight:400;
+  font-size:var(--t-meta);color:var(--soft);font-variant-numeric:tabular-nums}
+.dcard ol{list-style:none;margin-top:8px;font-size:var(--t-body)}
+.dcard li{display:flex;gap:8px;align-items:center;padding:3px 0;color:var(--ink)}
+.dcard li>span:last-child:not(.dot){font-size:var(--t-micro);color:var(--soft);
+  margin-left:auto;font-variant-numeric:tabular-nums}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--lake);flex:0 0 auto}
+.dcard--free{border-left-color:var(--line);border-style:dashed}
+.dcard--free p{font-size:var(--t-meta);color:var(--soft);margin-top:4px}
+
+/* --- Wissen ----------------------------------------------------------- */
+.note{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px 14px;margin-bottom:9px;box-shadow:var(--shadow)}
+.note h3{font-family:var(--head);font-weight:600;font-size:var(--t-name)}
+.note p{font-size:var(--t-body);color:var(--soft);margin-top:4px;line-height:1.5}
+.note--sos{border-left:3px solid var(--brick);background:rgba(163,70,47,.06)}
+.note--sos h3{color:var(--brick)}
+.sos{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+
+/* --- Onboarding ------------------------------------------------------- */
+.ob{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;
+  padding:0 26px;text-align:left;gap:18px}
+.ob h1{font-family:var(--head);font-weight:600;font-size:2rem;line-height:1.1}
+.ob p{font-size:var(--t-body);color:var(--soft);line-height:1.55}
+.obrow{display:flex;gap:11px;align-items:center;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.obrow b{font-size:var(--t-body)}
+.obrow small{display:block;font-size:var(--t-meta);color:var(--soft);margin-top:2px}
+.dots{display:flex;gap:6px;justify-content:center;padding:14px 0 6px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--lake);width:20px;border-radius:4px}
+.foot{padding:0 26px 22px;display:flex;gap:9px}
+</style>
+</head>
+<body>
+
+<!-- ==================================================== A · Jetzt ===== -->
+<section class="frame" id="f-jetzt" data-titel="Jetzt">
+  <div class="hd">
+    <div class="hd__row">
+      <span class="hd__day">So 20.09. · Tag 7 von 15</span>
+      <span class="hd__sp"><span class="jumpill"><b></b>Mit Jum</span></span>
+    </div>
+    <div class="hd__big">Vormittag <small>10:12 · 19 °C, sonnig</small></div>
+  </div>
+  <div class="bd">
+    <div class="plan">
+      <div class="plan__h"><h2>Heute</h2><em>1 von 4 · noch 3,9 h</em></div>
+      <div class="prog"><i style="width:25%"></i></div>
+      <div class="st st--done">
+        <span class="st__box st__box--on"></span>
+        <span><span class="st__t">Porta Verona</span>
+        <span class="st__m">Sehen · 10 Min · 9:40 erledigt</span></span>
+      </div>
+      <div class="leg">≈ 5 Min zu Fuß · 350 m</div>
+      <div class="st">
+        <span class="st__box"></span>
+        <span><span class="st__t">Festung Peschiera</span>
+        <span class="st__m">Sehen · 1,5 h · <span class="dog dog--ok"><i>✓</i>Jum ok</span></span></span>
+      </div>
+      <div class="leg">≈ 4 Min zu Fuß · 270 m</div>
+      <div class="st">
+        <span class="st__box"></span>
+        <span><span class="st__t">Museo della Pesca</span>
+        <span class="st__m">Sehen · 45 Min · <span class="dog dog--q"><i>?</i>ungeklärt</span></span></span>
+      </div>
+      <div class="leg">≈ 2 Min zu Fuß · 170 m</div>
+      <div class="st">
+        <span class="st__box"></span>
+        <span><span class="st__t">Osteria sugli Scavi</span>
+        <span class="st__m">Essen · 1,5 h · bis 23:00 · <span class="dog dog--you"><i>✓</i>Jum ok, von euch</span></span></span>
+      </div>
+      <div class="plan__f">0,8 km zwischen den Stationen · <b>23 Min</b> zurück zum Zeltplatz</div>
+    </div>
+
+    <div class="sec">Dazu passt jetzt <em>3 weitere</em></div>
+    <div class="sug">
+      <h3>Pasticceria Pavòn</h3>
+      <p class="why">Café &amp; Bar · 40 Min · <b>≈ 10 Min Umweg</b> ab der Festung.
+        Öffnet 7:00, 4,6 ★ aus 1 204 Stimmen. Hundregel ungeklärt.</p>
+      <div class="acts">
+        <button class="btn btn--p btn--g">In den Tag einfügen</button>
+        <button class="btn">Später</button>
+      </div>
+    </div>
+  </div>
+  <nav class="tb">
+    <a class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>Jetzt</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Entdecken</a>
+    <a><span class="n">4</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Reise</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H12v18H6.5A2.5 2.5 0 014 18.5z"/><path d="M20 5.5A2.5 2.5 0 0017.5 3H12v18h5.5A2.5 2.5 0 0020 18.5z"/></svg>Wissen</a>
+  </nav>
+</section>
+
+<!-- ============================================ B · Jetzt bei Regen ==== -->
+<section class="frame" id="f-regen" data-titel="Jetzt bei Regen">
+  <div class="hd">
+    <div class="hd__row">
+      <span class="hd__day">Di 22.09. · Tag 9 von 15</span>
+      <span class="hd__sp"><span class="jumpill"><b></b>Mit Jum</span></span>
+    </div>
+    <div class="hd__big">Vormittag <small>9:20 · Regen</small></div>
+  </div>
+  <div class="bd">
+    <div class="cnt" style="padding-top:2px">
+      Am Vormittag bleiben <b>7 von 101 Orten</b> im Trockenen. Im Katalog ist
+      bei <b>allen sieben die Hundregel offen</b> — <b>eine habt ihr selbst
+      geklärt</b>. Nichts davon ist ausgeblendet.
+    </div>
+    <div class="sec">Von euch geklärt</div>
+    <div class="rows" style="margin:0 -16px">
+      <article class="row a-gold"><div><h3>Dallazia</h3>
+        <div class="cat">CAFÉ &amp; BAR</div>
+        <div class="fx"><span>20 Min</span>
+          <span class="dog dog--you"><i>✓</i>Jum ok, 18.09.</span></div></div>
+        <div class="rt">4,9<s>(97)</s></div>
+        <span class="dayc dayc--on">Di 22.</span></article>
+    </div>
+    <div class="sec">Hundregel offen <em>ein Anruf klärt es</em></div>
+    <div class="rows" style="margin:0 -16px">
+      <article class="row a-gold"><div><h3>Pasticceria Pavòn</h3>
+        <div class="cat">CAFÉ &amp; BAR · ab 7:00</div>
+        <div class="fx"><span>28 Min</span><span>40 Min</span>
+          <span class="dog dog--q"><i>?</i>ungeklärt</span></div></div>
+        <div class="rt">4,6<s>(1 204)</s></div>
+        <span class="dayc">Anrufen</span></article>
+      <article class="row a-verde"><div><h3>Dom San Martino</h3>
+        <div class="cat">SEHEN</div>
+        <div class="fx"><span>23 Min</span><span>15 Min</span>
+          <span class="dog dog--q"><i>?</i>ungeklärt</span></div></div>
+        <div class="rt"></div>
+        <span class="dayc">+ Tag</span></article>
+      <article class="row a-lake"><div><h3>Cantina Zeni 1870 &amp; Weinmuseum</h3>
+        <div class="cat">AUSFLÜGE · Ohne Termin</div>
+        <div class="fx"><span>1,5 h</span>
+          <span class="dog dog--q"><i>?</i>ungeklärt</span></div></div>
+        <div class="rt"></div>
+        <span class="dayc">Anrufen</span></article>
+    </div>
+    <div class="cnt" style="padding-top:12px">
+      Die übrigen drei liegen weiter weg: BASƎ und Ammazza Caffè in Verona,
+      das Santuario Madonna del Frassino 56 Min zu Fuß.
+    </div>
+  </div>
+  <nav class="tb">
+    <a class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>Jetzt</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Entdecken</a>
+    <a><span class="n">1</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Reise</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H12v18H6.5A2.5 2.5 0 014 18.5z"/><path d="M20 5.5A2.5 2.5 0 0017.5 3H12v18h5.5A2.5 2.5 0 0020 18.5z"/></svg>Wissen</a>
+  </nav>
+</section>
+
+<!-- ============================================ C · Entdecken Liste ==== -->
+<section class="frame" id="f-liste" data-titel="Entdecken, Liste">
+  <div class="hd">
+    <div class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Ort, Adresse, Notiz, Tag</div>
+    <div class="bar2">
+      <span class="chip"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg>Filter</span>
+      <span class="chip chip--on">Essen <small>25</small></span>
+      <span class="seg"><span class="on">Liste</span><span>Karte</span></span>
+    </div>
+  </div>
+  <div class="bd bd--flush">
+    <div class="cnt" style="padding:8px 16px 9px">
+      <b>25 Orte</b> · Essen · nach Entfernung ab dem Zeltplatz ·
+      <b>5 sicher mit Jum</b>, 20 ungeklärt
+    </div>
+    <div class="rows">
+      <article class="row a-brick"><div><h3>Osteria sugli Scavi</h3>
+        <div class="cat">ESSEN · Piazza Ferdinando di Savoia</div>
+        <div class="fx"><span>23 Min</span><span>1,5 h</span><span>bis 23:00</span>
+          <span class="dog dog--you"><i>✓</i>Jum ok</span></div></div>
+        <div class="rt">4,5<s>(859)</s></div>
+        <span class="dayc dayc--on">So 20.</span></article>
+      <article class="row a-brick"><div><h3>La Barcaccia</h3>
+        <div class="cat">ESSEN · Sonnenuntergang</div>
+        <div class="fx"><span>18 Min</span><span>2 h</span><span>bis 22:00</span>
+          <span class="dog dog--q"><i>?</i>ungeklärt</span></div></div>
+        <div class="rt">4,5<s>(1 478)</s></div>
+        <span class="dayc">+ Tag</span></article>
+      <article class="row a-brick"><div><h3>Bella Italia Pesce (BIP)</h3>
+        <div class="cat">ESSEN · Der Abend</div>
+        <div class="fx"><span>22 Min</span><span>2,5 h</span><span>bis 22:30</span>
+          <span class="dog dog--q"><i>?</i>ungeklärt</span></div></div>
+        <div class="rt">4,6<s>(1 015)</s></div>
+        <span class="dayc dayc--on">Do 24.</span></article>
+      <article class="row a-brick"><div><h3>Granchio Blu</h3>
+        <div class="cat">ESSEN · Neu</div>
+        <div class="fx"><span>24 Min</span><span>2 h</span>
+          <span class="dog dog--q"><i>?</i>ungeklärt</span></div></div>
+        <div class="rt">4,6<s>(919)</s></div>
+        <span class="dayc">+ Tag</span></article>
+      <article class="row a-brick"><div><h3>Osteria Rivelin</h3>
+        <div class="cat">ESSEN</div>
+        <div class="fx"><span>26 Min</span><span>2 h</span>
+          <span class="dog dog--ok"><i>✓</i>Jum ok</span></div></div>
+        <div class="rt">4,6<s>(2 699)</s></div>
+        <span class="dayc">+ Tag</span></article>
+      <article class="row a-brick"><div><h3>Cafè Momus</h3>
+        <div class="cat">ESSEN · Rohfisch</div>
+        <div class="fx"><span>26 Min</span><span>2,5 h</span>
+          <span class="dog dog--ok"><i>✓</i>Jum ok</span></div></div>
+        <div class="rt">4,2<s>(856)</s></div>
+        <span class="dayc">+ Tag</span></article>
+    </div>
+  </div>
+  <nav class="tb">
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>Jetzt</a>
+    <a class="on"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Entdecken</a>
+    <a><span class="n">4</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Reise</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H12v18H6.5A2.5 2.5 0 014 18.5z"/><path d="M20 5.5A2.5 2.5 0 0017.5 3H12v18h5.5A2.5 2.5 0 0020 18.5z"/></svg>Wissen</a>
+  </nav>
+</section>
+
+<!-- ============================================ D · Entdecken Karte ==== -->
+<section class="frame" id="f-karte" data-titel="Entdecken, Karte">
+  <div class="map">
+    <svg width="402" height="754" viewBox="0 0 402 754" style="position:absolute;inset:0">
+      <rect width="402" height="754" fill="#E8E3D3"/>
+      <!-- Gardasee -->
+      <path d="M-20 0 H300 C280 60 250 110 232 150 C210 196 190 214 150 226 C104 240 40 232 -20 250 Z"
+            fill="#CDDCE0"/>
+      <!-- Mincio-Kanal -->
+      <path d="M150 226 C160 290 176 340 196 420 C208 470 214 520 210 600"
+            stroke="#CDDCE0" stroke-width="15" fill="none" stroke-linecap="round"/>
+      <!-- Festungs-Fuenfeck -->
+      <path d="M150 232 L206 262 L198 330 L128 344 L98 286 Z"
+            fill="none" stroke="#C9C0A8" stroke-width="8"/>
+      <!-- Strassen -->
+      <g stroke="#DDD6C2" stroke-width="5" fill="none" stroke-linecap="round">
+        <path d="M60 300 H340"/><path d="M40 420 C140 400 250 430 380 405"/>
+        <path d="M262 180 C276 280 268 400 300 540"/><path d="M80 520 H330"/>
+      </g>
+      <text x="62" y="140" font-family="Fraunces" font-size="15" fill="#7C8E93">Lago di Garda</text>
+    </svg>
+    <span class="pin pin--cl" style="left:152px;top:296px">31</span>
+    <span class="pin pin--cl" style="left:246px;top:232px;width:28px;height:28px;font-size:12px">7</span>
+    <span class="pin" style="left:92px;top:404px;background:var(--verde)"></span>
+    <span class="pin" style="left:316px;top:352px;background:var(--brick)"></span>
+    <span class="pin" style="left:212px;top:470px;background:var(--lake)"></span>
+    <span class="pin" style="left:288px;top:520px;background:var(--gold)"></span>
+    <span class="pin pin--base" style="left:186px;top:352px"></span>
+    <span class="lbl" style="left:186px;top:364px">Zeltplatz</span>
+  </div>
+  <div class="hd" style="background:none;position:relative;z-index:30">
+    <div class="srch" style="box-shadow:var(--shadow)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Ort, Adresse, Notiz, Tag</div>
+    <div class="bar2">
+      <span class="chip" style="box-shadow:var(--shadow)">Filter</span>
+      <span class="chip chip--on">Zu Fuß <small>28</small></span>
+      <span class="seg" style="box-shadow:var(--shadow)"><span>Liste</span><span class="on">Karte</span></span>
+    </div>
+  </div>
+  <div style="flex:1 1 auto"></div>
+  <div class="sheet" style="bottom:59px">
+    <div class="grip"></div>
+    <div class="cnt" style="padding:0 16px 8px"><b>28 Orte zu Fuß</b> · 22 im Ausschnitt</div>
+    <div class="rows">
+      <article class="row a-stein" style="padding:10px 16px"><div><h3>Spiaggia — Lido ai Pioppi</h3>
+        <div class="fx"><span>10 Min</span><span>3 h</span>
+          <span class="dog dog--ok"><i>✓</i>Jum ok</span></div></div>
+        <div class="rt">4,2<s>(806)</s></div>
+        <span class="dayc">+ Tag</span></article>
+      <article class="row a-verde" style="padding:10px 16px;border-bottom:none"><div><h3>Uferweg am Mincio</h3>
+        <div class="fx"><span>18 Min</span><span>1 h</span>
+          <span class="dog dog--ok"><i>✓</i>Jum ok</span></div></div>
+        <div class="rt"></div>
+        <span class="dayc">+ Tag</span></article>
+    </div>
+  </div>
+  <nav class="tb" style="position:relative;z-index:40">
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>Jetzt</a>
+    <a class="on"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Entdecken</a>
+    <a><span class="n">4</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Reise</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H12v18H6.5A2.5 2.5 0 014 18.5z"/><path d="M20 5.5A2.5 2.5 0 0017.5 3H12v18h5.5A2.5 2.5 0 0020 18.5z"/></svg>Wissen</a>
+  </nav>
+</section>
+
+<!-- ================================================= E · Ortsdetail ==== -->
+<section class="frame" id="f-ort" data-titel="Ortsansicht">
+  <div style="position:absolute;inset:0;background:var(--bg);opacity:.45"></div>
+  <div style="position:absolute;inset:0;background:rgba(32,32,28,.46)"></div>
+  <div class="sheet" style="top:96px;bottom:0;border-radius:20px 20px 0 0;overflow:hidden">
+    <div class="grip"></div>
+    <div class="sh">
+      <span class="sh__cat">Essen</span>
+      <h2>Osteria sugli Scavi</h2>
+      <p class="sub">4,5 ★ · 859 Bewertungen · Piazza Ferdinando di Savoia 10</p>
+      <div class="tiles">
+        <div class="tile"><b>23 Min</b><span>zu Fuß · 1,7 km</span></div>
+        <div class="tile"><b>1,5 h</b><span>Aufenthalt</span></div>
+        <div class="tile"><b>bis 23:00</b><span>heute offen</span></div>
+      </div>
+      <div class="dogbox">
+        <b><span class="dog dog--you" style="font-size:inherit"><i>✓</i></span>Jum darf mit — von euch bestätigt</b>
+        <p>„Tisch hinten links, Wassernapf kommt von selbst.“ — notiert am 20.09.
+           Diese Angabe überschreibt den Katalog und wird beim Teilen mitgeschickt.</p>
+      </div>
+      <div class="acts" style="margin-top:13px">
+        <button class="btn btn--p btn--g">Route in Karten</button>
+        <button class="btn">Anrufen</button>
+      </div>
+      <div class="acts" style="margin-top:7px">
+        <button class="btn btn--g" style="border-color:var(--lake);color:var(--lake)">Eingeplant: So 20.09. ▾</button>
+        <button class="btn">Erledigt</button>
+      </div>
+      <dl class="kv">
+        <dt>Ab hier</dt><dd>0,7 km Luftlinie · ≈ 14 Min zu Fuß</dd>
+        <dt>Im Tag</dt><dd>Station 4 von 4 · ≈ 2 Min nach Museo della Pesca</dd>
+        <dt>Telefon</dt><dd style="color:var(--lake);text-decoration:underline">+39 340 073 4874</dd>
+      </dl>
+      <p style="font-size:var(--t-body);color:var(--soft);line-height:1.55;margin-top:12px">
+        Hausmannskost und Aperitivo auf dem schönsten Platz. Teilt sich die
+        Adresse mit dem Dom San Martino — beide liegen auf derselben Nadel.</p>
+      <div class="bar2" style="flex-wrap:wrap">
+        <span class="chip">aperitivo</span><span class="chip">regional</span>
+        <span class="chip">piazza</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================== F · Reise ====== -->
+<section class="frame" id="f-reise" data-titel="Reise">
+  <div class="hd">
+    <div class="hd__row"><span class="hd__day">Reise · 14.–28. September 2026</span></div>
+    <div class="hd__big">Fünfzehn Tage <small>4 verplant</small></div>
+  </div>
+  <div class="bd">
+    <div class="grid">
+      <span class="gd gd--past"><u>Mo</u><b>14.</b></span>
+      <span class="gd gd--past"><u>Di</u><b>15.</b></span>
+      <span class="gd gd--past"><u>Mi</u><b>16.</b></span>
+      <span class="gd gd--past"><u>Do</u><b>17.</b></span>
+      <span class="gd gd--past"><u>Fr</u><b>18.</b></span>
+      <span class="gd gd--past"><u>Sa</u><b>19.</b></span>
+      <span class="gd gd--today"><span class="n">4</span><u>So</u><b>20.</b></span>
+      <span class="gd"><span class="n">2</span><u>Mo</u><b>21.</b></span>
+      <span class="gd"><span class="n">1</span><u>Di</u><b>22.</b></span>
+      <span class="gd gd--free"><u>Mi</u><b>23.</b></span>
+      <span class="gd"><span class="n">1</span><u>Do</u><b>24.</b></span>
+      <span class="gd gd--free"><u>Fr</u><b>25.</b></span>
+      <span class="gd gd--free"><u>Sa</u><b>26.</b></span>
+      <span class="gd gd--free"><u>So</u><b>27.</b></span>
+      <span class="gd gd--free"><u>Mo</u><b>28.</b></span>
+    </div>
+    <div class="dcard">
+      <h3>Heute · Sonntag 20.09. <em>4,8 h · 3,9 km</em></h3>
+      <ol>
+        <li><span class="dot"></span>Porta Verona <span>erledigt</span></li>
+        <li><span class="dot"></span>Festung Peschiera <span>1,5 h</span></li>
+        <li><span class="dot"></span>Museo della Pesca <span>45 Min</span></li>
+        <li><span class="dot"></span>Osteria sugli Scavi <span>1,5 h</span></li>
+      </ol>
+    </div>
+    <div class="dcard">
+      <h3>Montag 21.09. <em>6,5 h · Auto</em></h3>
+      <ol>
+        <li><span class="dot"></span>Sirmione <span>4 h</span></li>
+        <li><span class="dot"></span>Grotte di Catullo <span>1,5 h</span></li>
+      </ol>
+    </div>
+    <div class="dcard dcard--free">
+      <h3>Mittwoch 23.09. <em>frei</em></h3>
+      <p>Sechs Orte liegen im Vorrat, zwei davon bei Regen im Trockenen.
+         Der Wochenmarkt Desenzano war gestern.</p>
+    </div>
+  </div>
+  <nav class="tb">
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>Jetzt</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Entdecken</a>
+    <a class="on"><span class="n">4</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Reise</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H12v18H6.5A2.5 2.5 0 014 18.5z"/><path d="M20 5.5A2.5 2.5 0 0017.5 3H12v18h5.5A2.5 2.5 0 0020 18.5z"/></svg>Wissen</a>
+  </nav>
+</section>
+
+<!-- ================================================= G · Tagesdetail === -->
+<section class="frame" id="f-tag" data-titel="Reisetag">
+  <div style="position:absolute;inset:0;background:rgba(32,32,28,.46)"></div>
+  <div class="sheet" style="top:70px;bottom:0;overflow:hidden">
+    <div class="grip"></div>
+    <div class="sh">
+      <span class="sh__cat" style="color:var(--lake);background:rgba(30,95,115,.10)">Reisetag</span>
+      <h2>Mittwoch, 23.09.</h2>
+      <p class="sub">Noch nichts geplant · 5 Tage bis zur Abreise</p>
+
+      <div class="dogbox" style="border-color:var(--lake);background:rgba(30,95,115,.07);margin-top:12px">
+        <b style="color:var(--lake)">Vorschlag: Lugana-Runde mit dem Rad</b>
+        <p>Vier Stationen, <b>6,2 h</b> inklusive Wegen, 19,9 km, größter Sprung
+           5,9 km. Eine liegt bei Regen im Trockenen. Reihenfolge ab Zeltplatz
+           gerechnet, Fahrzeiten geschätzt.</p>
+      </div>
+
+      <div class="dcard" style="margin-top:11px;box-shadow:none">
+        <ol>
+          <li style="font-size:var(--t-micro);color:var(--soft);padding-left:14px">↱ ab Zeltplatz · ≈ 13 Min Rad · 3,2 km</li>
+          <li><span class="dot"></span>Cantina Zenato <span>1,5 h</span></li>
+          <li style="font-size:var(--t-micro);color:var(--soft);padding-left:14px">↳ ≈ 5 Min Rad · 1,3 km</li>
+          <li><span class="dot"></span>Weingut Le Morette <span>1,5 h</span></li>
+          <li style="font-size:var(--t-micro);color:var(--soft);padding-left:14px">↳ ≈ 2 Min Rad · 0,5 km</li>
+          <li><span class="dot"></span>Gelateria Dodo <span>20 Min</span></li>
+          <li style="font-size:var(--t-micro);color:var(--soft);padding-left:14px">↳ ≈ 24 Min Rad · 5,9 km</li>
+          <li><span class="dot"></span>Lungolago di Lugana <span>1,5 h</span></li>
+          <li style="font-size:var(--t-micro);color:var(--soft);padding-left:14px">↳ Rückweg ≈ 36 Min Rad · 9,1 km</li>
+        </ol>
+      </div>
+      <div class="acts" style="margin-top:11px">
+        <button class="btn btn--p btn--g">Als Tagesplan übernehmen</button>
+        <button class="btn">Ändern</button>
+      </div>
+      <div class="sec" style="padding-bottom:5px">Oder selbst wählen</div>
+      <div class="srch" style="background:var(--bg)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Aus allen 101 Orten suchen</div>
+    </div>
+    <div class="rows" style="border-top:none">
+      <article class="row a-lake" style="padding:9px 16px"><div><h3>Borghetto sul Mincio</h3>
+        <div class="fx"><span>14,4 km</span><span>5,5 h</span>
+          <span class="dog dog--ok"><i>✓</i>Jum ok</span></div></div>
+        <div class="rt"></div><span class="dayc">+</span></article>
+      <article class="row a-verde" style="padding:9px 16px"><div><h3>Uferweg Cappuccini – Bergamini</h3>
+        <div class="fx"><span>25 Min</span><span>1,5 h</span>
+          <span class="dog dog--ok"><i>✓</i>Jum ok</span></div></div>
+        <div class="rt"></div><span class="dayc">+</span></article>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================== H · Wissen ====== -->
+<section class="frame" id="f-wissen" data-titel="Wissen">
+  <div class="hd">
+    <div class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Hund, Bus, Notfall, Trinkgeld …</div>
+    <div class="bar2">
+      <span class="chip chip--on">Notfall</span>
+      <span class="chip">Hund</span>
+      <span class="chip">Fahren</span>
+      <span class="chip">Offen <small>18</small></span>
+    </div>
+  </div>
+  <div class="bd">
+    <div class="note note--sos">
+      <h3>Notfall</h3>
+      <p>Einheitlicher Notruf 112. Tierklinik Valerio Catullo, 29 Min zu Fuß,
+         ab 9:00 — Jum darf mit. Zweite Adresse: Ambulatorio San Benedetto.</p>
+      <div class="sos">
+        <button class="btn btn--p">112 anrufen</button>
+        <button class="btn">Tierklinik</button>
+        <button class="btn">Route</button>
+      </div>
+    </div>
+    <div class="note">
+      <h3>Jum im Zug</h3>
+      <p>In der Transportbox (max. 70×30×50 cm) kostenlos und ohne Ticket,
+         ohne Maulkorbpflicht. An der Leine: halber Preis der 2. Klasse,
+         dann Leine und Maulkorb Pflicht.</p>
+    </div>
+    <div class="note">
+      <h3>Leine 1,5 m, Maulkorb dabei</h3>
+      <p>Seit 2013 landesweit vorgeschrieben, Bußgeld bis 150 €.
+         Der Maulkorb muss nur mitgeführt, nicht getragen werden.</p>
+    </div>
+    <div class="note" style="border-left:3px solid var(--gold-ink)">
+      <h3>18 offene Punkte</h3>
+      <p>Davon 9 mit hinterlegter Telefonnummer — ein Tipp wählt.
+         Drei betreffen Orte in eurem Plan.</p>
+    </div>
+  </div>
+  <nav class="tb">
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>Jetzt</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Entdecken</a>
+    <a><span class="n">4</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Reise</a>
+    <a class="on"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H12v18H6.5A2.5 2.5 0 014 18.5z"/><path d="M20 5.5A2.5 2.5 0 0017.5 3H12v18h5.5A2.5 2.5 0 0020 18.5z"/></svg>Wissen</a>
+  </nav>
+</section>
+
+<!-- =============================================== I · Onboarding ====== -->
+<section class="frame" id="f-start" data-titel="Erster Start">
+  <div class="ob">
+    <div>
+      <h1><em style="font-style:normal;color:var(--lake);font-weight:500">Arilica</em></h1>
+      <p style="margin-top:6px">Peschiera del Garda, 14.–28. September 2026.
+         101 Orte, von Hand geprüft. Nichts davon verlässt dein Gerät.</p>
+    </div>
+    <div class="obrow">
+      <span class="dog dog--ok" style="font-size:22px"><i style="width:22px;height:22px;font-size:13px">✓</i></span>
+      <span><b>Jum ist dabei</b><small>Die Hundregel steht an jedem Ort — auch wenn sie offen ist.</small></span>
+    </div>
+    <div class="obrow">
+      <span class="dog dog--q" style="font-size:22px"><i style="width:22px;height:22px;font-size:13px">?</i></span>
+      <span><b>Offen heißt offen, nicht nein</b><small>Bei 58 Orten ist sie ungeklärt. Wir blenden sie nicht aus — ihr klärt sie unterwegs.</small></span>
+    </div>
+    <div class="obrow">
+      <span style="width:20px;height:20px;border:2px solid var(--lake);border-radius:6px;flex:0 0 auto"></span>
+      <span><b>Zwei Telefone, ein Plan</b><small>Ein Link genügt. Beide Seiten behalten, was sie selbst eingetragen haben.</small></span>
+    </div>
+    <div class="dots"><i class="on"></i><i></i><i></i></div>
+  </div>
+  <div class="foot">
+    <button class="btn btn--p btn--g" style="padding:13px">Los geht’s</button>
+  </div>
+</section>
+
+<!-- ============================================ J · Jetzt, dunkel ====== -->
+<section class="frame frame--dark" id="f-dunkel" data-titel="Jetzt, dunkel">
+  <div class="hd">
+    <div class="hd__row">
+      <span class="hd__day">So 20.09. · Tag 7 von 15</span>
+      <span class="hd__sp"><span class="jumpill"><b></b>Mit Jum</span></span>
+    </div>
+    <div class="hd__big">Abend <small>20:40 · 17 °C, klar</small></div>
+  </div>
+  <div class="bd">
+    <div class="plan">
+      <div class="plan__h"><h2>Heute</h2><em>3 von 4 · noch 1,5 h</em></div>
+      <div class="prog"><i style="width:75%"></i></div>
+      <div class="st st--done"><span class="st__box st__box--on"></span>
+        <span><span class="st__t">Porta Verona</span><span class="st__m">9:40 erledigt</span></span></div>
+      <div class="st st--done"><span class="st__box st__box--on"></span>
+        <span><span class="st__t">Festung Peschiera</span><span class="st__m">11:20 erledigt</span></span></div>
+      <div class="st st--done"><span class="st__box st__box--on"></span>
+        <span><span class="st__t">Museo della Pesca</span><span class="st__m">15:05 erledigt</span></span></div>
+      <div class="st"><span class="st__box"></span>
+        <span><span class="st__t">Osteria sugli Scavi</span>
+        <span class="st__m">Essen · 1,5 h · bis 23:00 ·
+          <span class="dog dog--you"><i>✓</i>Jum ok</span></span></span></div>
+      <div class="plan__f">≈ 8 Min zu Fuß von hier · <b>1,15 km zurück zum Zeltplatz</b></div>
+    </div>
+    <div class="sec">Danach</div>
+    <div class="sug" style="border-left-color:var(--gold)">
+      <h3>Pavillon</h3>
+      <p class="why">Café &amp; Bar · 1 h · <b>≈ 4 Min zu Fuß</b> von der Osteria,
+        290 m. 4,0 ★ aus 768 Stimmen. <b>Öffnungszeiten sind nicht hinterlegt</b> —
+        die App rät nicht. Hundregel ungeklärt.</p>
+      <div class="acts">
+        <button class="btn btn--p btn--g">Ans Tagesende hängen</button>
+        <button class="btn">Später</button>
+      </div>
+    </div>
+  </div>
+  <nav class="tb">
+    <a class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>Jetzt</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>Entdecken</a>
+    <a><span class="n">1</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Reise</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H12v18H6.5A2.5 2.5 0 014 18.5z"/><path d="M20 5.5A2.5 2.5 0 0017.5 3H12v18h5.5A2.5 2.5 0 0020 18.5z"/></svg>Wissen</a>
+  </nav>
+</section>
+
+<script>
+/* Jeder Rahmen bekommt eine Fussleiste "Entwurf". Sie steht ausserhalb der
+   402x754 und wird mitfotografiert -- damit traegt jedes einzelne Bild die
+   Auskunft, dass es kein Bildschirmabzug ist, auch wenn es allein weiterwandert. */
+document.querySelectorAll('.frame').forEach(function (f) {
+  var titel = f.dataset.titel || f.id.replace(/^f-/, '');
+  var hülle = document.createElement('div');
+  hülle.className = 'shot';
+  hülle.id = 'shot-' + f.id.replace(/^f-/, '');
+  f.parentNode.insertBefore(hülle, f);
+  hülle.appendChild(f);
+  var cap = document.createElement('div');
+  cap.className = 'shot__cap';
+  cap.innerHTML = '<i></i><b>Entwurf</b> · ' + titel + ' · kein Bildschirmabzug';
+  hülle.appendChild(cap);
+});
+</script>
+</body>
+</html>
