@@ -193,8 +193,15 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   const p = await c.newPage();
   await p.goto(BASE + '/?v=orte', { waitUntil: 'networkidle' });
   await p.waitForSelector('#app:not([hidden])');
-  await p.evaluate(() => localStorage.setItem('pk.saved',
-    JSON.stringify(['desenzano', 'bakare'])));
+  /* Beide auf denselben Tag: die Umstell-Pfeile gibt es seit v33 nur noch im
+     Plan, und in den Plan kommt ein Ort erst mit einem Reisetag. In der
+     Merkliste gibt es keine Reihenfolge, die etwas bedeutet -- dort waeren
+     Pfeile ein Bedienelement ohne Aussage. */
+  await p.evaluate(() => {
+    localStorage.setItem('pk.saved', JSON.stringify(['desenzano', 'bakare']));
+    localStorage.setItem('pk.days',
+      JSON.stringify({ desenzano: '2026-09-21', bakare: '2026-09-21' }));
+  });
   await p.reload({ waitUntil: 'networkidle' });
   await p.waitForSelector('#app:not([hidden])');
   await p.locator('.tab[data-tab="gemerkt"]').click();

@@ -270,8 +270,17 @@ console.log('\nPlan: Luftlinie nur mit echten Koordinaten');
                               body: JSON.stringify(daten) });
       });
     }
+    /* Beide auf denselben Reisetag: die Luftlinien-Warnung gilt Nachbarn
+       EINES Tages -- zwischen dem letzten Ort von Dienstag und dem ersten
+       von Mittwoch liegt eine Nacht, keine Wanderung. Seit v33 stehen
+       Stationen ohne Tag ausserdem in der Merkliste statt im Plan. */
     await pg.addInitScript((list) => {
-      try { localStorage.setItem('pk.saved', JSON.stringify(list)); } catch (e) {}
+      try {
+        localStorage.setItem('pk.saved', JSON.stringify(list));
+        const d = {};
+        list.forEach((id) => { d[id] = '2026-09-21'; });
+        localStorage.setItem('pk.days', JSON.stringify(d));
+      } catch (e) {}
     }, ids);
     await pg.goto(BASE + '/index.html', { waitUntil: 'load' });
     await pg.waitForSelector('#app:not([hidden])');
@@ -306,12 +315,39 @@ ok('Haken ist gesetzt', await page.locator('.seen').first().getAttribute('aria-p
 ok('Karte ist gedämpft', await page.locator('.card').first().evaluate((e) => e.classList.contains('card--seen')));
 
 await goTab('gemerkt');
-/* "Plan" rendert nummerierte Stationen (.planrow), keine Listenzeilen. */
-ok('Plan zeigt eine Station', await page.locator('.planrow').count(), 1);
-ok('die Station ist nummeriert',
-   (await page.locator('.planrow__n').first().textContent()).trim(), '1');
+/* Seit v33 sind Plan und Merkliste zwei Haelften einer Ansicht: der Plan
+   traegt, was einen Reisetag hat, die Merkliste den Vorrat. Frisch gemerkt
+   und ohne Tag landet ein Ort in der Merkliste -- der Plan ist dann leer
+   und sagt das. */
+ok('die Umschaltleiste ist da', await page.locator('.ptabs').count(), 1);
+ok('der leere Plan sagt es',
+   (await page.locator('.planleer h3').textContent()).trim(), 'Noch kein Tag geplant');
+ok('die Merkliste zaehlt den einen Ort', await page.evaluate(() =>
+   +document.querySelector('[data-ptab="merk"] .ptab__n').textContent), 1);
+
+await page.locator('.ptabs [data-ptab="merk"]').click();
+await page.waitForTimeout(350);
+ok('Merkliste zeigt den Ort', await page.locator('.planrow').count(), 1);
+/* Keine Nummer: in der Merkliste gibt es keine Reihenfolge, die etwas
+   bedeutet. Die Nummern stehen im Plan. */
+ok('… ohne Nummer', await page.locator('.planrow__n').count(), 0);
+ok('… und mit einem Tageswaehler', await page.locator('select[data-day]').count(), 1);
 ok('darüber steht das Zeitbudget',
    /Ort|Orte/.test(await page.locator('.plan__sum').textContent()));
+
+/* Mit Tag wandert er in den Plan und bekommt dort seine Nummer. Er
+   verschwindet dabei aus der Merkliste -- genau das ist der Uebergang
+   zwischen den zwei Haelften, und deshalb muss man hinueberwechseln. */
+await page.selectOption('select[data-day]', '2026-09-21');
+await page.waitForTimeout(400);
+ok('die Merkliste ist danach leer',
+   (await page.locator('.planleer h3').textContent()).trim(), 'Alles verplant');
+await page.locator('.ptabs [data-ptab="plan"]').click();
+await page.waitForTimeout(350);
+ok('mit Tag steht er im Plan', await page.locator('.planrow').count(), 1);
+ok('… und ist dort nummeriert',
+   (await page.locator('.planrow__n').first().textContent()).trim(), '1');
+ok('… unter einem Tageskopf', await page.locator('.plantag').count(), 1);
 ok('Teilen-Leiste ist da', await page.locator('#sharebar').isVisible());
 ok('Teilen-Knopf ist sichtbar', await page.locator('#share-btn').isVisible());
 await page.screenshot({ path: OUT + '/04-gemerkt.png' });

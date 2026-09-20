@@ -24,9 +24,24 @@ const mach = () => browser.newContext({
   viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE'
 });
 
+/* Seit v33 sind Plan und Merkliste zwei Haelften einer Ansicht hinter einer
+   Umschaltleiste. Der Reiter landet immer auf "Plan" -- das ist die Antwort
+   auf "was steht an" und damit die richtige Voreinstellung. */
 const zumPlan = async (p) => {
   await p.locator('.tab[data-tab="gemerkt"]').click();
   await p.waitForTimeout(400);
+  /* Auf .ptabs eingegrenzt: data-ptab traegt auch der Knopf im leeren Plan
+     ("Zur Merkliste"), und ein Selektor, der beide trifft, waehlt beim
+     naechsten Zustandswechsel das falsche Element. */
+  if (await p.locator('.ptabs [data-ptab="plan"]:not(.ptab--an)').count()) {
+    await p.locator('.ptabs [data-ptab="plan"]').click();
+    await p.waitForTimeout(350);
+  }
+};
+const zurMerk = async (p) => {
+  await zumPlan(p);
+  await p.locator('.ptabs [data-ptab="merk"]').click();
+  await p.waitForTimeout(350);
 };
 
 /* Orte mit time_min direkt aus den Daten holen. IDs zu raten hiesse, dass die
@@ -49,47 +64,63 @@ await p.reload({ waitUntil: 'networkidle' });
 await p.waitForSelector('#app:not([hidden])');
 await zumPlan(p);
 
-/* --- 1. Ohne Zuordnung sieht der Plan aus wie immer ----------------------- */
-/* Gruppen erscheinen mit der ersten Zuordnung, nicht vorher: wer den Plan nur
-   als Liste nutzt, soll keine leeren Koepfe vorgesetzt bekommen. */
-ok('ohne Zuordnung keine Tageskoepfe', await p.locator('.plantag').count(), 0);
-ok('jede Zeile traegt einen Tageswaehler', await p.locator('select[data-day]').count(), 5);
+/* --- 1. Die zwei Haelften ------------------------------------------------ */
+/* Bis v32 haengte die Merkliste als vierte "Tagesgruppe" unten am Plan. Das
+   las sich wie ein Tag, war aber keiner -- und eine Summenzeile darueber
+   musste beides zugleich beschreiben. Es sind zwei Dinge mit zwei Aufgaben:
+   der Plan sagt, was an welchem Tag ansteht, die Merkliste haelt den Vorrat
+   ohne Tag. Die Mengen sind ueberschneidungsfrei. */
+ok('es gibt eine Umschaltleiste', await p.locator('.ptabs').count(), 1);
+ok('… mit zwei Haelften', await p.locator('.ptab').count(), 2);
+ok('… und der Plan steht vorn', await p.evaluate(() =>
+  document.querySelector('.ptab--an').getAttribute('data-ptab')), 'plan');
+const zaehler = async () => p.evaluate(() =>
+  [...document.querySelectorAll('.ptab')].map((b) => ({
+    was: b.getAttribute('data-ptab'), n: +b.querySelector('.ptab__n').textContent })));
+ok('ohne Zuordnung ist der Plan leer und die Merkliste voll',
+  await zaehler(), [{ was: 'plan', n: 0 }, { was: 'merk', n: 5 }]);
+ok('… und die Summe der beiden ist die Merkliste',
+  (await zaehler()).reduce((a, x) => a + x.n, 0), 5);
 
-const w = await p.evaluate(() => {
-  const s = document.querySelector('.pday select');
-  const r = s.getBoundingClientRect();
-  return {
-    hoch: Math.round(r.height),
-    label: s.getAttribute('aria-label') || '',
-    optionen: s.options.length,
-    erste: s.options[0].textContent,
-    wert: s.value
-  };
-});
-ok('der Waehler ist mindestens 44 px hoch', w.hoch >= 44);
-ok('… und fuer Vorleser beschriftet', /einem Tag zuordnen$/.test(w.label));
-ok('… erste Wahl ist "Tag offen"', w.erste, 'Tag offen');
-ok('… und steht zu Beginn auf offen', w.wert, '');
-/* 14.-28. September = 15 Reisetage, dazu "Tag offen". Die Zahl kommt aus dem
-   Untertitel der Daten, nicht aus einer zweiten Liste im Code. */
-ok('… bietet alle Reisetage plus "Tag offen"', w.optionen, 16);
+/* Der leere Plan sagt, was zu tun ist -- und steht IN der Liste, damit die
+   Umschaltleiste erreichbar bleibt. Ein Leerzustand, der den Weg nach drueben
+   verdeckt, ist eine Sackgasse. */
+ok('der leere Plan nennt seinen Zustand',
+  (await p.locator('.planleer h3').textContent()).trim(), 'Noch kein Tag geplant');
+ok('… und die Umschaltleiste bleibt sichtbar', await p.locator('.ptabs').isVisible());
+ok('… mit einem Weg in die Merkliste',
+  await p.locator('.planleer [data-ptab="merk"]').count(), 1);
+ok('im Plan stehen keine Zeilen', await p.locator('.planrow').count(), 0);
+
+await zurMerk(p);
+ok('in der Merkliste stehen alle fuenf', await p.locator('.planrow').count(), 5);
+ok('jede Zeile traegt einen Tageswaehler', await p.locator('select[data-day]').count(), 5);
+/* Keine Nummer und keine Pfeile: in der Merkliste gibt es keine Reihenfolge,
+   die etwas bedeutet -- Pfeile waeren dort ein Bedienelement ohne Aussage. */
+ok('… aber keine Nummern', await p.locator('.planrow__n').count(), 0);
+ok('… und keine Umstell-Pfeile', await p.locator('.pmove').count(), 0);
+ok('… und kein Reiseplan-Raster', await p.locator('.uebs').count(), 0);
 
 /* --- 2. Zuordnen gruppiert und rechnet ------------------------------------ */
 await p.selectOption(`select[data-day="${orte[0].id}"]`, '2026-09-20');
-await p.waitForTimeout(250);
+await p.waitForTimeout(300);
 await p.selectOption(`select[data-day="${orte[1].id}"]`, '2026-09-20');
-await p.waitForTimeout(250);
+await p.waitForTimeout(300);
 await p.selectOption(`select[data-day="${orte[2].id}"]`, '2026-09-21');
-await p.waitForTimeout(250);
+await p.waitForTimeout(300);
 
-ok('drei Gruppen: zwei Tage und "offen"', await p.locator('.plantag').count(), 3);
-/* "Gem" ist "Gemerkt, noch ohne Tag" -- seit v30 heisst der Rest so. Vorher
-   stand dort "Noch keinem Tag zugeordnet", und das klang nach Restehaufen
-   statt nach dem Vorrat, aus dem man in Tage zieht. */
-ok('die Tage stehen in ihrer Reihenfolge, die Merkliste zuletzt',
+/* Zugeordnet wird in der Merkliste -- der Ort verschwindet dort und taucht
+   im Plan auf. Genau dieser Uebergang ist die Aufgabe der zwei Haelften. */
+ok('die Zaehler wandern mit', await zaehler(), [{ was: 'plan', n: 3 }, { was: 'merk', n: 2 }]);
+ok('die zugeordneten sind aus der Merkliste weg', await p.locator('.planrow').count(), 2);
+
+await zumPlan(p);
+ok('im Plan stehen zwei Tage', await p.locator('.plantag').count(), 2);
+ok('… in ihrer Reihenfolge',
   await p.evaluate(() => [...document.querySelectorAll('.plantag__t')]
     .map((t) => t.textContent.trim().slice(0, 3))),
-  ['Son', 'Mon', 'Gem']);
+  ['Son', 'Mon']);
+ok('… und keine Merkliste dazwischen', await p.locator('.plantag--offen').count(), 0);
 
 /* Die Tagessumme muss aus den Daten kommen. Gegengerechnet wird mit denselben
    Minuten, die oben aus places.json gelesen wurden -- nicht mit dem, was die
@@ -109,9 +140,11 @@ ok('gespeichert unter pk.days', await p.evaluate(() =>
 await p.reload({ waitUntil: 'networkidle' });
 await p.waitForSelector('#app:not([hidden])');
 await zumPlan(p);
-ok('nach dem Neuladen stehen die Gruppen wieder', await p.locator('.plantag').count(), 3);
+ok('nach dem Neuladen stehen die Gruppen wieder', await p.locator('.plantag').count(), 2);
 ok('… und die Waehler zeigen ihren Tag', await p.evaluate((o) =>
   document.querySelector(`select[data-day="${o}"]`).value, orte[0].id), '2026-09-20');
+ok('… und die Zaehler stimmen weiter',
+  await zaehler(), [{ was: 'plan', n: 3 }, { was: 'merk', n: 2 }]);
 
 /* --- 4. Verschieben bleibt in der Gruppe ---------------------------------- */
 /* Seit die Ansicht nach Tagen gruppiert, waere ein globaler Nachbar oft
@@ -129,10 +162,10 @@ ok('die anderen Gruppen bleiben unberuehrt',
 
 const rand = await p.evaluate(() =>
   [...document.querySelectorAll('.pmove')].map((e) => e.disabled));
-/* Zwei Zweier-Gruppen und dazwischen der einzelne Montags-Ort: dessen beide
-   Pfeile sind still, an jeder Gruppengrenze je einer. */
+/* Eine Zweier-Gruppe am Sonntag und ein Einzelner am Montag: an jeder
+   Gruppengrenze ist ein Pfeil still, beim Einzelnen beide. */
 ok('Pfeile enden an der Gruppengrenze, nicht am Listenende',
-  rand, [true, false, false, true, true, true, true, false, false, true]);
+  rand, [true, false, false, true, true, true]);
 
 /* --- 5. Ein ueberfuellter Tag wird genannt, nicht bewertet ---------------- */
 await p.evaluate(() => {
@@ -211,8 +244,13 @@ const link = await p.evaluate(() => {
   await q.locator('#inbox-replace').click();
   await q.waitForTimeout(500);
   await zumPlan(q);
-  ok('alter Link ohne Tage: keine Koepfe', await q.locator('.plantag').count(), 0);
-  ok('… aber alle Orte sind da', await q.locator('.planrow').count(), 5);
+  ok('alter Link ohne Tage: der Plan ist leer', await q.locator('.plantag').count(), 0);
+  ok('… und sagt das auch',
+    (await q.locator('.planleer h3').textContent()).trim(), 'Noch kein Tag geplant');
+  /* Verloren ist nichts: ohne Tag gehoeren sie in die Merkliste, und dort
+     stehen sie vollstaendig. */
+  await zurMerk(q);
+  ok('… aber alle Orte sind in der Merkliste', await q.locator('.planrow').count(), 5);
   await c3.close();
 }
 
@@ -366,10 +404,14 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   await q.waitForSelector('#app:not([hidden])');
   await zumPlan(q);
   ok('ohne Zuordnung kein Reiseplan-Raster', await q.locator('.uebs').count(), 0);
-  /* Dann ist die Merkliste der Plan, und die Gesamtzeit ist eine sinnvolle
-     Aussage: so lange braeuchte man fuer alles. */
-  ok('… und die Summenzeile nennt die Gesamtzeit',
+  /* In der Merkliste ist die Gesamtzeit eine sinnvolle Aussage: so lange
+     braeuchte man fuer alles, was noch keinen Tag hat. Im Plan waere dieselbe
+     Zahl falsch -- sie addierte dort Tage und Vorrat zu einer Stunde, die
+     nirgends vorkommt. */
+  await zurMerk(q);
+  ok('die Merkliste nennt die Gesamtzeit',
     /Aufenthalt/.test(await q.locator('.plan__sum').textContent()));
+  await zumPlan(q);
 
   /* Sieben Orte auf drei Tage. */
   await q.evaluate((ids) => {
@@ -497,28 +539,35 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   /* "20 Orte · 30,8 h Aufenthalt" addierte drei verplante Tage und dreizehn
      unverplante Orte zu einer Stunde, die nirgends vorkommt. */
   const summe = (await q.locator('.plan__sum').textContent()).trim();
-  ok('die Summenzeile zaehlt Verplantes und Uebriges getrennt',
+  ok('die Summenzeile des Plans zaehlt nur den Plan',
     /* Acht statt sieben und vier Tage statt drei: der Mittwoch ist eben
-       dazugekommen, einer der zwei Hinzugefuegten wieder heruntergenommen. */
-    summe, '8 Orte an 4 Tagen · 12 noch ohne Tag');
-  ok('… und nennt keine Gesamtstundenzahl mehr', /Aufenthalt|Weg/.test(summe), false);
+       dazugekommen, einer der zwei Hinzugefuegten wieder heruntergenommen.
+       Seit v33 zaehlt der Plan nur noch sich selbst -- der Vorrat steht
+       drueben und hat seine eigene Zeile. */
+    summe, '8 Orte an 4 Tagen');
+  ok('… und nennt keine Gesamtstundenzahl', /Aufenthalt|Weg/.test(summe), false);
 
-  /* --- 15. Die Merkliste heisst Merkliste -------------------------------- */
-  const offenKopf = await q.evaluate(() => {
-    const k = document.querySelector('.plantag--offen');
-    return { t: k.querySelector('.plantag__t').textContent.trim(),
-      n: k.querySelector('.plantag__sum').textContent.trim() };
-  });
-  ok('der Rest heisst nicht mehr "noch keinem Tag zugeordnet"',
-    offenKopf.t, 'Gemerkt, noch ohne Tag');
-  ok('… mit seiner Zahl', offenKopf.n, '12');
-  ok('… und einem Hinweis, wie man daraus einen Tag macht',
+  /* --- 15. Die Merkliste ist eine eigene Haelfte ------------------------- */
+  /* Bis v32 hing sie als vierte "Tagesgruppe" namens "Gemerkt, noch ohne Tag"
+     unten am Plan -- sie las sich wie ein Tag und war keiner. */
+  ok('im Plan haengt keine Merklisten-Gruppe mehr',
+    await q.locator('.plantag--offen').count(), 0);
+
+  await zurMerk(q);
+  const merkSum = (await q.locator('.plan__sum').textContent()).trim();
+  ok('die Merkliste zaehlt sich selbst', /^12 Orte ohne Tag/.test(merkSum));
+  ok('… und nennt ihre Gesamtzeit', /Aufenthalt/.test(merkSum));
+  ok('… mit einem Hinweis, wie daraus ein Tag wird',
     /Tag-Wähler/.test(await q.locator('.plan__hint').textContent()));
+  ok('… und zeigt genau die Orte ohne Tag',
+    await q.locator('.planrow').count(), 12);
 
-  /* Die Leiste oben zaehlt Gemerktes, nicht Verplantes -- vorher standen
-     "20 im Plan" und "7 Orte an 3 Tagen" widersprechend uebereinander. */
-  ok('die Teilen-Leiste zaehlt ehrlich',
-    (await q.locator('#sharebar-t').textContent()).trim(), '20 gemerkt · 0 gesehen');
+  /* Die Leiste oben nennt beide Zahlen: "20 gemerkt" allein sagte nicht, wie
+     viel davon schon einen Tag hat -- und genau das ist die Frage, die diese
+     Ansicht beantwortet. */
+  ok('die Teilen-Leiste zaehlt beide Haelften',
+    (await q.locator('#sharebar-t').textContent()).trim(),
+    '8 verplant · 12 ohne Tag · 0 gesehen');
 
   ok('keine JS-Fehler in der Uebersicht', errs4.length ? errs4.join(' | ') : 0, 0);
   await c4.close();
@@ -565,11 +614,13 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   }, zwanzig);
   await q.reload({ waitUntil: 'networkidle' });
   await q.waitForSelector('#app:not([hidden])');
-  await zumPlan(q);
-  /* Ohne Zuordnung gibt es kein Raster -- also ueber den Tageswaehler einen
-     Tag belegen und wieder freigeben, damit das Raster erscheint. */
+  /* Ohne Zuordnung gibt es kein Raster -- also erst in der Merkliste einen
+     Ort belegen, damit der Plan eines bekommt. Seit v33 stehen die
+     Tageswaehler drueben in der Merkliste, nicht im leeren Plan. */
+  await zurMerk(q);
   await q.selectOption(`select[data-day="${zwanzig[0]}"]`, '2026-09-21');
   await q.waitForTimeout(350);
+  await zumPlan(q);
   await q.locator('[data-dayopen="2026-09-23"]').click();
   await q.waitForTimeout(600);
 

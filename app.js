@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v32 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v33 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -38,6 +38,10 @@
     /* Welcher Reisetag gerade als Sheet offen ist. Nur fuer die Dauer des
        Sheets -- nichts, was den Neustart ueberlebt. */
     dayOpen: null,
+    /* Plan oder Merkliste. Bewusst nicht gespeichert: der Plan ist die
+       Antwort auf "was steht an", und damit die richtige Voreinstellung,
+       wann immer man die Ansicht neu betritt. */
+    planTab: 'plan',
     wet: false,             // vom Benutzer gesagt, nicht abgerufen
     pick: 0,                // welcher Vorschlag gerade dran ist
     mid: null,              // gewaehlter Tagesabschnitt; null = aus der Uhr
@@ -1080,15 +1084,19 @@
         $('list').hidden = true;
         $('list').innerHTML = ''; $('list').setAttribute('data-voll', '1');
         $('empty').hidden = false;
-        $('empty-h').textContent = 'Noch nichts im Plan';
-        $('empty-p').textContent = 'Auf einer Zeile den Stern antippen — der Plan bleibt auch offline erhalten, '
-          + 'lässt sich den Reisetagen zuordnen und in der Reihenfolge umstellen.';
+        $('empty-h').textContent = 'Noch nichts gemerkt';
+        $('empty-p').textContent = 'In „Orte“ auf einer Zeile den Stern antippen. Gemerktes landet '
+          + 'in der Merkliste; von dort bekommt es einen Reisetag und wandert in den Plan. '
+          + 'Beides bleibt auch offline erhalten.';
         $('empty-reset').hidden = true;
         return;
       }
       $('empty').hidden = true;
       $('list').hidden = false;
-      $('list').innerHTML = planHtml();
+      var gPlan = tagKennungen();
+      var nPlan = plan.filter(function (p) { return planTagVon(p.id, gPlan); }).length;
+      $('list').innerHTML = planTabsHtml(nPlan, plan.length - nPlan)
+        + (S.planTab === 'merk' ? merkHtml() : planHtml());
       $('list').setAttribute('data-voll', '1');
       return;
     }
@@ -3107,105 +3115,120 @@
     showSheet(daySheetHtml(iso), 'sheet--tag');
   }
 
-  function planHtml() {
-    var list = planList();
-    if (!list.length) return '';
+  /* ------------------------------------------- Plan und Merkliste getrennt
 
-    var stay = 0, walk = 0, stayN = 0, walkN = 0;
-    list.forEach(function (p) {
-      if (has(p.time_min)) { stay += p.time_min; stayN++; }
-      if (has(p.walk_min)) { walk += p.walk_min; walkN++; }
+     Bis v32 teilten sich zwei verschiedene Dinge einen Bildschirm: unten am
+     Plan haengte die Merkliste als vierte "Tagesgruppe" namens "Gemerkt,
+     noch ohne Tag". Das las sich wie ein Tag, war aber keiner -- und eine
+     Summenzeile darueber musste beides zugleich beschreiben.
+
+     Es sind zwei Dinge mit zwei Aufgaben:
+       Plan      -- der Fahrplan. Was an welchem Tag ansteht.
+       Merkliste -- der Vorrat. Was noch keinen Tag hat.
+
+     Die Mengen sind ueberschneidungsfrei: ein Ort ist entweder verplant oder
+     im Vorrat, und ihn zu verplanen ist genau der Uebergang. Deshalb zaehlt
+     die Umschaltleiste beide, und die Summe der zwei Zahlen ist die Zahl der
+     gemerkten Orte.
+
+     Kein fuenfter Reiter: die Leiste unten traegt vier, bei fuenf bleiben je
+     80 px, und "Plan" und "Merkliste" gehoeren ohnehin zusammen -- man geht
+     zwischen ihnen hin und her, nicht von woanders zu einem von beiden. */
+  function planTabsHtml(nPlan, nMerk) {
+    var ist = function (v) { return S.planTab === v; };
+    var knopf = function (v, label, n) {
+      return '<button type="button" class="ptab' + (ist(v) ? ' ptab--an' : '') + '"'
+        + ' data-ptab="' + v + '" aria-pressed="' + (ist(v) ? 'true' : 'false') + '">'
+        + label + '<span class="ptab__n">' + n + '</span></button>';
+    };
+    return '<div class="ptabs" role="group" aria-label="Plan oder Merkliste">'
+      + knopf('plan', 'Plan', nPlan) + knopf('merk', 'Merkliste', nMerk) + '</div>';
+  }
+
+  /* Der Waehler je Zeile. Ein natives select, kein eigenes Menue: auf dem
+     Zielgeraet oeffnet iOS sein Waehlrad — vertraut, treffsicher, ohne
+     eine Zeile eigenen Menue-Codes, den close.mjs dann absichern muesste. */
+  function tagWaehler(p, tag) {
+    var heute = isoTag(new Date());
+    var o = '<option value=""' + (tag ? '' : ' selected') + '>Tag offen</option>';
+    tripTage().forEach(function (t) {
+      o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '') + '>'
+        + t.kurz + (t.iso === heute ? ' · heute' : '') + '</option>';
     });
+    return '<span class="pday' + (tag ? ' pday--zu' : '') + '">'
+      + '<select data-day="' + esc(p.id) + '" aria-label="' + esc(p.name) + ' einem Tag zuordnen">'
+      + o + '</select></span>';
+  }
 
-    /* Die Summe sagt dazu, worauf sie sich stuetzt — sonst liest sie sich
-       als Gesamtzeit, obwohl Orte ohne Wert fehlen. */
+  /* Eine Zeile. pos/gruppe nur im Plan: dort traegt sie eine Nummer und die
+     Umstell-Pfeile. In der Merkliste gibt es keine Reihenfolge, die etwas
+     bedeutet -- Pfeile waeren dort ein Bedienelement ohne Aussage. */
+  function planZeile(p, gueltig, pos, gruppe) {
+    var seen = S.seen.indexOf(p.id) >= 0;
+    var imPlan = pos !== undefined;
+    return '<div class="planrow' + (seen ? ' planrow--seen' : '')
+      + (imPlan ? '' : ' planrow--merk') + ' ' + accentClass(p.category) + '">'
+      + (imPlan ? '<span class="planrow__n">' + (pos + 1) + '</span>' : '')
+      + '<span class="planrow__mid">'
+      + '<button type="button" class="planrow__open" data-open="' + esc(p.id) + '">'
+      + '<span class="planrow__name">' + esc(p.name) + '</span>'
+      + '<span class="planrow__m">' + esc(catLabel(p.category))
+      + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
+      + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
+      + (seen ? ' · gesehen' : '') + '</span></button>'
+      + tagWaehler(p, planTagVon(p.id, gueltig))
+      + '</span>'
+      + (imPlan
+          ? '<span class="planrow__move">'
+            + '<button type="button" class="pmove" data-up="' + esc(p.id) + '"'
+            + (pos === 0 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach oben">'
+            + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>'
+            + '<button type="button" class="pmove" data-down="' + esc(p.id) + '"'
+            + (pos === gruppe.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach unten">'
+            + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg></button>'
+            + '</span>'
+          : '')
+      + '</div>';
+  }
+
+  function tagGruppeHtml(orte, gueltig) {
+    return orte.map(function (p, i) {
+      var h = planZeile(p, gueltig, i, orte);
+      /* Die Warnung gilt Nachbarn DESSELBEN Tages — zwischen dem letzten
+         Ort von Dienstag und dem ersten von Mittwoch liegt eine Nacht,
+         keine Wanderung. */
+      var d = airKm(p, orte[i + 1]);
+      if (d !== null && d >= PLAN_FAR) {
+        h += '<p class="plan__far">' + ICON.warn + 'Zwischen ' + (i + 1) + ' und ' + (i + 2)
+          + ' liegen ' + esc(km(d)) + ' Luftlinie.</p>';
+      }
+      return h;
+    }).join('');
+  }
+
+  /* --- Der Plan: was an welchem Tag ansteht ------------------------------ */
+  function planHtml() {
     var gueltig = tagKennungen();
     var tage = tripTage();
     var heute = isoTag(new Date());
+    var zu = planList().filter(function (p) { return planTagVon(p.id, gueltig); });
 
-    /* Der Waehler je Zeile. Ein natives select, kein eigenes Menue: auf dem
-       Zielgeraet oeffnet iOS sein Waehlrad — vertraut, treffsicher, ohne
-       eine Zeile eigenen Menue-Codes, den close.mjs dann absichern muesste. */
-    function waehler(p, tag) {
-      var o = '<option value=""' + (tag ? '' : ' selected') + '>Tag offen</option>';
-      tage.forEach(function (t) {
-        o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '') + '>'
-          + t.kurz + (t.iso === heute ? ' · heute' : '') + '</option>';
-      });
-      return '<span class="pday' + (tag ? ' pday--zu' : '') + '">'
-        + '<select data-day="' + esc(p.id) + '" aria-label="' + esc(p.name) + ' einem Tag zuordnen">'
-        + o + '</select></span>';
-    }
-
-    function zeile(p, pos, gruppe) {
-      var seen = S.seen.indexOf(p.id) >= 0;
-      return '<div class="planrow' + (seen ? ' planrow--seen' : '') + ' ' + accentClass(p.category) + '">'
-        + '<span class="planrow__n">' + (pos + 1) + '</span>'
-        + '<span class="planrow__mid">'
-        + '<button type="button" class="planrow__open" data-open="' + esc(p.id) + '">'
-        + '<span class="planrow__name">' + esc(p.name) + '</span>'
-        + '<span class="planrow__m">' + esc(catLabel(p.category))
-        + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
-        + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
-        + (seen ? ' · gesehen' : '') + '</span></button>'
-        + waehler(p, planTagVon(p.id, gueltig))
-        + '</span>'
-        + '<span class="planrow__move">'
-        + '<button type="button" class="pmove" data-up="' + esc(p.id) + '"'
-        + (pos === 0 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach oben">'
-        + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>'
-        + '<button type="button" class="pmove" data-down="' + esc(p.id) + '"'
-        + (pos === gruppe.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach unten">'
-        + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg></button>'
-        + '</span></div>';
-    }
-
-    function gruppeHtml(orte) {
-      return orte.map(function (p, i) {
-        var h = zeile(p, i, orte);
-        /* Die Warnung gilt Nachbarn DESSELBEN Tages — zwischen dem letzten
-           Ort von Dienstag und dem ersten von Mittwoch liegt eine Nacht,
-           keine Wanderung. */
-        var d = airKm(p, orte[i + 1]);
-        if (d !== null && d >= PLAN_FAR) {
-          h += '<p class="plan__far">' + ICON.warn + 'Zwischen ' + (i + 1) + ' und ' + (i + 2)
-            + ' liegen ' + esc(km(d)) + ' Luftlinie.</p>';
-        }
-        return h;
-      }).join('');
-    }
-
-    var zu = list.filter(function (p) { return planTagVon(p.id, gueltig); });
-    var offen = list.filter(function (p) { return !planTagVon(p.id, gueltig); });
-
-    /* Die Summenzeile. Ohne Zuordnung ist die Merkliste der Plan, und "20
-       Orte, 30,8 h Aufenthalt" ist dann eine sinnvolle Aussage: so lange
-       braeuchte man fuer alles. Sobald Tage im Spiel sind, ist dieselbe Zahl
-       falsch -- sie addiert drei verplante Tage und dreizehn unverplante
-       Orte zu einer Stunde, die nirgends vorkommt. Dann sagt die Zeile
-       stattdessen, wie viel verplant ist und wie viel noch daneben liegt;
-       die Zeit je Tag steht ohnehin an jedem Tageskopf. */
-    var sum;
     if (!zu.length) {
-      sum = '<p class="plan__sum">' + list.length + (list.length === 1 ? ' Ort' : ' Orte')
-        + (stayN ? ' · ' + esc(dur(stay)) + ' Aufenthalt'
-            + (stayN < list.length ? ' (' + stayN + ' von ' + list.length + ')' : '') : '')
-        + (walkN ? ' · ' + esc(dur(walk)) + ' Weg'
-            + (walkN < list.length ? ' (' + walkN + ' von ' + list.length + ')' : '') : '')
-        + '</p>';
-    } else {
-      var tageMitOrt = {};
-      zu.forEach(function (p) { tageMitOrt[planTagVon(p.id, gueltig)] = true; });
-      var nTage = Object.keys(tageMitOrt).length;
-      sum = '<p class="plan__sum">' + zu.length + (zu.length === 1 ? ' Ort' : ' Orte')
-        + ' an ' + nTage + (nTage === 1 ? ' Tag' : ' Tagen')
-        + (offen.length ? ' · ' + offen.length + ' noch ohne Tag' : '')
-        + '</p>';
+      /* Der Leerzustand steht IN der Liste, nicht im globalen #empty: sonst
+         verschwaende die Umschaltleiste, und man kaeme nicht mehr in die
+         Merkliste, aus der man planen will. */
+      return '<div class="planleer"><h3>Noch kein Tag geplant</h3>'
+        + '<p>In der Merkliste bekommt ein Ort über den Tag-Wähler seinen '
+        + 'Reisetag — oder du tippst oben im Plan direkt auf einen Tag.</p>'
+        + '<button type="button" class="btn btn--primary" data-ptab="merk">'
+        + 'Zur Merkliste</button></div>';
     }
 
-    /* Solange nichts zugeordnet ist, sieht der Plan aus wie immer — eine
-       Liste ohne Koepfe. Gruppen erscheinen mit der ersten Zuordnung. */
-    if (!zu.length) return sum + '<div class="plan">' + gruppeHtml(offen) + '</div>';
+    var tageMitOrt = {};
+    zu.forEach(function (p) { tageMitOrt[planTagVon(p.id, gueltig)] = true; });
+    var nTage = Object.keys(tageMitOrt).length;
+    var sum = '<p class="plan__sum">' + zu.length + (zu.length === 1 ? ' Ort' : ' Orte')
+      + ' an ' + nTage + (nTage === 1 ? ' Tag' : ' Tagen') + '</p>';
 
     var h = uebersichtHtml(gueltig, heute) + sum + '<div class="plan">';
     tage.forEach(function (t) {
@@ -3228,20 +3251,41 @@
             + (minN < orte.length ? ' (' + minN + ' von ' + orte.length + ')' : '')
             + (voll ? ' — mehr als 10 h' : '') + '</span>' : '')
         + '</div>'
-        + gruppeHtml(orte);
+        + tagGruppeHtml(orte, gueltig);
     });
-    if (offen.length) {
-      /* "Noch keinem Tag zugeordnet" klang nach Restehaufen. Es ist die
-         Merkliste: der Vorrat, aus dem man in Tage zieht. Der Zusatz sagt,
-         wie -- der Waehler an jeder Zeile ist sonst leicht zu uebersehen. */
-      h += '<div class="plantag plantag--offen">'
-        + '<span class="plantag__t">Gemerkt, noch ohne Tag</span>'
-        + '<span class="plantag__sum">' + offen.length + '</span></div>'
-        + '<p class="plan__hint">Über den Tag-Wähler an einer Zeile wandert '
-        + 'ein Ort in einen Reisetag.</p>'
-        + gruppeHtml(offen);
-    }
     return h + '</div>';
+  }
+
+  /* --- Die Merkliste: der Vorrat ohne Tag -------------------------------- */
+  function merkHtml() {
+    var gueltig = tagKennungen();
+    var offen = planList().filter(function (p) { return !planTagVon(p.id, gueltig); });
+
+    if (!offen.length) {
+      return '<div class="planleer"><h3>Alles verplant</h3>'
+        + '<p>Jeder gemerkte Ort hat einen Reisetag. Neue kommen über den '
+        + 'Stern in „Orte“ dazu.</p>'
+        + '<button type="button" class="btn btn--primary" id="merk-orte">'
+        + 'Orte durchsuchen</button></div>';
+    }
+
+    /* Hier ist die Gesamtzeit eine sinnvolle Aussage: so lange braeuchte man
+       fuer alles, was noch keinen Tag hat. Im Plan waere dieselbe Zahl
+       falsch -- sie addierte dort Tage und Vorrat zu einer Stunde, die
+       nirgends vorkommt. */
+    var stay = 0, stayN = 0;
+    offen.forEach(function (p) { if (has(p.time_min)) { stay += p.time_min; stayN++; } });
+
+    return '<p class="plan__sum">' + offen.length + (offen.length === 1 ? ' Ort' : ' Orte')
+      + ' ohne Tag'
+      + (stayN ? ' · ' + esc(dur(stay)) + ' Aufenthalt'
+          + (stayN < offen.length ? ' (' + stayN + ' von ' + offen.length + ')' : '') : '')
+      + '</p>'
+      + '<p class="plan__hint plan__hint--frei">Über den Tag-Wähler an einer Zeile '
+      + 'wandert ein Ort in den Plan.</p>'
+      + '<div class="plan">' + offen.map(function (p) {
+          return planZeile(p, gueltig);
+        }).join('') + '</div>';
   }
 
   function renderShareBar() {
@@ -3249,12 +3293,14 @@
     if (S.view !== 'gemerkt') { bar.hidden = true; return; }
     bar.hidden = false;
     var n = S.saved.length, g = S.seen.length;
-    /* "20 im Plan" stand hier, waehrend die Summenzeile darunter "7 Orte an
-       3 Tagen" sagte -- zwei Zahlen fuer dieselbe Ansicht, die sich
-       widersprechen. Die Leiste zaehlt, was gemerkt ist; verplant ist eine
-       Teilmenge davon, und die steht eine Zeile tiefer. */
+    /* Seit v33 sind Plan und Merkliste zwei Dinge, also nennt die Leiste
+       beide Zahlen. "20 gemerkt" allein sagte nicht, wie viel davon schon
+       einen Tag hat -- und genau das ist die Frage, die diese Ansicht
+       beantwortet. Die zwei Zahlen ergeben zusammen die Merkliste. */
+    var gPlan = tagKennungen();
+    var verplant = S.saved.filter(function (id) { return planTagVon(id, gPlan); }).length;
     $('sharebar-t').textContent = n || g
-      ? n + ' gemerkt · ' + g + ' gesehen'
+      ? verplant + ' verplant · ' + (n - verplant) + ' ohne Tag · ' + g + ' gesehen'
       : 'Noch nichts markiert';
     var btn = $('share-btn');
     btn.hidden = !(n || g);
@@ -3435,7 +3481,21 @@
 
     $('list').addEventListener('click', function (e) {
       var zelle = e.target.closest('[data-dayopen]');
-      if (zelle) openDaySheet(zelle.getAttribute('data-dayopen'));
+      if (zelle) { openDaySheet(zelle.getAttribute('data-dayopen')); return; }
+
+      var um = e.target.closest('[data-ptab]');
+      if (um) {
+        S.planTab = um.getAttribute('data-ptab');
+        render();
+        window.scrollTo(0, 0);
+        /* Fokus auf den jetzt aktiven Knopf: nach dem Neubau ist das alte
+           Element weg, und ohne das faellt der Fokus an den Seitenanfang. */
+        var neu = $('list').querySelector('[data-ptab="' + S.planTab + '"]');
+        if (neu) { try { neu.focus({ preventScroll: true }); } catch (err) { /* egal */ } }
+        return;
+      }
+
+      if (e.target.closest('#merk-orte')) { setView('orte'); return; }
     });
 
     $('list').addEventListener('change', function (e) {

@@ -390,11 +390,50 @@ Die Seite gehört nicht zur App, ist aus ihr nicht verlinkt und stört nichts.
   ist seit `v28` gebaut (siehe „Plan"); was noch fehlt, ist das automatische
   Legen einer sinnvollen Reihenfolge innerhalb eines Tages.
 
-## Plan
+## Plan und Merkliste
 
-Der Plan war bis `v27` eine Liste, die man nur umsortieren konnte — für
-vierzehn Tage Reise ist das kein Plan, sondern ein Stapel. Seit `v28` gehört
-jeder gemerkte Ort **einem Reisetag**.
+**Es sind zwei Dinge mit zwei Aufgaben** — seit `v33` auch in der Oberfläche:
+
+| | |
+|---|---|
+| **Plan** | Der Fahrplan. Was an welchem Tag ansteht. |
+| **Merkliste** | Der Vorrat. Was noch keinen Tag hat. |
+
+Bis `v32` teilten sie sich einen Bildschirm: unten am Plan hing die Merkliste
+als vierte „Tagesgruppe" namens *Gemerkt, noch ohne Tag*. Das las sich wie ein
+Tag, war aber keiner — und eine Summenzeile darüber musste beides zugleich
+beschreiben.
+
+Jetzt liegen sie hinter einer **Umschaltleiste** oben in der Ansicht, jede mit
+ihrer Zahl. Die Mengen sind **überschneidungsfrei**: ein Ort ist entweder
+verplant oder im Vorrat, und ihn zu verplanen ist genau der Übergang. Die
+Summe der beiden Zahlen ist die Merkliste.
+
+- **Kein fünfter Reiter.** Die Leiste unten trägt vier; bei fünf blieben je
+  80 px. Und „Plan" und „Merkliste" gehören zusammen — man geht zwischen
+  ihnen hin und her, nicht von woanders zu einem von beiden.
+- **Merklisten-Zeilen haben keine Nummer und keine Pfeile.** Dort gibt es
+  keine Reihenfolge, die etwas bedeutet; Pfeile wären ein Bedienelement ohne
+  Aussage. Den Tag-Wähler haben sie, das ist der Weg in den Plan.
+- **Die Leerzustände stehen *in* der Liste**, nicht im globalen `#empty` —
+  sonst verschwände die Umschaltleiste, und man käme nicht mehr dorthin, wo
+  etwas zu tun ist. Ein Leerzustand, der den Weg verdeckt, ist eine Sackgasse.
+- **Die Gesamtzeit steht nur in der Merkliste.** Dort ist sie eine sinnvolle
+  Aussage („so lange bräuchtest du für alles, was noch keinen Tag hat"); im
+  Plan addierte dieselbe Zahl Tage und Vorrat zu einer Stunde, die nirgends
+  vorkommt. Die Zeit je Tag steht am Tageskopf.
+- **Die Teilen-Leiste nennt beide Zahlen** („8 verplant · 12 ohne Tag · 0
+  gesehen"). „20 gemerkt" allein sagte nicht, wie viel davon schon einen Tag
+  hat — und genau das ist die Frage, die diese Ansicht beantwortet.
+- **Welche Hälfte offen ist, wird nicht gespeichert.** Der Plan ist die
+  Antwort auf „was steht an" und damit die richtige Voreinstellung, wann
+  immer man die Ansicht neu betritt.
+
+### Der Plan
+
+Bis `v27` eine Liste, die man nur umsortieren konnte — für vierzehn Tage Reise
+ist das kein Plan, sondern ein Stapel. Seit `v28` gehört jeder gemerkte Ort
+**einem Reisetag**.
 
 - **Ein Tageswähler je Zeile.** Ein natives `<select>`, kein eigenes Menü: auf
   dem Zielgerät öffnet iOS sein Wählrad — vertraut, treffsicher, und ohne eine

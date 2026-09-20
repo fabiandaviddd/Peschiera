@@ -44,8 +44,10 @@ await A.locator('#list .card', {has: A.locator('.card__name',{hasText:'Lido ai P
 await A.locator('#list .card', {has: A.locator('.card__name',{hasText:'Festung Peschiera'})}).first().locator('.seen').click();
 await A.waitForTimeout(150);
 await A.click('[data-tab="gemerkt"]'); await A.waitForTimeout(150);
-ok('Leiste nennt Merk- und Gesehen-Zahl',
-   /2\s*(gemerkt|im Plan).*1 gesehen/.test(await A.textContent('#sharebar-t')),
+/* Seit v33 nennt die Leiste beide Haelften: verplant und ohne Tag. Hier ist
+   nichts verplant, also stehen beide gemerkten unter "ohne Tag". */
+ok('Leiste nennt Plan-, Merk- und Gesehen-Zahl',
+   /0 verplant.*2 ohne Tag.*1 gesehen/.test(await A.textContent('#sharebar-t')),
    await A.textContent('#sharebar-t'));
 ok('Teilen-Knopf jetzt da', await A.evaluate(()=>
   document.getElementById('share-btn').getBoundingClientRect().height>0));

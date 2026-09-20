@@ -1382,6 +1382,59 @@ body.is-typing .tabs { transform: translateY(110%); }
   stroke-width: 2.4; stroke-linecap: round; }
 .tagsheet__b--weg { color: var(--soft); }
 
+/* --- Plan oder Merkliste ------------------------------------------------ */
+/* Zwei Haelften einer Ansicht, kein fuenfter Reiter: die Leiste unten traegt
+   vier, bei fuenf blieben je 80 px -- und "Plan" und "Merkliste" gehoeren
+   ohnehin zusammen. Man geht zwischen ihnen hin und her, nicht von woanders
+   zu einem von beiden.
+
+   Zwei Moeglichkeiten bekommen im Haus sonst einen Knopf, der seinen Stand
+   nennt (die Sortierung). Hier nicht: beide Seiten haben eine Zahl, und die
+   will man sehen, ohne umzuschalten. */
+.ptabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .3rem;
+  padding: .1rem 1rem .8rem;
+}
+.ptab {
+  min-height: 2.75rem; padding: .4rem .6rem;
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+  font-family: var(--font-body); font-size: var(--t-meta); font-weight: 500;
+  color: var(--soft); background: none;
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: color var(--t) var(--ease), background-color var(--t) var(--ease),
+              border-color var(--t) var(--ease);
+}
+.ptab__n {
+  font-size: var(--t-micro); font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  padding: .15rem .4rem; border-radius: var(--r-pill);
+  background: var(--wash); color: var(--soft);
+}
+.ptab--an {
+  color: var(--card); background: var(--ink); border-color: var(--ink);
+  font-weight: 700;
+}
+.ptab--an .ptab__n { background: rgba(255,255,255,.22); color: var(--card); }
+
+/* Eine Merklisten-Zeile hat keine Nummer und keine Pfeile: dort gibt es
+   keine Reihenfolge, die etwas bedeutet. */
+.planrow--merk { grid-template-columns: minmax(0, 1fr); padding-left: .85rem; }
+
+/* Leerzustand einer der beiden Haelften. Steht IN der Liste, nicht im
+   globalen #empty -- sonst verschwaende die Umschaltleiste, und man kaeme
+   nicht mehr dorthin, wo etwas zu tun ist. */
+.planleer {
+  margin: .4rem 1rem 1rem;
+  padding: 1.4rem 1.1rem;
+  display: grid; justify-items: start; gap: .5rem;
+  background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--r-card);
+}
+.planleer h3 { font-size: var(--t-title); }
+.planleer p { font-size: var(--t-body); color: var(--soft); }
+.planleer .btn { margin-top: .3rem; }
+
 /* Der Hinweis unter dem Merklisten-Kopf. */
 .plan__hint {
   padding: .5rem 1rem .6rem;
@@ -1389,6 +1442,9 @@ body.is-typing .tabs { transform: translateY(110%); }
   background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
+/* In der Merkliste steht der Hinweis ueber der Liste statt unter einem
+   Gruppenkopf -- ohne Trennlinie, die dort nichts trennt. */
+.plan__hint--frei { border-bottom: 0; padding-top: 0; }
 
 /* Der Tageskopf im gruppierten Plan. Fraunces wie jede Ueberschrift des
    Hauses; die Summe rechts in Meta-Grau. "heute" als seeblaue Marke — die
