@@ -569,7 +569,23 @@ body.is-compact .bar__top {
 .fact--rating { color: var(--ink); font-weight: 500; }
 .fact__n { margin-left: .18rem; font-size: var(--t-micro); font-weight: 400; color: var(--soft); }
 .fact--dog { color: var(--verde-ink); font-weight: 500; }
+/* Von euch vor Ort geklaert. Der Punkt davor ist das einzige, was die Zeile
+   an Herkunft traegt -- Datum und Wortlaut stehen im Sheet. Nicht Farbe
+   allein: die Form unterscheidet sie auch in Graustufen. */
+.fact--dogyou::before {
+  content: ""; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; flex: 0 0 auto; margin-right: .1rem;
+}
 .fact--nodog { color: var(--soft); }
+/* Ungeklaert. Gold ist im Haus die Farbe des Unsicheren, gestrichelt die
+   Form dazu — dieselbe Paarung wie beim Badge "Zeiten pruefen". Steht nur,
+   wenn der Jum-Schalter an ist: sonst ist die offene Regel keine Nachricht. */
+.fact--dogopen { color: var(--gold-ink); font-weight: 500; }
+.fact--dogopen svg { stroke-dasharray: 2.6 2; }
+/* Der Reisetag belegt den Oeffnungs-Slot, wenn der Ort verplant ist:
+   "am Mittwoch" schlaegt "bis 22:30", wenn man die Zeile im Plan
+   wiederfinden will. Seeblau heisst im Haus "hier ist etwas an". */
+.fact--day { color: var(--lake-ink); font-weight: 700; }
 /* Heute Ruhetag. Ziegel ist die Achtungsfarbe des Hauses — dieselbe Rolle wie
    bei .today__late und .dogrow--unknown. Der Slot ist der der Oeffnung, nicht
    ein zusaetzlicher: die Zeile bleibt 97 px hoch. */
@@ -685,6 +701,11 @@ body.is-compact .bar__top {
 /* Achtung, nicht Merkliste: Gold ist ab jetzt fuer Gemerktes reserviert.
    Dieselbe Rolle hat Ziegel schon bei .today__late. */
 .panel--open { border-left: 3px solid var(--brick); }
+/* Die Hundbilanz. Verde ist im Haus die Farbe des Hundes. */
+.panel--dog { border-left: 3px solid var(--verde); }
+.panel--dog .panel__x b { color: var(--ink); font-weight: 700;
+  font-variant-numeric: tabular-nums; }
+.panel__x--soft { margin-top: .5rem; font-size: var(--t-meta); }
 .panel__t { font-size: var(--t-name); margin-bottom: .2rem; }
 .panel__x { font-size: var(--t-body); color: var(--soft); }
 .panel__c { font-size: var(--t-body); margin-top: .45rem; }
@@ -796,7 +817,43 @@ body.is-compact .bar__top {
 .dogrow--no { color: var(--soft); background: var(--wash); }
 .dogrow--no span { text-decoration: line-through; }
 /* Ungeklaert traegt Ziegel — dieselbe Achtungsfarbe wie "Zeiten ungeprueft". */
-.dogrow--unknown { color: var(--brick-ink); border-color: currentColor; border-style: dashed; }
+.dogrow--unknown { color: var(--gold-ink); border-color: currentColor; border-style: dashed; }
+/* Von euch bestaetigt: dieselbe Farbe wie das belegte Ja, aber mit einem
+   zweiten Ring. Eure Angabe ist nicht weniger wert als der Katalog -- sie
+   ist juenger, und sie soll als eure erkennbar bleiben. */
+.dogrow--you { color: var(--verde-ink); border-color: currentColor;
+  box-shadow: 0 0 0 1px var(--card), 0 0 0 2px currentColor; }
+.dogrow--youno { color: var(--soft); background: var(--wash);
+  border-color: currentColor; }
+.dogrow--youno > span { text-decoration: none; }
+.dogrow--youno .dogrow__x { text-decoration: none; }
+
+/* Die Frage unter dem Hundblock. Sie steht nur, wo sie etwas aendern kann:
+   bei offener Regel und bei einer eigenen Angabe. Wo der Katalog eine
+   Antwort hat, steht keine -- eine belegte Angabe mit einem Tipp
+   umzuwerfen waere zu billig. */
+.dogask { margin: -.7rem 0 1.1rem; }
+.dogask__q { font-size: var(--t-meta); color: var(--soft); margin: 0 0 .5rem; }
+.dogask__b { display: flex; flex-wrap: wrap; gap: .4rem; }
+.dogask__b .btn { flex: 1 1 auto; padding: 0 .8rem; font-size: var(--t-meta); }
+.btn--dogyes { border-color: var(--verde); color: var(--verde-ink); font-weight: 700; }
+
+/* Der Reisetag im Ortssheet. Er steht zwischen der Route und der Icon-Reihe:
+   nach der Frage "wie komme ich hin", vor "merken und abhaken". Bis v33 gab
+   es ihn hier nicht -- der Weg in den Plan fuehrte ausschliesslich ueber die
+   Merkliste, und der Stern war damit ein Tor statt eines Merkmals. */
+.sheetday {
+  display: flex; align-items: center; gap: .6rem;
+  margin: .7rem 0 .2rem; padding: .5rem .2rem .5rem .7rem;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
+}
+.sheetday--zu { border-color: var(--lake); background: var(--card); }
+.sheetday__l {
+  font-size: var(--t-meta); font-weight: 700; color: var(--soft);
+  flex: 0 0 auto;
+}
+.sheetday--zu .sheetday__l { color: var(--lake-ink); }
+.sheetday .pday { margin-left: auto; }
 
 /* Ein Primaer, darunter die Nebenhandlungen als Icon-Reihe. Bis v10 waren es
    vier gleich breite Pillen, rund 200 px, drei davon in gleicher Optik. */
@@ -1176,7 +1233,11 @@ body.is-typing .tabs { transform: translateY(110%); }
    fuer einen Filter benutzt. */
 .plan__sum {
   font-size: var(--t-meta); color: var(--soft);
-  padding: .1rem 0 .7rem; font-variant-numeric: tabular-nums;
+  /* Waagerecht 1rem, nicht 0: die Zeile wird in #list gerendert, und .list
+     zieht sich mit margin-inline: -1rem ueber die volle Breite. Alle
+     Geschwister gleichen das aus (.uebs, .ptabs, .plantag) -- diese eine
+     nicht, und sie klebte bis v33 am linken Bildschirmrand. */
+  padding: .1rem 1rem .7rem; font-variant-numeric: tabular-nums;
 }
 /* KEIN eigener negativer Rand: der Plan wird in #list gerendert, und .list
    zieht sich bereits mit margin-inline: -1rem ueber die volle Breite. Beide
@@ -1317,6 +1378,13 @@ body.is-typing .tabs { transform: translateY(110%); }
   border-style: dashed; background: none;
 }
 .uebs__d--leer .uebs__n { color: var(--soft); }
+
+/* Vergangene Reisetage. Sie bleiben stehen -- die Reise hatte sie -- und
+   bleiben antippbar, denn man will nachsehen, was war. Aber sie tragen kein
+   Plus mehr: bis v33 luden sechs von fuenfzehn Zellen zum Verplanen eines
+   Tages ein, der vorbei war. */
+.uebs__d--vorbei { opacity: .42; border-style: solid; }
+.uebs__d--vorbei .uebs__n { font-weight: 500; }
 
 /* Heute: dieselbe seeblaue Marke wie am Tageskopf. */
 .uebs__d--heute { box-shadow: inset 0 0 0 2px var(--lake); }

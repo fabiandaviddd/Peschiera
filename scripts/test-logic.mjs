@@ -519,6 +519,47 @@ const mitTermin = data.places
   .filter((t) => t.d !== null);
 console.log('    ' + 'Termine ab dem 19.09.'.padEnd(38) + (mitTermin.map((t) => `${t.id} ${t.d}`).join(' · ') || 'keine'));
 
+group('dogOf — vier Zustaende, eure Angabe gewinnt');
+
+/* Bis v33 waren es drei Werte und ein Filter, der alles ausser true
+   ausblendete: 62 von 101 Orten verschwanden, obwohl nur 4 ein
+   ausdrueckliches "nein" tragen. Seit v34 gibt es einen vierten Zustand --
+   das, was ihr vor Ort erfahren habt -- und er schlaegt den Katalog. */
+pk.useData({ places: [
+  { id: 'ja', dog: true, tags: [] },
+  { id: 'nein', dog: false, tags: [] },
+  { id: 'offen', dog: null, tags: [] },
+  { id: 'ohnefeld', tags: [] },
+] });
+pk.useState({ dog: {} });
+const d = (id) => pk.dogOf(pk.grundmenge().find((p) => p.id === id));
+
+ok('Katalog: true', d('ja'), { v: true, q: 'katalog', at: '' });
+ok('Katalog: false', d('nein'), { v: false, q: 'katalog', at: '' });
+ok('Katalog: null ist offen, nicht nein', d('offen'), { v: null, q: 'offen', at: '' });
+ok('fehlendes Feld zaehlt wie null', d('ohnefeld'), { v: null, q: 'offen', at: '' });
+ok('… und als Wort', pk.dogState(pk.grundmenge().find((p) => p.id === 'offen')), 'offen');
+
+/* Eure Angabe ueberschreibt den Katalog — in beide Richtungen. */
+pk.useState({ dog: { offen: { v: true, at: '2026-09-20T19:44' } } });
+ok('eure Angabe fuellt eine Luecke', d('offen'), { v: true, q: 'ihr', at: '2026-09-20T19:44' });
+ok('… und heisst dann "ihr"', pk.dogState(pk.grundmenge().find((p) => p.id === 'offen')), 'ihr');
+pk.useState({ dog: { ja: { v: false, at: '2026-09-21T10:00' } } });
+ok('eure Angabe schlaegt auch ein belegtes Ja', d('ja').v, false);
+ok('… und bleibt als eure erkennbar', d('ja').q, 'ihr');
+
+/* Die Bilanz ist die Zahl, die in "Wissen" steht und ueber die Reise
+   kuerzer werden soll. Ein von euch geklaerter Ort zaehlt nicht mehr als
+   offen — sonst waere die Arbeit unsichtbar. */
+pk.useState({ dog: { offen: { v: true, at: '2026-09-20T19:44' } } });
+ok('Bilanz zaehlt eure Klaerungen getrennt',
+   pk.dogBilanz(), { ja: 1, ihr: 1, offen: 1, nein: 1 });
+ok('dogCount zaehlt Katalog und eure zusammen', pk.dogCount(), 2);
+pk.useState({ dog: { nein: { v: true, at: '2026-09-22T09:00' } } });
+ok('ein von euch geklaertes Nein wandert auf die Ja-Seite',
+   pk.dogBilanz(), { ja: 1, ihr: 1, offen: 2, nein: 0 });
+pk.useState({ dog: {} });
+
 group('grundmenge und markiere — ohne Browser');
 
 /* grundmenge() ist die einzige Quelle fuer selected() UND fuer die Zaehler an

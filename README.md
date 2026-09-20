@@ -38,7 +38,7 @@ schreibt die Fassung dazu, für die es gilt.
 | **Plan** | Hieß bis v13 „Gemerkt". Die Reihenfolge steckte immer schon in `pk.saved` — das Feld ist ein Array und wird beim Merken hinten angehängt —, wurde aber nie benutzt, weil die Ansicht nach Entfernung sortierte. Seit v28 gehört jede Station **einem Reisetag** — Wähler je Zeile, Gruppierung nach Tagen, Zeitsumme je Tag; ausführlich im Abschnitt „Plan" weiter unten. Dazu: nummerierte Stationen, Pfeile zum Umstellen innerhalb des Tages (keine Wischgeste — zwei Knöpfe sind bei einer Handvoll Stationen treffsicherer und lassen sich ohne echtes iOS prüfen), und darüber das Zeitbudget aus `time_min` und `walk_min`. Die Summe sagt dazu, auf wie viele Orte sie sich stützt, wenn Werte fehlen. Zwischen zwei Stationen mit `geo` steht ab 1,2 km die Luftlinie als Warnung; fehlt `geo` bei einer der beiden, bleibt die Zeile weg. Suche, Filter und Sortierung sind dort ausgeblendet — sie würden die Reihenfolge zerschießen, um die es gerade geht. Der Teilen-Link trägt die Reihenfolge automatisch mit. |
 | **Ruhetage** | Steht der Ruhetag wörtlich in `hours` („Ruhetag Mittwoch", „Mi geschlossen", „Mo zu"), wird er gelesen: 14 der 101 Orte tragen einen, verteilt auf Mo 4, Di 4, Mi 6. In „Heute" sinken sie an ihrem Ruhetag ans Ende der Liste — vor jedem anderen Kriterium, eine gute Bewertung hilft an einem geschlossenen Mittwoch nicht. Herausgefiltert werden sie nicht, sonst schrumpfte die Liste still; wer weiterblättert, bekommt den Grund dazugeschrieben („heute Ruhetag"). In der Liste und im Detail ersetzt „heute zu" die Öffnungsangabe — derselbe Slot, dieselbe Zeilenhöhe. Gelesen wird nur `hours`, nie `note`: dort steht bei einem Ort eine Faustregel über italienische Fischläden allgemein, keine Angabe über diesen Laden. |
 | **Von hier** | Alle Entfernungen gelten ab dem Zeltplatz — richtig für „gehen wir heute Abend hin?", falsch, wenn man gerade in Sirmione steht. Im Filter-Sheet unter „Standort" misst ein Knopf ab dem Gerätestandort: Luftlinie, keine Gehzeit. Der Standort kommt vom Gerät, nicht von einem Dienst — er funktioniert im Flugmodus, verlässt das Gerät nicht und wird nirgends gespeichert; gefragt wird erst auf Tippen. Ist er an, misst die Sortierung „Entfernung" ab hier, die Faktenzeile zeigt im selben Slot „286 m von hier", und im Kopf steht ein Chip mit Kreuz. Orte ohne `geo` stünden hinten — seit 19.09. gibt es keine mehr. Im Detail bleibt die Angabe ab dem Zeltplatz als eigene Zeile stehen. |
-| **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". Die Zählzeile sagt immer, wie viele Orte er gerade ausblendet. |
+| **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". **Seit v34 blendet er nichts mehr aus** — er zählt, beschriftet und sortiert. Ausführlich unter „Die Hundregel" weiter unten. |
 | **Filter** | Ein Knopf, ein Sheet: Kategorie, „Zu Fuß" (`walk_min ≤ 25`), „Unter 1 h" (`time_min ≤ 60`), „Noch nicht gesehen" und die 85 Tags mit eigenem Suchfeld. Innerhalb einer Gruppe ODER, zwischen den Gruppen UND. Im Kopf steht nur, was gerade an ist — jeder Chip trägt sein Kreuz, ein Tipp nimmt ihn weg. Der Abschlussknopf nennt die Trefferzahl, man tippt nie „Fertig" ins Ungewisse. Unter „Weg und Zeit" steht, dass 53 der 101 Orte keine Gehzeit hinterlegt haben und aus „Zu Fuß" herausfallen — dieselbe Auskunft, die die Zählzeile beim Jum-Schalter gibt. |
 | **Kopf** | Titel, Dauerschalter und Farbschema teilen sich eine Zeile, darunter Suche und Filterzeile: 147 px statt 219. Beim Scrollen nach unten fahren Titel und Suche weg und nur die Filterzeile bleibt — 43 px. Oben angekommen klappt er wieder auf. Er liegt `fixed`, nicht `sticky`: ein Sticky-Kopf belegt Platz im Fluss, und beim Einklappen würde die Liste unter dem Finger wegspringen. |
 | **Tags** | Über achtzig Stück — zu viele für eine Chip-Reihe. Sie liegen hinter dem Knopf „Tags" im selben Sheet, das auch den Ort zeigt, nach Häufigkeit sortiert und mit laufender Trefferzahl. |
@@ -52,8 +52,8 @@ schreibt die Fassung dazu, für die es gilt.
 | **Suchtreffer** | Ein Treffer über die Notiz zeigt seit v19, *warum* der Ort dasteht: die Fundstelle ist im Notiztext hervorgehoben, in Liste und Detail, jeder Begriff einzeln. Die Markierung trägt nur einen Untergrund und erbt die Textfarbe — die Browservorgabe schwarz auf gelb fiele im dunklen Schema auf 2,1:1. In der Liste ist die Notiz einzeilig gekürzt; liegt die Fundstelle dahinter, sieht man sie erst im Detail. |
 | **Ansicht in der Adresse** | `?v=heute` und `?v=gemerkt` öffnen die App direkt in einer Ansicht — als Lesezeichen oder geteilter Link, ohne Installation. Geprüft gegen die Reiterkennungen, damit ein Tippfehler keine leere App erzeugt. Ein Teilen-Link mit Merkliste überstimmt den Parameter: eine geschickte Liste ist dringender. |
 | **Der vierte Reiter heißt „Wissen"** | Bis v26 hieß er „Info" mit i-Kringel — das versprach ein Impressum. Er trägt Hunderegeln, Notruf, Trinkgeld, Bus-Zeiten und die offenen Punkte; ein Reitername muss sagen, was man bekommt. Die Kennung bleibt `info`, `?v=info` funktioniert als Lesezeichen weiter. Der Fuß zeigt seit v27 `meta.hinweis` (einen Satz für den Nutzer) statt `meta.note` (die Provenienz-Doku der Daten mit Feldnamen — die stand wörtlich in der App). |
-| **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail, Luftlinie nur im Detail. **Alle Zeilen sind 97 px hoch** — vorher waren es je nach Datenlage 97, 100 oder 123, und das Auge fand beim Scrollen kein Raster. Die Bewertung steht rechtsbündig auf der Namenszeile und wird damit zu einer Spalte, die man scannen kann; die Zahl der Bewertungen sitzt in einer eigenen, fest breiten Spalte, damit „(1.478)" die Note nicht weiter nach links schiebt als „(806)". Sie bleibt dabei — „4,9" aus 71 Stimmen ist nicht dasselbe wie „4,9" aus 1087. Die Faktenreihe hat feste Slots in fester Reihenfolge (Weg, Dauer, Hund, Öffnung); nur die Öffnung darf kürzen, weil sie als einzige Freitext ist. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind 6 Zeilen sichtbar statt 4, beim Scrollen 8. Steht „Mit Jum" an, entfällt die Marke „Jum ok" an jeder Zeile — sie gilt dann für alle. |
-| **Detailansicht (neu)** | Bottom Sheet, oben drei Kacheln — Weg, Aufenthalt, Öffnung: die drei Fragen, die man vor Ort stellt. Die Öffnungs-Kachel zeigt nur ein ausgeschriebenes „bis 22:30" oder „ab 9:30" (22 der 54 Angaben); wo die Zeiten mehrdeutig sind („Mi–Sa 12:30–14 und 19:30–22"), bleibt sie leer und der volle Wortlaut steht darunter — eine Kachel „bis 14:00" über einem Restaurant, das abends bis 22 Uhr offen hat, wäre falsch. Darunter die Hundregel als eigene Fläche mit drei Zuständen: grün „Jum darf mit", grau-durchgestrichen „Ohne Jum", ockerfarben-gestrichelt „Nicht geklärt — vorher fragen"; letzteres trifft auf 58 der 101 Orte zu und ist damit die häufigste Antwort. Eine Primäraktion („Route in Karten") statt vierer gleich breiter Pillen, darunter Merken, Gesehen und Anrufen als Icon-Reihe. Die Tags am Ende sind antippbar und setzen den Filter — der Weg von „das gefällt mir" zu „mehr davon". Die Systemzurück-Geste schließt das Sheet, statt die App zu verlassen. |
+| **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail, Luftlinie nur im Detail. **Alle Zeilen sind 97 px hoch** — vorher waren es je nach Datenlage 97, 100 oder 123, und das Auge fand beim Scrollen kein Raster. Die Bewertung steht rechtsbündig auf der Namenszeile und wird damit zu einer Spalte, die man scannen kann; die Zahl der Bewertungen sitzt in einer eigenen, fest breiten Spalte, damit „(1.478)" die Note nicht weiter nach links schiebt als „(806)". Sie bleibt dabei — „4,9" aus 71 Stimmen ist nicht dasselbe wie „4,9" aus 1087. Die Faktenreihe hat feste Slots in fester Reihenfolge (Weg, Dauer, Hund, Öffnung); nur die Öffnung darf kürzen, weil sie als einzige Freitext ist. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind 6 Zeilen sichtbar statt 4, beim Scrollen 8. Steht „Mit Jum" an, trägt seit v34 **jede** Zeile ihre Hundmarke — „Jum ok", „Hund offen" oder „ohne Jum". Bis dahin entfiel sie, weil sie für alle galt; seit der Schalter nichts mehr ausblendet, gilt sie das nicht mehr. Ist ein Ort einem Reisetag zugeordnet, steht sein Tag im Öffnungs-Slot. |
+| **Detailansicht (neu)** | Bottom Sheet, oben drei Kacheln — Weg, Aufenthalt, Öffnung: die drei Fragen, die man vor Ort stellt. Die Öffnungs-Kachel zeigt nur ein ausgeschriebenes „bis 22:30" oder „ab 9:30" (22 der 54 Angaben); wo die Zeiten mehrdeutig sind („Mi–Sa 12:30–14 und 19:30–22"), bleibt sie leer und der volle Wortlaut steht darunter — eine Kachel „bis 14:00" über einem Restaurant, das abends bis 22 Uhr offen hat, wäre falsch. Darunter die Hundregel als eigene Fläche, seit v34 mit **vier** Zuständen und einer Frage darunter: grün „Jum darf mit", grau-durchgestrichen „Ohne Jum", ockerfarben-gestrichelt „Nicht geklärt — vorher fragen" (58 Orte, die häufigste Antwort) und grün mit zweitem Ring „von euch bestätigt". Bei offener Regel steht darunter „Wart ihr da?" mit zwei Knöpfen und, wo eine Nummer hinterlegt ist, „Anrufen" — siehe „Die Hundregel". Ebenfalls seit v34: ein **Tag-Wähler** für jeden Ort, nicht mehr nur für gemerkte. Eine Primäraktion („Route in Karten") statt vierer gleich breiter Pillen, darunter Merken, Gesehen und Anrufen als Icon-Reihe. Die Tags am Ende sind antippbar und setzen den Filter — der Weg von „das gefällt mir" zu „mehr davon". Die Systemzurück-Geste schließt das Sheet, statt die App zu verlassen. |
 | **Detailansicht (Rest)** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. Solange es offen ist, liegt der Rest der Seite still: `inert` plus `aria-hidden`, dazu ein Tab-Ring im Sheet als Rückfallebene für Engines ohne `inert`. Ohne das führt `aria-modal` nur in die Irre — der Tabulator lief vorher hinter dem Sheet weiter durch die Liste. |
 | **Info** | „Gut zu wissen" (die 17 Hinweise aus `merken`), „Offene Punkte" (die 18 aus `open_questions`, mit Telefonnummer als Link) und der Faktencheck (13 Korrekturen). |
 | **Dark Mode** | Über `prefers-color-scheme`, mit manuellem Override. Der Knopf oben rechts schaltet automatisch → hell → dunkel. |
@@ -83,17 +83,17 @@ variable Schriften sind — Google liefert für 500 und 600 dieselbe Datei.
 ## Bedienung in zehn Sekunden
 
 Den Schalter **Mit Jum** einmal anstellen — er bleibt an, auch nach dem
-Schließen der App. Die Frage „wo essen wir heute, das nah ist, gut ist und wo
+Schließen der App. Er nimmt nichts weg: die Liste bleibt vollständig, jede
+Zeile trägt ihre Hundmarke, und die Zählzeile sagt, wie sich die Treffer auf
+sicher, ungeklärt und „ohne Jum" verteilen. Die Frage „wo essen wir heute, das nah ist, gut ist und wo
 Jum mit darf?" kostet danach vier Tipps: **Filter** → **Essen** → **Zu Fuß** →
 **Fertig**, und der Knopf sagt vorher, wie viele Orte übrig bleiben. Den Knopf
 rechts daneben auf **Bewertung** stellen, wenn die Entfernung nicht das
 Kriterium ist.
 
-Stand 18.09.2026 ist `dog: true` bei 39 der 101 Orte gesetzt, `false` bei 4;
-bei 58 ist die Regelung ungeklärt (`null`), und sie fallen aus dem Hundefilter
-heraus. Das ist Absicht — lieber zu wenig anzeigen als falsch. Weil das mehr
-als die Hälfte ist, schreibt die Zählzeile bei angeschaltetem Jum dazu, wie
-viele Orte gerade ausgeblendet sind.
+Stand 18.09.2026 ist `dog: true` bei 39 der 101 Orte gesetzt, `false` bei 4,
+und bei 58 ist die Regelung ungeklärt (`null`). Was daraus folgt, steht unter
+„Die Hundregel".
 
 ## Orte ergänzen oder ändern
 
@@ -129,7 +129,7 @@ Nur `data/places.json` anfassen, nichts im HTML oder JS. Ein Eintrag:
 | `badge` | optionale Notiz, eine pro Ort. Die Klasse steckt nicht im Text, sondern in `badgeKind()` in `app.js`, und sie bestimmt Marke und Farbe in der Liste: **Termin** (Datumsmuster `Tag.Monat.`, gefüllter Punkt, Ziegel), **Ungeprüft** („Zeiten prüfen", „Erst anrufen", Warndreieck, gestrichelt), **Tageszeit** (alles aus `BADGE_MOMENT`, Uhr, grau — Zusammenhang, keine Empfehlung), **Einschränkung** („Ohne Auto nicht machbar", „Buchen", „Ohne Termin", durchgestrichener Kreis), **Kuratiert** (alles übrige, Raute, Kategoriefarbe). Dazu die drei **Hundregeln** („Burg ohne Hund", „Hund an der Leine ok", „Hund gratis"): sie erscheinen nicht in der Liste, sondern als Zusatz in der Hundzeile des Sheets. Stand 18.09.2026 sind es 27 Texte auf 31 Orten. |
 | | **Was kein Badge sein sollte:** was schon als Tag gesetzt ist (`aussicht`, `foto`, `schatten`, `wein`, `livemusik`, `cocktails`, `regen`), was `dog` schon sagt, was in `hours` gehört („Montags", „Immer offen"), was in `connection` gehört, und was `time_min` schon trägt. 23 solcher Badges sind am 18.09. entfernt worden. |
 | `hours` | Freitext, fehlt bei 47 Orten. Gelesen wird daraus nur, was eindeutig ist: „ab 9:30" und „bis 22:30" für die Kachel, und ein Ruhetag in der Form `Ruhetag <Wochentag>` oder `<Mo|Di|…> geschlossen` / `<Mo|Di|…> zu`. Ein Wochentagsbereich wie „Mi–Sa 19–23" ist eine Öffnungszeit und kein Ruhetag — der Prüfstand prüft beide Richtungen. Mehrere Ruhetage in einer Angabe kommen nicht vor; käme einer dazu, schlägt der Prüfstand an. |
-| `dog` | `true` = erlaubt, `false` = verboten, `null` = ungeklärt. Nur `true` erscheint im Hundefilter. |
+| `dog` | `true` = erlaubt, `false` = verboten, `null` = ungeklärt. Seit v34 blendet der Schalter nichts mehr aus — `null` heißt „offen", nicht „nein". Was ihr vor Ort erfahrt, liegt in `pk.dog` im Gerät und überschreibt dieses Feld; in `places.json` gehört es nicht (siehe „Die Hundregel"). |
 | `walk_min` / `bike_min` / `distance_km` | ab dem Zeltplatz. `null`, wenn nicht sinnvoll messbar. |
 | `time_min` | empfohlene Aufenthaltsdauer in Minuten, **ohne** An- und Abreise. Basis für den Filter „Unter 1 h" und für die Frage in „Heute", ob sich etwas vor dem Abend noch ausgeht. |
 | `moment` | Liste aus `frueh`, `mittag`, `nachmittag`, `abend`, in Tagesreihenfolge. Steuert „Heute" und **schlägt die Herleitung immer** — auch als leere Liste: `[]` heißt „kein Tagesvorschlag" und ist die Angabe für Apotheke, Supermarkt, Radverleih, Bahnhof und Anleger. Fehlt das Feld ganz, wird hergeleitet (siehe unten); bei allen 101 Orten steht es, die Herleitung ist die Rückfallebene für neue Einträge. |
@@ -185,13 +185,15 @@ Supermarkt, Radverleih, Bahnhof, Anleger, Fischladen. Strand, Hundestrand
 und Wochenmarkt sind dagegen echte Vorschläge, obwohl sie unter `praktisch`
 stehen; die Kategorie allein entscheidet das nicht.
 
-Mit angeschaltetem Jum bleiben `frueh` 27, `mittag` 20, `nachmittag` 21 und
-`abend` nur 7 Orte. Das liegt nicht an der Einordnung, sondern an den 58
-ungeklärten Hundregeln: von den Orten mit `dog: true` sitzt man nur in fünf
-im Trockenen, alle fünf sind Lokale. Ein Regenmorgen mit Hund hat deshalb
-nichts anzubieten — „Heute" sagt das dann auch. Am schnellsten hilft dort
-eine geklärte Hundregel bei den vier Frühstückscafés (Dallazia, Pavòn, BASƎ,
-Ammazza), bei denen sie bisher `null` ist.
+Mit `dog: true` allein blieben `frueh` 27, `mittag` 20, `nachmittag` 21 und
+`abend` nur 7 Orte — und bei Regen am Vormittag null, obwohl sieben Orte im
+Trockenen liegen. **Bis v33 war das der Zustand der App**; seit v34 blendet
+der Schalter nichts mehr aus, und in „Heute" fällt nur noch das ausdrückliche
+`dog: false` heraus (vier Orte). Siehe „Die Hundregel".
+
+Die schnellste Verbesserung bleibt dieselbe: eine geklärte Hundregel bei den
+vier Frühstückscafés (Dallazia, Pavòn, BASƎ, Ammazza), bei denen sie bisher
+`null` ist. Seit v34 lässt sie sich in der App selbst eintragen.
 
 `indoor` läuft in derselben Reihenfolge: ausdrücklicher Wert, Badge
 „Regentag", die Tags `museum`, `kirche`, `supermarkt`, `notfall`, `regen`,
@@ -329,13 +331,14 @@ Der Abgleich läuft deshalb über den Link selbst: im Tab „Gemerkt" auf
 **Teilen**, dann per iMessage, AirDrop oder sonstwie verschicken. Wo die
 Teilen-Funktion des Systems fehlt, landet der Link in der Zwischenablage.
 
-Der Link trägt Merkliste und Gesehenes als `#liste=<base64url>` mit, rund
-120 Zeichen bei einer Handvoll Orte. Nichts verlässt das Gerät, außer über
-diesen Link.
+Der Link trägt Merkliste, Gesehenes, Notizen, Tageszuordnung und seit v34 die
+vor Ort geklärten Hundregeln als `#liste=<base64url>` mit, rund 120 Zeichen bei
+einer Handvoll Orte. Nichts verlässt das Gerät, außer über diesen Link.
 
 Beim Öffnen fragt die Gegenseite nach:
 
-- **Zusammenführen** — eigene Markierungen bleiben, fremde kommen dazu
+- **Zusammenführen** — eigene Markierungen bleiben, fremde kommen dazu; bei
+  den Hundregeln gewinnt dagegen die **jüngere** Angabe (siehe „Die Hundregel")
 - **Meine ersetzen** — übernimmt die fremde Liste vollständig
 - **Verwerfen** — ändert nichts
 
@@ -389,6 +392,80 @@ Die Seite gehört nicht zur App, ist aus ihr nicht verlinkt und stört nichts.
 - **Sortierung nach kürzester Runde** ab dem Zeltplatz. Die Tageszuordnung
   ist seit `v28` gebaut (siehe „Plan"); was noch fehlt, ist das automatische
   Legen einer sinnvollen Reihenfolge innerhalb eines Tages.
+
+## Die Hundregel
+
+**Der Schalter blendete bis `v33` 62 von 101 Orten aus — und nur 4 davon sind
+wirklich hundefrei.** `selected()` filterte auf `dog === true`; alles andere
+verschwand, auch die 58 Orte, bei denen die Regel schlicht ungeklärt ist. Am
+Regenvormittag traf es sogar 7 von 7: alle Orte, die dann im Trockenen liegen,
+haben eine offene Hundregel. Die Ansicht sagte „Bei Regen steht hier nichts",
+obwohl sieben Möglichkeiten dastanden, zeigte drei davon an und ließ keine
+einzige verplanen.
+
+Seit `v34` gilt: **ungeklärt ist nicht nein.**
+
+### Der Schalter tut drei Dinge statt einem
+
+| | |
+|---|---|
+| **zählen** | Die Zählzeile nennt alle Zustände: „101 Orte · mit Jum · 39 sicher · 58 ungeklärt · 4 ohne Jum". Eine einzige Zahl verschwieg, dass die Mehrheit nicht verboten, sondern unbekannt ist. |
+| **beschriften** | Jede Listenzeile trägt ihre Hundmarke im vorhandenen Slot: „Jum ok", „Hund offen" (ocker, gestrichelt) oder „ohne Jum". Bis `v33` entfiel die Marke bei angeschaltetem Jum — sie galt ja für alle. Das stimmt nicht mehr, also steht sie da. |
+| **sortieren** | Ein ausdrückliches `dog: false` sinkt ans Ende. Ungeklärtes bleibt, wo es steht: **in der Liste sucht man**, und 58 Orte nach hinten zu schieben hieße, eine Datenlücke wie eine Absage zu behandeln. |
+
+In **„Heute"** gilt das Gegenteil, und zwar aus demselben Grund, aus dem
+Gesehenes dort verschwindet und in der Liste bleibt: dort bekommt man
+**vorgeschlagen**. Mit angeschaltetem Jum steht Belegtes vor Ungeklärtem, und
+nur das ausdrückliche `dog: false` fällt ganz heraus — vier Orte.
+
+### Vier Zustände statt drei
+
+Der vierte ist der wichtigste:
+
+| Zustand | Herkunft | im Sheet |
+|---|---|---|
+| **ja** | Katalog | „Jum darf mit" |
+| **nein** | Katalog | „Ohne Jum" |
+| **offen** | Katalog, 58 Orte | „Nicht geklärt — vorher fragen", darunter die Frage |
+| **von euch** | ihr, vor Ort | „Jum darf mit — von euch bestätigt", mit Datum |
+
+Bis `v33` stand im Sheet gleichzeitig „Nicht geklärt — vorher fragen" und, eine
+Zeile darunter in der eigenen Notiz, „Jum durfte mit rein". Zwei Wahrheiten auf
+einem Bildschirm, und am nächsten Tag gewann wieder der Katalog.
+
+Jetzt steht unter dem Hundblock die Frage **„Wart ihr da?"** mit zwei Knöpfen
+(„Jum durfte mit" / „Ging nicht") und, wo eine Nummer hinterlegt ist,
+„Anrufen". Ein Tipp setzt den Zustand, mit Datum und umkehrbar. Er gilt ab dann
+überall — in der Liste, in „Heute", auf der Karte, im Plan.
+
+- **Wo der Katalog eine Antwort hat, steht keine Frage.** Eine belegte Angabe
+  mit einem Tipp umzuwerfen wäre zu billig; wer sie doch ändern will, nimmt den
+  Umweg über eine eigene Angabe an einem Ort, der schon eine trägt.
+- **Gespeichert unter `pk.dog`** als `{ ortId: { v: true|false, at: '…' } }`.
+  **Nicht in `places.json`** — dieselbe Trennung wie bei den Notizen: der
+  Katalog ist die Recherche, das hier ist eure eigene Beobachtung. Wird aus
+  einer Beobachtung eine gesicherte Tatsache, führt der Weg über die offenen
+  Punkte.
+- **Der Teilen-Link trägt sie mit** (`h` im Payload, `v` bleibt `1`). Und zwar
+  **alle**, nicht nur die zu gemerkten Orten: „Jum durfte rein" ist eine
+  Tatsache über den Ort, keine Markierung an einer Liste.
+- **Beim Zusammenführen gewinnt die jüngere Angabe**, nicht die eigene. Das ist
+  die Ausnahme von der Hausregel — bei Notizen und Tagen gewinnt die eigene.
+  Begründung: es sind keine Markierungen an einer Liste, sondern Beobachtungen
+  über einen Ort, und wer zuletzt davorstand, weiß es besser.
+- **Der Reiter „Wissen" zählt mit.** Ganz oben steht, wie viele Orte sicher
+  sind, wie viele ihr selbst geklärt habt und wie viele offen bleiben. Aus
+  58 blinden Flecken wird damit eine Liste, die über fünfzehn Reisetage kürzer
+  wird.
+
+### Was das kostet
+
+Die Liste wird länger — mit angeschaltetem Jum stehen jetzt 101 statt 39 Orte
+darin. Aufgefangen wird das durch die Marke an jeder Zeile und die dreiteilige
+Zählzeile: man sieht auf einen Blick, woran man ist, statt sich auf eine
+Auswahl zu verlassen, die im Hintergrund Orte wegnimmt.
+
+---
 
 ## Plan und Merkliste
 
@@ -480,6 +557,11 @@ Seit `v30` steht oben im Plan ein Raster über alle Reisetage:
 - **Verplante Tage** tragen eine Marke mit der Zahl der Orte, **freie Tage**
   sind gestrichelt und tragen ein `+` — im Haus heißt gestrichelt „da, aber
   nichts los", wie die vergangenen Abschnitte in „Heute".
+- **Vergangene Reisetage tragen seit v34 kein `+` mehr** und sind gedämpft.
+  Sie bleiben sichtbar und antippbar — man will nachsehen, was war —, aber am
+  20.09. luden sechs von fünfzehn Zellen dazu ein, einen Tag zu verplanen, der
+  vorbei ist; am letzten Reisetag wären es vierzehn. Auch die Tag-Wähler zeigen
+  sie als „vorbei" und lassen sie nicht mehr auswählen.
 - **Alle fünfzehn Zellen sind Knöpfe** und öffnen dasselbe Sheet (siehe unten).
   Bis `v30` sprangen volle Zellen nur zu ihrer Gruppe und leere taten gar
   nichts — fünfzehn gleich aussehende Knöpfe, zwei Verhalten, und ausgerechnet

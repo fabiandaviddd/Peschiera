@@ -79,12 +79,28 @@ const engsterAbstand = async () => page.evaluate(() => {
 ok('keine zwei Nadeln liegen naeher als 34 px', (await engsterAbstand()) >= 34);
 if (SHOT) await page.screenshot({ path: SHOT + '/karte.png' });
 
-/* Die Karte hoert auf dieselben Filter wie die Liste -- sonst zeigt sie etwas
-   anderes als die Zaehlzeile darueber behauptet. */
+/* Die Karte zeigt genau die Treffer, die die Zaehlzeile darueber nennt --
+   sonst macht sie eine zweite Wahrheit auf.
+
+   Bis v33 stand hier eine andere Zusicherung: der Jum-Schalter muesse auch
+   auf der Karte ausblenden, und geprueft wurde gegen dog === true. Seit v34
+   blendet er nichts mehr aus (58 der 62 ausgeblendeten Orte waren nicht
+   verboten, sondern ungeklaert). Die Zusicherung dahinter ist dieselbe
+   geblieben und wird hier schaerfer geprueft als vorher: Karte und Zaehlzeile
+   duerfen nie auseinanderlaufen, egal was der Schalter tut. */
+const gezaehlt = async () => {
+  const t = await page.locator('#count').textContent();
+  const m = /^\s*(\d+)/.exec(t.replace(/\u00a0/g, ' '));
+  return m ? Number(m[1]) : -1;
+};
+ok('ohne Jum: Karte wie Zaehlzeile', await vertretung(), await gezaehlt());
+
 await page.click('#jum-btn');
 await page.waitForTimeout(1200);
-const mitJum = DATEN.places.filter((p) => p.geo && p.dog === true).length;
-ok('„Mit Jum" wirkt auch auf der Karte', await vertretung(), mitJum);
+ok('mit Jum blendet die Karte nichts aus', await vertretung(), MIT_GEO);
+ok('… und die Zaehlzeile nennt dieselbe Zahl', await gezaehlt(), MIT_GEO);
+ok('… und die Zeile sagt, wie viele ungeklaert sind',
+   /ungeklärt/.test(await page.locator('#count').textContent()));
 ok('… und auch dann ueberlappt nichts', (await engsterAbstand()) >= 34);
 await page.click('#jum-btn');
 await page.waitForTimeout(1200);

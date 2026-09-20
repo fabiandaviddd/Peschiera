@@ -449,10 +449,30 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
      Gruppe und leere taten gar nichts -- ausgerechnet der freie Tag, den die
      Uebersicht gerade zur Frage gemacht hatte, war der tote Knopf. */
   ok('alle 15 Tage sind Knoepfe', g.knoepfe, 15);
-  ok('freie Tage tragen ein Plus', await q.evaluate(() =>
-    document.querySelectorAll('.uebs__d--leer .uebs__plus').length), 12);
-  ok('volle Tage tragen keins', await q.evaluate(() =>
-    document.querySelectorAll('.uebs__d--voll .uebs__plus').length), 0);
+  /* Seit v34 traegt nur ein Plus, was sich noch verplanen laesst.
+
+     Bis v33 luden auch vergangene Reisetage dazu ein: am 20.09. waren das
+     sechs von fuenfzehn Zellen, am letzten Reisetag vierzehn -- ein Angebot,
+     das nichts mehr bewirken kann. Sie bleiben sichtbar und antippbar (man
+     will nachsehen, was war), tragen aber kein Plus und sind gedaempft.
+
+     Die Zahl haengt am Datum, an dem die Suite laeuft, also wird sie
+     gerechnet statt geschrieben -- sonst faellt die Pruefung am naechsten
+     Tag um, ohne dass sich etwas geaendert haette. */
+  const rasterZahlen = await q.evaluate(() => {
+    const zellen = [...document.querySelectorAll('.uebs__d')];
+    return {
+      vorbei: zellen.filter((z) => z.classList.contains('uebs__d--vorbei')).length,
+      plusLeer: document.querySelectorAll('.uebs__d--leer .uebs__plus').length,
+      plusVorbei: document.querySelectorAll('.uebs__d--vorbei .uebs__plus').length,
+      plusVoll: document.querySelectorAll('.uebs__d--voll .uebs__plus').length,
+      leer: zellen.filter((z) => z.classList.contains('uebs__d--leer')).length
+    };
+  });
+  ok('vergangene Tage tragen kein Plus', rasterZahlen.plusVorbei, 0);
+  ok('freie Tage in der Zukunft schon',
+     rasterZahlen.plusLeer, rasterZahlen.leer - rasterZahlen.vorbei);
+  ok('volle Tage tragen keins', rasterZahlen.plusVoll, 0);
   ok('die Seite bleibt seitwaerts unverschiebbar',
     await q.evaluate(() => document.documentElement.scrollWidth), 402);
 
@@ -462,9 +482,16 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   ok('keine Zelle ist fuer Vorleser versteckt', await q.evaluate(() =>
     [...document.querySelectorAll('.uebs__d')]
       .every((e) => e.getAttribute('aria-hidden') === null)));
+  /* Eingegrenzt auf einen freien Tag, der noch kommt: ein vergangener sagt
+     seit v34 zusaetzlich "vorbei", und der erste im Raster ist der 14. */
   ok('freie Tage sagen, dass nichts geplant ist', await q.evaluate(() =>
     /noch nichts geplant, öffnen$/.test(
-      document.querySelector('.uebs__d--leer').getAttribute('aria-label') || '')));
+      (document.querySelector('.uebs__d--leer:not(.uebs__d--vorbei)')
+        || document.querySelector('.uebs__d--leer')).getAttribute('aria-label') || '')));
+  ok('vergangene Tage sagen, dass sie vorbei sind', await q.evaluate(() => {
+    const z = document.querySelector('.uebs__d--vorbei');
+    return !z || /, vorbei, öffnen$/.test(z.getAttribute('aria-label') || '');
+  }));
   ok('volle Tage sagen, wie viel dort steht', await q.evaluate(() =>
     /— \d+ Orte? geplant/.test(
       document.querySelector('.uebs__d--voll').getAttribute('aria-label') || '')));

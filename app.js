@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v33 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v34 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -15,6 +15,12 @@
   var LS_THEME = 'pk.theme';
   var LS_JUM   = 'pk.jum';
   var LS_DAYS  = 'pk.days';  // { ortId: 'JJJJ-MM-TT' } — die Tageszuordnung im Plan
+  /* Was ihr vor Ort ueber die Hundregel erfahren habt. Liegt bewusst NICHT
+     in places.json: der Katalog ist die Recherche, das hier ist eure eigene
+     Beobachtung -- dieselbe Trennung, die schon fuer pk.notes gilt. Sie
+     ueberschreibt den Katalog und faehrt beim Teilen mit.
+       { ortId: { v: true|false, at: 'JJJJ-MM-TTTHH:MM' } }                */
+  var LS_DOG   = 'pk.dog';
   var SS_WET   = 'pk.wet';    // Wetter gilt fuer diesen Besuch, nicht fuer immer
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
   var SHORT_MAX = 60;         // Schwelle für den Filter "Unter 1 h"
@@ -71,6 +77,8 @@
        bleibt sein Tag gespeichert und gilt wieder, wenn man ihn erneut
        merkt — ein Fehltipp auf den Stern kostet so keine Planung. */
     days: {},               // { id: 'JJJJ-MM-TT' }
+    /* Die vor Ort geklaerten Hundregeln. Siehe LS_DOG. */
+    dog: {},                // { id: { v: bool, at: iso } }
     theme: 'auto',
     openId: null
   };
@@ -434,6 +442,15 @@
       }
     });
 
+    var rohDog = lsGet(LS_DOG, {}) || {};
+    S.dog = {};
+    Object.keys(rohDog).forEach(function (id) {
+      var e = rohDog[id];
+      if (ids[id] && e && typeof e.v === 'boolean') {
+        S.dog[id] = { v: e.v, at: typeof e.at === 'string' ? e.at : '' };
+      }
+    });
+
     var rohNotes = lsGet(LS_NOTES, {}) || {};
     S.notes = {};
     Object.keys(rohNotes).forEach(function (id) {
@@ -542,8 +559,64 @@
        Zaehlzeile — dort, wo ohnehin steht, was ein Filter kostet. */
   }
 
+  /* Die Hundregel eines Ortes, aus zwei Quellen zusammengelegt.
+
+     Bis v33 gab es drei Werte (true, false, null) und einen Schalter, der
+     alles ausser true ausblendete: 62 von 101 Orten verschwanden, obwohl nur
+     4 davon ein ausdrueckliches "nein" tragen. Ungeklaert ist nicht nein.
+
+     Jetzt sind es vier Zustaende, und der vierte ist der wichtigste:
+       'ja'      im Katalog belegt
+       'nein'    im Katalog belegt
+       'offen'   im Katalog ungeklaert -- 58 Orte
+       'ihr'     von euch vor Ort geklaert; schlaegt den Katalog
+
+     Eure Angabe gewinnt immer. Sie ist juenger und ihr wart da.            */
+  function dogOf(p) {
+    var eigen = S.dog[p.id];
+    if (eigen && typeof eigen.v === 'boolean') {
+      return { v: eigen.v, q: 'ihr', at: eigen.at || '' };
+    }
+    if (p.dog === true)  return { v: true,  q: 'katalog', at: '' };
+    if (p.dog === false) return { v: false, q: 'katalog', at: '' };
+    return { v: null, q: 'offen', at: '' };
+  }
+
+  /* Der Zustand als ein Wort -- fuer Klassennamen und Zaehlungen. */
+  function dogState(p) {
+    var d = dogOf(p);
+    if (d.q === 'ihr') return d.v ? 'ihr' : 'ihrnein';
+    if (d.v === true) return 'ja';
+    if (d.v === false) return 'nein';
+    return 'offen';
+  }
+
+  /* Wie sich die 101 Orte auf die vier Zustaende verteilen. Die Zaehlzeile
+     nennt alle vier -- eine einzige Zahl ("39 mit Hund") verschwieg bis v33,
+     dass die restlichen 62 nicht verboten, sondern ungeklaert sind. */
+  function dogBilanz() {
+    var b = { ja: 0, ihr: 0, offen: 0, nein: 0 };
+    D.places.forEach(function (p) {
+      var z = dogState(p);
+      if (z === 'ihr') b.ihr++;
+      else if (z === 'ihrnein' || z === 'nein') b.nein++;
+      else if (z === 'ja') b.ja++;
+      else b.offen++;
+    });
+    return b;
+  }
+
   function dogCount() {
-    return D.places.filter(function (p) { return p.dog === true; }).length;
+    var b = dogBilanz();
+    return b.ja + b.ihr;
+  }
+
+  /* Setzt oder loescht, was ihr vor Ort erfahren habt. wert === null nimmt
+     die eigene Angabe zurueck; dann gilt wieder der Katalog. */
+  function setDogVorOrt(id, wert) {
+    if (wert === null) delete S.dog[id];
+    else S.dog[id] = { v: !!wert, at: new Date().toISOString().slice(0, 16) };
+    lsSet(LS_DOG, S.dog);
   }
 
   function toggleJum() {
@@ -966,7 +1039,10 @@
 
   /* --------------------------------------------------------------- Auswahl */
 
-  var jumHidden = 0;          // wie viele Orte der Jum-Schalter zuletzt ausblendete
+  /* Wie sich die zuletzt gezeigte Menge auf die Hundzustaende verteilt.
+     Bis v33 stand hier eine einzige Zahl: wie viele Orte der Schalter
+     ausblendet. Er blendet nichts mehr aus, also zaehlt er stattdessen. */
+  var jumStat = { ja: 0, offen: 0, nein: 0 };
 
   function selected() {
     var pool = grundmenge();
@@ -987,17 +1063,42 @@
       return true;
     });
 
-    /* Jum greift zuletzt, damit die Zaehlzeile sagen kann, wie viele Orte
-       der Dauerschalter gerade kostet — und nicht nur, wie viele bleiben. */
-    if (S.jum) {
-      var withJum = out.filter(function (p) { return p.dog === true; });
-      jumHidden = out.length - withJum.length;
-      out = withJum;
-    } else {
-      jumHidden = 0;
-    }
+    /* Jum blendet seit v34 nichts mehr aus.
 
-    return out.sort(S.sort === 'rating' ? byRating : byDistance);
+       Bis v33 stand hier ein Filter auf dog === true. Er kostete 62 von 101
+       Orten -- aber nur 4 davon tragen ein ausdrueckliches "ohne Jum". Die
+       anderen 58 sind ungeklaert, und eine Datenluecke ist keine Absage.
+       Bei Regen am Vormittag traf es sogar 7 von 7: alle Orte, die dann im
+       Trockenen liegen, haben eine offene Hundregel. Die Ansicht war leer,
+       obwohl sieben Moeglichkeiten dastanden.
+
+       Der Schalter tut jetzt drei Dinge statt einem:
+         zaehlen      -- die Zaehlzeile nennt alle vier Zustaende
+         beschriften  -- jede Zeile traegt ihre Hundmarke
+         sortieren    -- ein belegtes "ohne Jum" sinkt ans Ende
+
+       Ungeklaertes bleibt, wo es steht. In der Liste SUCHT man; 58 Orte nach
+       hinten zu schieben hiesse, eine Luecke wie eine Absage zu behandeln.
+       In "Heute" bekommt man VORGESCHLAGEN -- dort sinkt Ungeklaertes sehr
+       wohl, siehe todayList(). */
+    jumStat = { ja: 0, offen: 0, nein: 0 };
+    out.forEach(function (p) {
+      var d = dogOf(p);
+      if (d.v === true) jumStat.ja++;
+      else if (d.v === false) jumStat.nein++;
+      else jumStat.offen++;
+    });
+
+    out.sort(S.sort === 'rating' ? byRating : byDistance);
+
+    /* Zweiter, stabiler Durchgang: nur das belegte Nein sinkt. Die
+       Reihenfolge innerhalb der Gruppen bleibt damit die gewaehlte. */
+    if (S.jum && jumStat.nein) {
+      out.sort(function (a, b) {
+        return (dogOf(a).v === false ? 1 : 0) - (dogOf(b).v === false ? 1 : 0);
+      });
+    }
+    return out;
   }
 
   /* Ohne Wert einsortiert ans Ende — nicht als 0 behandeln. */
@@ -1197,15 +1298,21 @@
     if (shown === undefined) { shown = lastCount.shown; total = lastCount.total; }
     lastCount = { shown: shown, total: total };
     var seenHere = S.seen.length;
-    /* Der Jum-Schalter blendet still aus. Damit das nie unbemerkt passiert,
-       steht hier, wie viele Orte er gerade kostet. Bei 58 von 101 Orten ist
-       die Hundregel ungeklärt — das ist viel, und man muss es sehen. */
-    var unclear = S.jum ? jumHidden : 0;
-    $('count').textContent = (anyFilter() || S.jum
+    /* Seit v34 steht hier die ganze Aufteilung statt einer einzigen Zahl.
+       "62 ohne Jum ausgeblendet" war ehrlich, stellte den Inhalt aber nicht
+       wieder her; "39 sicher, 58 ungeklärt, 4 ohne Jum" sagt, was da ist. */
+    var jumTxt = '';
+    if (S.jum) {
+      jumTxt = ' · mit Jum · ' + jumStat.ja + ' sicher'
+        + (jumStat.offen ? ' · ' + jumStat.offen + ' ungeklärt' : '')
+        + (jumStat.nein ? ' · ' + jumStat.nein + ' ohne Jum' : '');
+    } else {
+      jumTxt = ' · ' + dogCount() + ' mit Hund';
+    }
+    $('count').textContent = (anyFilter()
       ? shown + ' von ' + total + (total === 1 ? ' Ort' : ' Orten')
       : total + (total === 1 ? ' Ort' : ' Orte'))
-      + (S.jum ? ' · mit Jum' : ' · ' + dogCount() + ' mit Hund')
-      + (unclear ? ' · ' + unclear + ' ohne Jum ausgeblendet' : '')
+      + jumTxt
       /* Der Standort verschiebt den Bezugspunkt still. Also steht hier, dass
          ab hier gemessen wird und wie viele Orte dabei nicht mitkoennen. */
       + (S.here ? ' · ab hier gemessen' : '')
@@ -1251,15 +1358,43 @@
     if (has(p.time_min)) {
       f.push('<span class="fact fact--time">' + ICON.hourglass + esc(dur(p.time_min)) + '</span>');
     }
-    /* Steht der Dauerschalter auf "Mit Jum", ist jeder gezeigte Ort hundeok —
-       die Marke an jeder Zeile sagt dann nichts mehr und kostet nur Platz. */
-    if (p.dog === true && !S.jum) f.push('<span class="fact fact--dog">' + ICON.dog + 'Jum ok</span>');
-    else if (p.dog === false) f.push('<span class="fact fact--nodog">' + ICON.dog + 'ohne Jum</span>');
+    /* Der Hund-Slot, vier Zustaende.
+
+       Bis v33 entfiel die Marke bei angeschaltetem Jum -- sie galt ja fuer
+       alle. Seit der Schalter nichts mehr ausblendet, gilt sie nicht mehr
+       fuer alle, und die Zeile muss sagen, woran sie ist.
+
+       Steht der Schalter aus, bleibt "Hund offen" weg: dann ist die offene
+       Regel keine Nachricht. Das belegte Nein steht immer, es ist eine
+       Einschraenkung unabhaengig vom Schalter.
+
+       Die Herkunft (Katalog oder ihr selbst) steht NICHT in der Zeile: sie
+       hat vier feste Slots auf 97 px und ist eine Scanflaeche. Wer es genau
+       wissen will, oeffnet den Ort -- dort steht Datum und Wortlaut. */
+    var dz = dogState(p);
+    if (dz === 'ja' || dz === 'ihr') {
+      f.push('<span class="fact fact--dog' + (dz === 'ihr' ? ' fact--dogyou' : '') + '">'
+        + ICON.dog + 'Jum ok</span>');
+    } else if (dz === 'nein' || dz === 'ihrnein') {
+      f.push('<span class="fact fact--nodog">' + ICON.dog + 'ohne Jum</span>');
+    } else if (S.jum) {
+      f.push('<span class="fact fact--dogopen">' + ICON.dog + 'Hund offen</span>');
+    }
     /* Der Ruhetag belegt denselben Slot, statt einen fuenften aufzumachen —
        die Zeilenhoehe von 97 px bleibt damit unangetastet. "taeglich 18–23,
        Ruhetag Mittwoch" hilft am Mittwoch niemandem, "heute zu" schon; der
        volle Wortlaut steht weiter im Sheet. */
-    if (closedToday(p)) {
+    /* Ist der Ort verplant, steht sein Tag im Oeffnungs-Slot -- "am Mittwoch"
+       schlaegt "bis 22:30", wenn man die Zeile im Plan wiederfinden will.
+       Der volle Wortlaut steht weiter im Sheet, und dort wird der Tag auch
+       gewaehlt. */
+    var tagVon = S.days[p.id] && S.saved.indexOf(p.id) >= 0
+      ? planTagVon(p.id, tagKennungen()) : null;
+    if (tagVon) {
+      var tk = tripTage().filter(function (t) { return t.iso === tagVon; })[0];
+      f.push('<span class="fact fact--day">' + ICON.star
+        + esc(tagVon === isoTag(new Date()) ? 'heute' : (tk ? tk.kurz : tagVon)) + '</span>');
+    } else if (closedToday(p)) {
       f.push('<span class="fact fact--closed">' + ICON.clock + 'heute zu</span>');
     } else if (has(p.hours)) {
       f.push('<span class="fact fact--hours">' + ICON.clock + '<span>'
@@ -1543,11 +1678,18 @@
   /* Wie viele Orte der Abschnitt kennt, bevor "schon gesehen" greift.
      Braucht der Leerzustand, um sagen zu koennen, woran es liegt. */
   var todayGesehen = 0;
+  /* Wie viele Orte des Abschnitts der Schalter gerade herausnimmt. Seit v34
+     ist das nur noch das belegte "ohne Jum" -- vier Orte im ganzen Bestand. */
+  var jumNeinHeute = 0;
 
   function todayList(mid, mins, until, now, mitGesehenen) {
+    jumNeinHeute = 0;
     var out = D.places.filter(function (p) {
       if (momentsOf(p).indexOf(mid) < 0) return false;
-      if (S.jum && p.dog !== true) return false;
+      /* Nur das belegte Nein faellt heraus -- vier Orte. Ungeklaertes bleibt
+         und sinkt weiter unten in der Sortierung; bis v33 flog es mit heraus
+         und machte ganze Abschnitte leer. */
+      if (S.jum && dogOf(p).v === false) { jumNeinHeute++; return false; }
       if (S.wet && indoorOf(p) !== true) return false;
       if (closingSoon(p, mins)) return false;
       return true;
@@ -1571,6 +1713,13 @@
          genau das tut diese App nirgends. */
       var ca = closedToday(a, now) ? 1 : 0, cb = closedToday(b, now) ? 1 : 0;
       if (ca !== cb) return ca - cb;
+      /* Hier wird vorgeschlagen, nicht gesucht: mit angeschaltetem Jum steht
+         Belegtes vor Ungeklaertem. In der Ortsliste gilt das bewusst NICHT
+         -- dort sucht man, und 58 Orte nach hinten waere eine Absage. */
+      if (S.jum) {
+        var ja = dogOf(a).v === true ? 0 : 1, jb = dogOf(b).v === true ? 0 : 1;
+        if (ja !== jb) return ja - jb;
+      }
       var fa = fitsLeft(a, mins, until) ? 0 : 1, fb = fitsLeft(b, mins, until) ? 0 : 1;
       if (fa !== fb) return fa - fb;
       var ua = unverified(a) ? 1 : 0, ub = unverified(b) ? 1 : 0;
@@ -1742,24 +1891,21 @@
 
   /* Bei Regen ist "nichts da" oft die richtige Antwort — aber sie muss
      sagen, was stattdessen geht. Die Zahlen kommen aus den Daten. */
+  /* Bis v33 hatte dieser Kasten zwei Faelle, und der haeufigere war
+     hausgemacht: mit angeschaltetem Jum stand hier "Bei Regen steht hier
+     nichts", obwohl sieben Orte im Trockenen lagen -- sie hatten nur alle
+     eine offene Hundregel. Drei davon zeigte der Kasten an, vier nicht, und
+     verplanen liess sich keiner.
+
+     Seit v34 kommt dieser Fall nicht mehr vor: der Schalter blendet nichts
+     aus, die sieben stehen in der Liste. Was bleibt, ist der ehrliche Fall
+     -- fuer diesen Abschnitt ist nichts als "drinnen" belegt. */
   function wetNoneHtml(mid, ref) {
-    var trocken = D.places.filter(function (p) {
-      return momentsOf(p).indexOf(mid) >= 0 && indoorOf(p) === true;
-    });
     var offen = D.places.filter(function (p) { return indoorOf(p) === null; }).length;
-    var h = '<div class="today__none"><h3>Bei Regen steht hier nichts</h3>';
-    if (S.jum && trocken.length) {
-      h += '<p>Im Trockenen wäre in diesem Abschnitt etwas dabei — aber nicht'
-        + ' mit Jum. Ohne den Schalter sind es ' + trocken.length
-        + (trocken.length === 1 ? ' Ort:' : ' Orte:') + '</p>'
-        + '<div class="today__smalls">'
-        + trocken.slice(0, 3).map(function (o) { return smallHtml(o, ref); }).join('')
-        + '</div>';
-    } else {
-      h += '<p>Bei ' + offen + ' von ' + D.places.length + ' Orten ist nicht hinterlegt, '
-        + 'ob man dort im Trockenen sitzt. Ungeprüft wird hier nichts vorgeschlagen.</p>';
-    }
-    return h + '</div>';
+    return '<div class="today__none"><h3>Bei Regen steht hier nichts</h3>'
+      + '<p>Bei ' + offen + ' von ' + D.places.length + ' Orten ist nicht hinterlegt, '
+      + 'ob man dort im Trockenen sitzt. Ungeprüft wird hier nichts vorgeschlagen.</p>'
+      + '</div>';
   }
 
   /* Der Plan fuer heute, ganz oben in "Heute".
@@ -1928,12 +2074,14 @@
               ? 'ist der eine hinterlegte Ort'
               : 'sind alle ' + todayGesehen + ' hinterlegten Orte')
           + ' als gesehen markiert.'
-          + (S.jum ? ' Der Schalter „Mit Jum“ schränkt zusätzlich ein.' : '')
+          + (S.jum && jumNeinHeute ? ' Mit Jum fällt ' + (jumNeinHeute === 1
+              ? 'ein Ort' : jumNeinHeute + ' Orte') + ' mit ausdrücklichem „ohne Jum“ heraus.' : '')
           + '</p><button type="button" class="btn" id="today-seen">'
           + 'Trotzdem zeigen</button></div>'
         : '<div class="today__none"><h3>Hier steht nichts</h3><p>'
           + 'Für diesen Tagesabschnitt ist nichts hinterlegt.'
-          + (S.jum ? ' Der Schalter „Mit Jum“ schränkt zusätzlich ein.' : '') + '</p></div>';
+          + (S.jum && jumNeinHeute ? ' Mit Jum fällt ' + (jumNeinHeute === 1
+              ? 'ein Ort' : jumNeinHeute + ' Orte') + ' mit ausdrücklichem „ohne Jum“ heraus.' : '') + '</p></div>';
     }
 
     return head + weather + body + aheadHtml(m.id, ref)
@@ -1963,6 +2111,32 @@
 
   function infoHtml() {
     var h = '';
+
+    /* Die Hundregeln als Arbeitsvorrat, nicht als Schicksal.
+
+       Bei 58 der 101 Orte ist sie im Katalog offen. Das ist keine Zahl zum
+       Hinnehmen, sondern eine Liste, die ueber fuenfzehn Reisetage kuerzer
+       wird -- ein Anruf oder ein Besuch je Eintrag. Seit v34 steht sie hier
+       oben und zaehlt mit. */
+    var bil = dogBilanz();
+    h += '<section class="section"><h2 class="section__h">Jum, in Zahlen</h2>'
+      + '<div class="panel panel--dog">'
+      /* bil.ja zaehlt den Katalog, bil.ihr eure eigenen Klaerungen -- die
+         Summe ist die Zahl, die auch in der Zaehlzeile steht. Sie getrennt
+         zu nennen ist der Punkt: die zweite waechst, wenn ihr unterwegs
+         fragt, und die dritte schrumpft dadurch. */
+      + '<p class="panel__x">Von ' + D.places.length + ' Orten dürfen '
+      + '<b>' + (bil.ja + bil.ihr) + '</b> Jum sicher herein'
+      + (bil.ihr ? ', <b>' + bil.ihr + '</b> davon habt ihr selbst geklärt' : '')
+      + '. Bei <b>' + bil.offen + '</b> ist die Regel offen, '
+      + '<b>' + bil.nein + '</b> sind ausdrücklich ohne Hund.</p>'
+      + (bil.offen
+          ? '<p class="panel__x panel__x--soft">Offen heißt offen, nicht nein — '
+            + 'sie stehen überall mit. Wer davorsteht oder anruft, trägt es im '
+            + 'Ort ein; ab dann gilt es und fährt beim Teilen mit.</p>'
+          : '<p class="panel__x panel__x--soft">Keine offene Hundregel mehr. '
+            + 'Das habt ihr unterwegs geklärt.</p>')
+      + '</div></section>';
 
     if (D.merken.length) {
       h += '<section class="section"><h2 class="section__h">Gut zu wissen</h2>'
@@ -2238,6 +2412,11 @@
        nicht, der Aufruf würde still ins Leere laufen. */
     setInert(false);
 
+    /* Wurde im Sheet eine Hundregel gesetzt, traegt die Liste dahinter noch
+       die alte Marke. Neu zeichnen, bevor der Fokus zurueckgeht -- sonst
+       zeigte sie bis zum naechsten Tipp etwas Falsches. */
+    if (listeNeuBeimSchliessen) { listeNeuBeimSchliessen = false; render(); }
+
     var back = id ? document.querySelector('[data-open="' + id.replace(/"/g, '\\"') + '"]') : null;
     if (wasFilter) back = $('chip-filter');
     if (wasDay) back = document.querySelector('[data-dayopen="' + wasDay + '"]');
@@ -2315,23 +2494,99 @@
     return t.length ? '<div class="tiles">' + t.join('') + '</div>' : '';
   }
 
+  /* Datum einer eigenen Angabe, kurz: "20.09." */
+  function kurzDatum(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    return m ? m[3] + '.' + m[2] + '.' : '';
+  }
+
   /* Bei 58 von 101 Orten ist die Hundregel ungeklaert — das ist die haeufigste
      Antwort und darf kein kleingedrucktes "nicht geklaert" in einer Liste
-     sein. Drei Zustaende, jeder mit eigener Farbe und eigenem Satz. */
+     sein.
+
+     Seit v34 ist der Block nicht mehr nur eine Auskunft, sondern die Stelle,
+     an der man sie berichtigt. Bis dahin stand im Sheet gleichzeitig
+     "Nicht geklaert — vorher fragen" und, eine Zeile darunter in der eigenen
+     Notiz, "Jum durfte mit rein". Zwei Wahrheiten auf einem Bildschirm, und
+     am naechsten Tag gewann wieder der Katalog.
+
+     Jetzt gilt: was ihr vor Ort erfahren habt, ueberschreibt den Katalog --
+     mit Datum, umkehrbar, und es faehrt beim Teilen mit. */
   function dogHtml(p) {
-    var state = p.dog === true ? 'yes' : p.dog === false ? 'no' : 'unknown';
-    var text = { yes: 'Jum darf mit', no: 'Ohne Jum',
-                 unknown: 'Nicht geklärt — vorher fragen' }[state];
+    var d = dogOf(p);
+    var state = d.q === 'ihr' ? (d.v ? 'you' : 'youno')
+              : d.v === true ? 'yes' : d.v === false ? 'no' : 'unknown';
+    var text = {
+      yes:    'Jum darf mit',
+      no:     'Ohne Jum',
+      unknown:'Nicht geklärt — vorher fragen',
+      you:    'Jum darf mit — von euch bestätigt',
+      youno:  'Ging nicht — von euch notiert'
+    }[state];
     /* Drei Orte tragen eine Einschraenkung, die dog nicht ausdrueckt: in
        Sirmione ist nur die Burg tabu, auf der Isola gilt Leinenpflicht, auf
        dem Linienschiff faehrt er gratis. Der Badge bleibt dafuer in den
        Daten und steht hier — in der Zeile waere er neben "Jum ok" nur Laerm. */
     var zusatz = badgeKind(p) === 'dog' ? p.badge : null;
-    return '<p class="dogrow dogrow--' + state + '">' + ICON.dog
+    var wann = d.q === 'ihr' ? kurzDatum(d.at) : '';
+
+    var h = '<p class="dogrow dogrow--' + state + '">' + ICON.dog
       + '<span>' + esc(text)
+      + (wann ? '<span class="dogrow__x">notiert am ' + esc(wann)
+          + ' · überschreibt den Katalog</span>' : '')
       + (zusatz ? '<span class="dogrow__x">' + esc(zusatz) + '</span>' : '')
       + '</span></p>';
+
+    /* Die Knopfreihe darunter. Sie steht nur, wo sie etwas aendern kann:
+       bei offener Regel fragt sie, bei eigener Angabe nimmt sie zurueck.
+       Wo der Katalog eine Antwort hat, steht keine -- eine belegte Angabe
+       mit einem Tipp umzuwerfen waere zu billig. Anrufen steht dazu, weil
+       das der naechste sinnvolle Schritt ist, wenn man nicht davorsteht. */
+    var tel = has(p.phone) ? telHref(p.phone) : null;
+    if (state === 'unknown') {
+      h += '<div class="dogask">'
+        + '<p class="dogask__q">Wart ihr da? Dann tragt es ein — ab dann gilt es überall.</p>'
+        + '<div class="dogask__b">'
+        + '<button type="button" class="btn btn--dogyes" data-dogset="' + esc(p.id) + '" data-dogval="1">'
+        + 'Jum durfte mit</button>'
+        + '<button type="button" class="btn" data-dogset="' + esc(p.id) + '" data-dogval="0">'
+        + 'Ging nicht</button>'
+        + (tel ? '<a class="btn" href="tel:' + esc(tel) + '">Anrufen</a>' : '')
+        + '</div></div>';
+    } else if (d.q === 'ihr') {
+      h += '<div class="dogask">'
+        + '<div class="dogask__b">'
+        + '<button type="button" class="btn" data-dogset="' + esc(p.id) + '" data-dogval="">'
+        + 'Zurücknehmen</button>'
+        + '<button type="button" class="btn" data-dogset="' + esc(p.id) + '" data-dogval="'
+        + (d.v ? '0' : '1') + '">' + (d.v ? 'Doch nicht' : 'Doch, ging') + '</button>'
+        + '</div></div>';
+    }
+    return h;
   }
+
+  /* Setzen und sofort nur den Block neu bauen -- ein render() liesse das
+     Sheet springen und den Fokus verlieren. Dieselbe Entscheidung wie beim
+     Abhaken in "Heute". */
+  function dogSetzen(id, wert) {
+    setDogVorOrt(id, wert);
+    var p = D.places.filter(function (o) { return o.id === id; })[0];
+    if (!p) return;
+    var alt = $('sheet-body').querySelector('.dogrow');
+    if (alt) {
+      var huelle = document.createElement('div');
+      huelle.innerHTML = dogHtml(p);
+      var nachbar = alt.nextElementSibling;
+      if (nachbar && nachbar.classList.contains('dogask')) nachbar.remove();
+      alt.replaceWith.apply(alt, Array.prototype.slice.call(huelle.childNodes));
+    }
+    /* Die Liste dahinter traegt die Marke ebenfalls -- sie muss mitziehen,
+       sobald das Sheet zugeht. Bis dahin liegt sie ohnehin unter dem Sheet. */
+    listeNeuBeimSchliessen = true;
+    flash(wert === null ? 'Eigene Angabe zurückgenommen'
+      : wert ? 'Notiert: Jum darf mit' : 'Notiert: ging nicht');
+  }
+  var listeNeuBeimSchliessen = false;
 
   /* Direkt unter der Hundzeile, weil das die haeufigste offene Frage ist.
      Ein einzeiliges Feld, kein Speichernknopf: es sichert beim Verlassen und
@@ -2352,6 +2607,45 @@
     var t = String(text == null ? '' : text).trim().slice(0, 140);
     if (t) S.notes[id] = t; else delete S.notes[id];
     lsSet(LS_NOTES, S.notes);
+  }
+
+  /* Der Weg in den Plan, an jedem Ort.
+
+     Bis v33 fuehrte er ausschliesslich ueber die Merkliste: setDay() war nur
+     ueber tagWaehler() erreichbar, und der stand nur an Zeilen, die S.saved
+     schon enthielt. Der Stern war damit kein Merkmal, sondern ein Tor --
+     sechs Tipps und ein Reiterwechsel, um einen gefundenen Ort auf den
+     Mittwoch zu legen. Im Tages-Sheet fuer Mittwoch waren 6 von 101 Orten
+     erreichbar.
+
+     Jetzt steht der Waehler im Sheet jedes Ortes, also zwei Tipps entfernt:
+     oeffnen, Tag waehlen. Wer einen Tag waehlt, merkt den Ort damit auch --
+     "verplant" ohne "gemerkt" gaebe es sonst als dritten Zustand, und die
+     Zahlen im Plan stimmten nicht mehr.
+
+     Wieder ein natives select, aus demselben Grund wie im Plan: auf dem
+     Zielgeraet oeffnet iOS sein Waehlrad. */
+  function tagWaehlerHtml(p) {
+    var tage = tripTage();
+    if (!tage.length) return '';
+    var heute = isoTag(new Date());
+    var tag = planTagVon(p.id, tagKennungen());
+    var o = '<option value=""' + (tag ? '' : ' selected') + '>Noch keinem Tag</option>';
+    tage.forEach(function (t) {
+      /* Vergangene Reisetage stehen als vergangen da und lassen sich nicht
+         mehr waehlen -- bis v33 trugen sie im Reiseraster ein "+", und am
+         letzten Reisetag waren 14 von 15 Zellen ein totes Angebot. */
+      var vorbei = t.iso < heute;
+      o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '')
+        + (vorbei && tag !== t.iso ? ' disabled' : '') + '>'
+        + t.kurz + (t.iso === heute ? ' · heute' : vorbei ? ' · vorbei' : '') + '</option>';
+    });
+    return '<div class="sheetday' + (tag ? ' sheetday--zu' : '') + '">'
+      + '<label class="sheetday__l" for="sheet-day">Reisetag</label>'
+      + '<span class="pday' + (tag ? ' pday--zu' : '') + '">'
+      + '<select id="sheet-day" data-day="' + esc(p.id) + '"'
+      + ' aria-label="' + esc(p.name) + ' einem Reisetag zuordnen">'
+      + o + '</select></span></div>';
   }
 
   function sheetHtml(p) {
@@ -2384,10 +2678,11 @@
     h += '<div class="sheet__acts">'
       + '<a class="btn btn--wide btn--primary" href="' + esc(mapsHref(p))
       + '" target="_blank" rel="noopener noreferrer">' + ICON.pin + 'Route in Karten</a>'
+      + tagWaehlerHtml(p)
       + '<div class="actrow">'
       + '<button type="button" class="act" data-save="' + esc(p.id) + '" aria-pressed="'
       + (on ? 'true' : 'false') + '">' + ICON.star
-      + '<span>' + (on ? 'Gemerkt' : 'Merken') + '</span></button>'
+      + '<span>' + (on ? 'Im Vorrat' : 'Für später') + '</span></button>'
       + '<button type="button" class="act" data-seen="' + esc(p.id) + '" aria-pressed="'
       + (wasSeen ? 'true' : 'false') + '">' + ICON.checkRound
       + '<span>' + 'Gesehen' + '</span></button>'
@@ -2589,6 +2884,18 @@
     var d = {};
     S.saved.forEach(function (id) { if (S.days[id]) d[id] = S.days[id]; });
     if (Object.keys(d).length) payload.d = d;
+    /* Die vor Ort geklaerten Hundregeln fahren mit -- und zwar ALLE, nicht
+       nur die zu gemerkten Orten: "Jum durfte rein" ist eine Tatsache ueber
+       den Ort, keine Markierung an einer Liste. Sie ist das Wertvollste, was
+       auf so einer Reise entsteht, und sie soll beide Telefone erreichen.
+       v bleibt 1: eine aeltere Fassung ignoriert h einfach. */
+    if (Object.keys(S.dog).length) {
+      var hh = {};
+      Object.keys(S.dog).forEach(function (id) {
+        hh[id] = [S.dog[id].v ? 1 : 0, S.dog[id].at || ''];
+      });
+      payload.h = hh;
+    }
     var base = location.origin + location.pathname;
     return base + '#liste=' + b64url(JSON.stringify(payload));
   }
@@ -2615,7 +2922,14 @@
       Object.keys(data.d || {}).forEach(function (id) {
         if (known[id] && tagOk[String(data.d[id] || '')]) tage[id] = String(data.d[id]);
       });
-      return { m: keep(data.m), g: keep(data.g), n: notizen, d: tage,
+      var hunde = {};
+      Object.keys(data.h || {}).forEach(function (id) {
+        var e = data.h[id];
+        if (known[id] && Array.isArray(e) && (e[0] === 0 || e[0] === 1)) {
+          hunde[id] = { v: e[0] === 1, at: typeof e[1] === 'string' ? e[1].slice(0, 16) : '' };
+        }
+      });
+      return { m: keep(data.m), g: keep(data.g), n: notizen, d: tage, h: hunde,
                dropped: ((data.m || []).length + (data.g || []).length)
                         - (keep(data.m).length + keep(data.g).length) };
     } catch (e) { return null; }
@@ -2675,14 +2989,17 @@
     if (!incoming) return;
     var fremd = incoming.n || {};
     var fremdeTage = incoming.d || {};
+    var fremdeHunde = incoming.h || {};
     if (mode === 'replace') {
       rueck = { saved: S.saved.slice(), seen: S.seen.slice(),
                 notes: JSON.parse(JSON.stringify(S.notes)),
-                days: JSON.parse(JSON.stringify(S.days)) };
+                days: JSON.parse(JSON.stringify(S.days)),
+                dog: JSON.parse(JSON.stringify(S.dog)) };
       S.saved = incoming.m.slice();
       S.seen = incoming.g.slice();
       S.notes = JSON.parse(JSON.stringify(fremd));
       S.days = JSON.parse(JSON.stringify(fremdeTage));
+      S.dog = JSON.parse(JSON.stringify(fremdeHunde));
     } else {
       incoming.m.forEach(function (id) { if (S.saved.indexOf(id) < 0) S.saved.push(id); });
       incoming.g.forEach(function (id) { if (S.seen.indexOf(id) < 0) S.seen.push(id); });
@@ -2692,11 +3009,21 @@
       /* Auch hier gewinnt die eigene Planung: ein fremder Tag fuellt nur
          Luecken. */
       Object.keys(fremdeTage).forEach(function (id) { if (!S.days[id]) S.days[id] = fremdeTage[id]; });
+      /* Hundregeln sind die Ausnahme von "die eigene gewinnt": hier gewinnt
+         die JUENGERE. Es sind keine Markierungen an einer Liste, sondern
+         Beobachtungen ueber einen Ort -- und wer zuletzt davorstand, weiss
+         es besser. Ohne Datum verliert die fremde Angabe. */
+      Object.keys(fremdeHunde).forEach(function (id) {
+        var eigen = S.dog[id], fremdE = fremdeHunde[id];
+        if (!eigen) { S.dog[id] = fremdE; return; }
+        if ((fremdE.at || '') > (eigen.at || '')) S.dog[id] = fremdE;
+      });
     }
     lsSet(LS_SAVED, S.saved);
     lsSet(LS_SEEN, S.seen);
     lsSet(LS_NOTES, S.notes);
     lsSet(LS_DAYS, S.days);
+    lsSet(LS_DOG, S.dog);
     var zumRuecknehmen = rueck;
     dismissInbox();
     if (zumRuecknehmen) zeigeRueckgaengig(zumRuecknehmen);
@@ -2793,6 +3120,33 @@
   function setDay(id, iso) {
     if (iso) S.days[id] = iso; else delete S.days[id];
     lsSet(LS_DAYS, S.days);
+    /* Einen Tag zu waehlen heisst, den Ort einzuplanen -- und Verplantes ist
+       im Haus eine Teilmenge des Gemerkten. Ohne diese Zeile gaebe es einen
+       dritten Zustand ("verplant, aber nicht gemerkt"), und die Zahlen an der
+       Umschaltleiste im Plan zaehlten aneinander vorbei. Das ist der Weg, den
+       der Waehler im Ortssheet seit v34 aufmacht: wer plant, merkt. */
+    if (iso && S.saved.indexOf(id) < 0) {
+      S.saved.push(id);
+      lsSet(LS_SAVED, S.saved);
+      syncTabs();
+    }
+    /* Kommt der Ruf aus einem offenen Sheet, wuerde render() die Liste
+       darunter neu bauen und den Fokus aus dem Sheet reissen. Dann reicht es,
+       beim Schliessen neu zu zeichnen. */
+    if (!$('sheet').hidden) {
+      listeNeuBeimSchliessen = true;
+      var tag = iso ? tripTage().filter(function (t) { return t.iso === iso; })[0] : null;
+      flash(tag ? 'Eingeplant: ' + tag.kurz : 'Tag gelöst');
+      var huelle = $('sheet-body').querySelector('.sheetday');
+      if (huelle) huelle.classList.toggle('sheetday--zu', !!iso);
+      var stern = $('sheet-body').querySelector('[data-save]');
+      if (stern && iso) {
+        stern.setAttribute('aria-pressed', 'true');
+        var txt = stern.querySelector('span:not(.sr-only)');
+        if (txt) txt.textContent = 'Im Vorrat';
+      }
+      return;
+    }
     render();
     /* Der Neuaufbau wirft den Fokus weg; fuer Tastaturnutzer gehoert er
        zurueck auf den Waehler desselben Orts. */
@@ -2924,7 +3278,14 @@
     var zellen = tage.map(function (t) {
       var n = zahl[t.iso] || 0;
       var ist = t.iso === heute;
-      var kl = 'uebs__d' + (n ? ' uebs__d--voll' : ' uebs__d--leer') + (ist ? ' uebs__d--heute' : '');
+      /* Bis v33 trugen auch vergangene Tage ein "+" und luden zum Verplanen
+         ein. Am 20.09. waren das sechs von fuenfzehn Zellen, am letzten
+         Reisetag vierzehn -- ein Angebot, das nichts mehr bewirken kann.
+         Sie bleiben sichtbar (die Reise hatte sie ja) und antippbar (man
+         will nachsehen, was war), aber gedaempft und ohne Plus. */
+      var vorbei = t.iso < heute;
+      var kl = 'uebs__d' + (n ? ' uebs__d--voll' : ' uebs__d--leer')
+        + (ist ? ' uebs__d--heute' : '') + (vorbei ? ' uebs__d--vorbei' : '');
       var innen = '<span class="uebs__w">' + t.kurz.slice(0, 2) + '</span>'
         + '<span class="uebs__n">' + t.kurz.slice(3).replace(/\.\d\d\.$/, '.') + '</span>'
         + '<span class="uebs__c">' + (n || '') + '</span>';
@@ -2936,8 +3297,8 @@
       return '<button type="button" class="' + kl + '" data-dayopen="' + t.iso + '"'
         + ' aria-label="' + t.lang + ' — '
         + (n ? n + (n === 1 ? ' Ort' : ' Orte') + ' geplant' : 'noch nichts geplant')
-        + (ist ? ', heute' : '') + ', öffnen">' + innen
-        + (n ? '' : '<span class="uebs__plus" aria-hidden="true">+</span>') + '</button>';
+        + (ist ? ', heute' : vorbei ? ', vorbei' : '') + ', öffnen">' + innen
+        + (n || vorbei ? '' : '<span class="uebs__plus" aria-hidden="true">+</span>') + '</button>';
     }).join('');
 
     /* Die Zusammenfassung sagt, was das Raster zeigt. Seit v31 tragen die
@@ -2945,7 +3306,9 @@
        ein unsichtbarer Knopf waere schlimmer als eine Zeile mehr Vorlesetext
        -- ihr Label sagt ausserdem "noch nichts geplant", ist also keine
        leere Datumsangabe. */
-    var frei = tage.length - verplant;
+    /* "Noch ohne Plan" zaehlt nur, was noch kommt -- ein freier Montag vom
+       14. ist keine Luecke mehr, sondern Vergangenheit. */
+    var frei = tage.filter(function (t) { return !zahl[t.iso] && t.iso >= heute; }).length;
     return '<section class="uebs">'
       + '<p class="uebs__h">Reiseplan'
       + '<span class="uebs__s">' + verplant + ' von ' + tage.length + ' Tagen verplant</span></p>'
@@ -3152,8 +3515,13 @@
     var heute = isoTag(new Date());
     var o = '<option value=""' + (tag ? '' : ' selected') + '>Tag offen</option>';
     tripTage().forEach(function (t) {
-      o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '') + '>'
-        + t.kurz + (t.iso === heute ? ' · heute' : '') + '</option>';
+      /* Ein vergangener Tag laesst sich nicht mehr verplanen. Er bleibt
+         waehlbar, solange er der aktuelle Wert ist -- sonst verloere ein
+         Ort beim naechsten Neuzeichnen still seine Zuordnung. */
+      var vorbei = t.iso < heute;
+      o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '')
+        + (vorbei && tag !== t.iso ? ' disabled' : '') + '>'
+        + t.kurz + (t.iso === heute ? ' · heute' : vorbei ? ' · vorbei' : '') + '</option>';
     });
     return '<span class="pday' + (tag ? ' pday--zu' : '') + '">'
       + '<select data-day="' + esc(p.id) + '" aria-label="' + esc(p.name) + ' einem Tag zuordnen">'
@@ -3519,6 +3887,15 @@
     });
 
     $('sheet-body').addEventListener('click', function (e) {
+      /* Die Hundregel vor Ort klaeren. Steht vorn, weil der Knopf sonst als
+         nichts erkannt und der Klick durchgereicht wuerde. */
+      var ds = e.target.closest('[data-dogset]');
+      if (ds) {
+        e.preventDefault();
+        var dwert = ds.getAttribute('data-dogval');
+        dogSetzen(ds.getAttribute('data-dogset'), dwert === '' ? null : dwert === '1');
+        return;
+      }
       var save = e.target.closest('[data-save]');
       if (save) { e.preventDefault(); toggleSave(save.getAttribute('data-save')); return; }
       var seen = e.target.closest('[data-seen]');
@@ -3667,7 +4044,12 @@
        wer ueber den Hintergrund schliesst, hat das Feld nie verlassen. */
     $('sheet-body').addEventListener('change', function (e) {
       var f = e.target.closest && e.target.closest('[data-notiz]');
-      if (f) { setzeNotiz(f.getAttribute('data-notiz'), f.value); render(); }
+      if (f) { setzeNotiz(f.getAttribute('data-notiz'), f.value); render(); return; }
+      /* Der Tag-Waehler im Ortssheet. Derselbe setDay() wie im Plan -- er
+         merkt selbst, dass ein Sheet offen ist, und zeichnet die Liste erst
+         beim Schliessen neu. */
+      var tw = e.target.closest && e.target.closest('select[data-day]');
+      if (tw) setDay(tw.getAttribute('data-day'), tw.value);
     });
 
     window.addEventListener('popstate', function () {
@@ -4079,6 +4461,7 @@
       runsToday: runsToday, daysUntil: daysUntil, tripDay: tripDay, unverified: unverified,
       closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,
       dur: dur, km: km, norm: norm, haystack: haystack,
+      dogOf: dogOf, dogState: dogState, dogBilanz: dogBilanz, dogCount: dogCount,
       byDistance: byDistance, byRating: byRating,
       grundmenge: grundmenge, markiere: markiere, normStellen: normStellen,
       tripSpan: tripSpan, tripTage: tripTage, isoTag: isoTag,
