@@ -193,38 +193,59 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   const p = await c.newPage();
   await p.goto(BASE + '/?v=orte', { waitUntil: 'networkidle' });
   await p.waitForSelector('#app:not([hidden])');
-  /* Beide auf denselben Tag: die Umstell-Pfeile gibt es seit v33 nur noch im
-     Plan, und in den Plan kommt ein Ort erst mit einem Reisetag. In der
-     Merkliste gibt es keine Reihenfolge, die etwas bedeutet -- dort waeren
-     Pfeile ein Bedienelement ohne Aussage. */
-  await p.evaluate(() => {
-    localStorage.setItem('pk.saved', JSON.stringify(['desenzano', 'bakare']));
-    localStorage.setItem('pk.days',
-      JSON.stringify({ desenzano: '2026-09-21', bakare: '2026-09-21' }));
+  /* Beide auf denselben Tag: die Umstell-Pfeile stehen seit v36 im
+     Tages-Sheet, und in einen Tag kommt ein Ort erst mit einem Reisetag. Im
+     Vorrat gibt es keine Reihenfolge, die etwas bedeutet -- dort waeren
+     Pfeile ein Bedienelement ohne Aussage.
+
+     Der Tag wird aus dem Raster gelesen, nicht eingetippt: ein festes Datum
+     faellt mit jedem Tag der Reise weiter in die Vergangenheit, und ein
+     vergangener Tag laesst sich nicht mehr umplanen. */
+  await p.locator('.tab[data-tab="gemerkt"]').click();
+  await p.waitForTimeout(450);
+  const tag = await p.evaluate(() => {
+    const z = document.querySelector('.uebs__d:not(.uebs__d--vorbei):not(.uebs__d--heute)');
+    return z ? z.getAttribute('data-dayopen') : '';
   });
+  ok('es gibt einen Reisetag, der noch kommt', /^\d{4}-\d{2}-\d{2}$/.test(tag));
+  await p.evaluate((t) => {
+    localStorage.setItem('pk.saved', JSON.stringify(['desenzano', 'bakare']));
+    localStorage.setItem('pk.days', JSON.stringify({ desenzano: t, bakare: t }));
+  }, tag);
   await p.reload({ waitUntil: 'networkidle' });
   await p.waitForSelector('#app:not([hidden])');
   await p.locator('.tab[data-tab="gemerkt"]').click();
   await p.waitForTimeout(500);
 
-  ok('der Plan macht die Seite nicht seitwaerts scrollbar',
+  ok('die Reise macht die Seite nicht seitwaerts scrollbar',
     await p.evaluate(() => document.documentElement.scrollWidth), 402);
-  const pfeile = await p.evaluate(() => [...document.querySelectorAll('.pmove')]
+
+  /* In der Uebersicht stehen keine Pfeile: sie zeigt, das Sheet aendert. */
+  ok('die Uebersicht traegt keine Pfeile', await p.locator('#list .pmove').count(), 0);
+
+  await p.locator('.tagk:not(.tagk--frei)').first().click();
+  await p.waitForTimeout(600);
+  const pfeile = await p.evaluate(() => [...document.querySelectorAll('#sheet .pmove')]
     .map((e) => { const r = e.getBoundingClientRect();
       return [Math.round(r.width), Math.round(r.height),
         r.left >= 0 && r.right <= 402]; }));
-  ok('vier Umsortier-Pfeile stehen da', pfeile.length, 4);
+  ok('vier Umsortier-Pfeile stehen im Tages-Sheet', pfeile.length, 4);
   ok('jeder ist 44 mal 44', pfeile.every((x) => x[0] === 44 && x[1] === 44));
   ok('und jeder liegt im Bild', pfeile.every((x) => x[2]));
 
-  /* Umsortieren muss weiter wirken -- die Pfeile sind seit v27 anders
-     angeordnet, und Anordnung ist genau das, was so etwas still bricht. */
-  const erster = await p.evaluate(() => document.querySelector('.planrow__name').textContent);
-  await p.locator('.pmove[data-down]:not([disabled])').first().click();
-  await p.waitForTimeout(400);
-  const danach = await p.evaluate(() =>
-    [...document.querySelectorAll('.planrow__name')].map((e) => e.textContent));
-  ok('nach unten schieben vertauscht wirklich', danach[1], erster);
+  /* Umsortieren muss weiter wirken -- die Pfeile sind seit v36 an einer
+     anderen Stelle, und Anordnung ist genau das, was so etwas still bricht. */
+  const namen = () => p.evaluate(() =>
+    [...document.querySelectorAll('.tagsheet__row--drin .tagsheet__name')]
+      .map((e) => e.textContent));
+  const vorher = await namen();
+  await p.locator('#sheet .pmove[data-down]:not([disabled])').first().click();
+  await p.waitForTimeout(450);
+  const danach = await namen();
+  ok('nach unten schieben vertauscht wirklich', danach[1], vorher[0]);
+  ok('… und die Nummern zaehlen weiter von eins', await p.evaluate(() =>
+    [...document.querySelectorAll('.tagsheet__nr')].map((e) => e.textContent)),
+    ['1', '2']);
   await c.close();
 }
 

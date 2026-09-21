@@ -1259,18 +1259,92 @@ body.is-typing .tabs { transform: translateY(110%); }
 .today__all svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: var(--soft);
   stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* --- Plan --------------------------------------------------------------- */
-/* Aus "Gemerkt" wird ein Plan: Reihenfolge statt Sortierung, Zeitbudget statt
-   Trefferzahl. time_min liegt bei allen 101 Orten vor und wurde bis v13 nur
-   fuer einen Filter benutzt. */
-.plan__sum {
-  font-size: var(--t-meta); color: var(--soft);
-  /* Waagerecht 1rem, nicht 0: die Zeile wird in #list gerendert, und .list
-     zieht sich mit margin-inline: -1rem ueber die volle Breite. Alle
-     Geschwister gleichen das aus (.uebs, .ptabs, .plantag) -- diese eine
-     nicht, und sie klebte bis v33 am linken Bildschirmrand. */
-  padding: .1rem 1rem .7rem; font-variant-numeric: tabular-nums;
+/* --- Die Reise: fuenfzehn Tage auf einen Blick ---------------------------
+   Bis v35 zwei Haelften hinter einer Umschaltleiste. Seit v36 eine Ansicht:
+   Raster, Tageskarten, Vorrat. Geaendert wird im Tages-Sheet. */
+.reise__h { padding: .2rem 1rem .6rem; }
+.reise__t { font-family: var(--font-head); font-weight: 600; font-size: var(--t-display);
+  line-height: 1.1; letter-spacing: -.02em; }
+.reise__s { font-size: var(--t-meta); color: var(--soft); margin-top: .1rem;
+  font-variant-numeric: tabular-nums; }
+
+.reise__tage { display: grid; gap: .6rem; padding: 0 1rem .4rem; }
+
+/* Eine Tageskarte ist ein Knopf. Sie zeigt, was an dem Tag ansteht, und
+   oeffnet zum Aendern dasselbe Sheet wie eine Zelle im Raster -- ein
+   Einstieg statt zweier. */
+.tagk {
+  display: block; width: 100%; text-align: left;
+  background: var(--card); border: 1px solid var(--line);
+  border-left: 3px solid var(--lake);
+  border-radius: var(--r-card); box-shadow: var(--shadow);
+  padding: .7rem .85rem .75rem; cursor: pointer;
+  font-family: inherit; color: inherit;
 }
+.tagk__h { display: flex; align-items: baseline; gap: .5rem; }
+.tagk__t { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name); }
+.tagk__sum { margin-left: auto; font-size: var(--t-meta); color: var(--soft);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Genannt, nicht bewertet: die Summe ist ohne An- und Abfahrt gerechnet. */
+.tagk__sum--voll { color: var(--brick-ink); }
+.tagk__l { list-style: none; margin: .45rem 0 0; padding: 0; display: grid; gap: .1rem; }
+.tagk__st { display: flex; align-items: baseline; gap: .5rem; font-size: var(--t-body);
+  padding-left: .55rem; border-left: 2px solid var(--accent, var(--line)); }
+.tagk__n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tagk__d { margin-left: auto; font-size: var(--t-meta); color: var(--soft);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tagk__st--ab .tagk__n { text-decoration: line-through; color: var(--soft); }
+.tagk__f { display: block; margin-top: .45rem; font-size: var(--t-micro);
+  font-weight: 700; color: var(--verde-ink); }
+.tagk--heute { box-shadow: var(--shadow), inset 0 0 0 2px var(--lake); }
+.tagk--vorbei { opacity: .55; border-left-color: var(--line); }
+/* Der naechste Tag, an dem noch nichts steht. Gestrichelt heisst im Haus
+   "da, aber nichts los" -- wie die vergangenen Abschnitte in "Jetzt". */
+.tagk--frei { border-style: dashed; border-left-color: var(--line); background: none;
+  box-shadow: none; }
+.tagk__leer { display: block; margin-top: .3rem; font-size: var(--t-meta);
+  color: var(--soft); }
+
+/* Der Vorrat. Keine zweite Ansicht mehr, sondern die Sektion darunter --
+   man zieht beim Planen staendig aus ihm in einen Tag. */
+.vorrat { margin-top: 1.1rem; }
+.vorrat__h { display: flex; align-items: baseline; gap: .5rem; padding: 0 1rem .1rem;
+  font-family: var(--font-head); font-weight: 600; font-size: var(--t-name); }
+.vorrat__n { font-family: var(--font-body); font-size: var(--t-micro); font-weight: 700;
+  color: var(--card); background: var(--soft); border-radius: var(--r-pill);
+  min-width: 1.35rem; text-align: center; padding: .05rem .4rem; }
+.vorrat__s { padding: 0 1rem .6rem; font-size: var(--t-meta); color: var(--soft);
+  font-variant-numeric: tabular-nums; }
+.vorrat__leer { padding: 0 1rem .7rem; font-size: var(--t-body); color: var(--soft); }
+.vorrat .btn { margin: 0 1rem; width: calc(100% - 2rem); }
+
+/* Die Aufteilung der Tagessumme: was davon vor Ort vergeht, was auf dem Weg.
+   Sie steht unter dem Kopf, damit die Summe darueber nachvollziehbar ist. */
+.tagk__auf { display: block; margin-top: .15rem; font-size: var(--t-micro);
+  color: var(--soft); font-variant-numeric: tabular-nums; }
+
+/* Der Weg zwischen zwei Stationen. Eine eigene Zeile, kein Anhaengsel: er
+   gehoert keiner der beiden Stationen, sondern dem Zwischenraum -- deshalb
+   auch eingerueckt und ohne Kategoriekante. Ab einer halben Stunde ist er
+   kein Uebergang mehr, sondern ein Programmpunkt: dann Ziegel. */
+.tagk__wg { display: flex; font-size: var(--t-micro); color: var(--soft);
+  padding: .12rem 0 .12rem 1.35rem; font-variant-numeric: tabular-nums;
+  position: relative; }
+.tagk__wg::before {
+  content: ''; position: absolute; left: .3rem; top: 0; bottom: 0;
+  border-left: 1px dashed var(--line);
+}
+.tagk__wg--weit { color: var(--brick-ink); }
+.tagk__wg--weit::before { border-left-color: currentColor; }
+
+/* Nummer, Pfeile und Wege stehen seit v36 im Tages-Sheet. */
+.tagsheet__nr { font-family: var(--font-body); font-size: var(--t-meta); font-weight: 700;
+  color: var(--soft); font-variant-numeric: tabular-nums; min-width: 1.1rem; }
+.tagsheet__move { display: flex; flex: 0 0 auto; }
+/* --- Der Vorrat --------------------------------------------------------- */
+/* Aus "Gemerkt" wird ein Vorrat: was noch keinen Tag hat. Reihenfolge gibt
+   es hier keine -- die entsteht erst im Tag. time_min liegt bei allen 101
+   Orten vor und wurde bis v13 nur fuer einen Filter benutzt. */
 /* KEIN eigener negativer Rand: der Plan wird in #list gerendert, und .list
    zieht sich bereits mit margin-inline: -1rem ueber die volle Breite. Beide
    zusammen machten die Ansicht 434 px breit bei 402 px Bildschirm -- die
@@ -1280,11 +1354,10 @@ body.is-typing .tabs { transform: translateY(110%); }
 .plan { display: grid; border-top: 1px solid var(--line); }
 
 .planrow {
-  /* Dritte Spalte auto statt fester 2.6rem: dort stehen seit v27 zwei
-     44er-Pfeile nebeneinander (rund 92px). In der festen Spalte ragte der
-     zweite Pfeil unsichtbar aus dem Bild -- die Messung fand ihn mit 44x44,
-     nur eben rechts neben dem Bildschirm. */
-  display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+  /* Eine Spalte: seit v36 traegt die Zeile nur noch Namen, Zeile und
+     Tageswaehler. Nummer und Pfeile standen bis v35 links und rechts
+     daneben -- sie sind ins Tages-Sheet gewandert, wo geaendert wird. */
+  display: grid; grid-template-columns: minmax(0, 1fr);
   align-items: center;
   min-height: 4.4rem; padding: .5rem .85rem .5rem .45rem;
   background: var(--card);
@@ -1294,11 +1367,6 @@ body.is-typing .tabs { transform: translateY(110%); }
 .planrow--seen .planrow__name { color: var(--soft); }
 .planrow--seen .planrow__m { opacity: .72; }
 
-.planrow__n {
-  justify-self: center;
-  font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
-  color: var(--soft); font-variant-numeric: tabular-nums;
-}
 .planrow__mid { display: grid; gap: .35rem; min-width: 0; justify-items: start; }
 .planrow__open {
   display: grid; gap: .1rem; text-align: left; min-width: 0; max-width: 100%;
@@ -1482,22 +1550,69 @@ body.is-typing .tabs { transform: translateY(110%); }
   stroke-width: 2.4; stroke-linecap: round; }
 .tagsheet__b--weg { color: var(--soft); }
 
-/* --- Plan oder Merkliste ------------------------------------------------ */
-/* Zwei Haelften einer Ansicht, kein fuenfter Reiter: die Leiste unten traegt
-   vier, bei fuenf blieben je 80 px -- und "Plan" und "Merkliste" gehoeren
-   ohnehin zusammen. Man geht zwischen ihnen hin und her, nicht von woanders
-   zu einem von beiden.
+/* Vier Spalten statt zweier: Nummer, Text, die zwei Pfeile, der
+   Herunternehmen-Knopf. Bis v36 lief die Zeile im Zweispalten-Raster der
+   Vorratszeile mit -- die vier Kinder brachen dort in zwei Reihen um, der
+   Name rutschte nach rechts und stand als "Bel…" da.
 
-   Zwei Moeglichkeiten bekommen im Haus sonst einen Knopf, der seinen Stand
-   nennt (die Sortierung). Hier nicht: beide Seiten haben eine Zahl, und die
-   will man sehen, ohne umzuschalten. */
-.ptabs {
-  display: grid; grid-template-columns: 1fr 1fr; gap: .3rem;
-  padding: .1rem 1rem .8rem;
+   Die drei Knoepfe belegen zusammen 132 px, die Nummer 20: bei 402 px
+   Bildschirm bleiben dem Namen rund 200. Deshalb darf er hier UMBRECHEN,
+   anders als im Vorrat -- zwei Zeilen Name sind besser lesbar als ein
+   abgeschnittenes Wort, und die Zeile ist wegen der 44er-Knoepfe ohnehin
+   hoch genug. */
+.tagsheet__row--drin {
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto 2.75rem;
+  gap: .35rem; padding-left: .45rem;
 }
-.ptab {
-  min-height: 2.75rem; padding: .4rem .6rem;
-  display: flex; align-items: center; justify-content: center; gap: .4rem;
+.tagsheet__row--drin .tagsheet__name {
+  white-space: normal; overflow: visible;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+
+
+/* Eine Vorratszeile hat keine Nummer und keine Pfeile: dort gibt es keine
+   Reihenfolge, die etwas bedeutet. Beides steht seit v36 im Tages-Sheet.
+
+   Fortgefallen sind hier mit v36 die Umschaltleiste (.ptabs/.ptab), der
+   Leerzustand der beiden Haelften (.planleer), der Hinweis unter dem
+   Merklisten-Kopf (.plan__hint) und der Tageskopf des gruppierten Plans
+   (.plantag). Die Ansicht hat keine zwei Haelften mehr: Raster, Tageskarten
+   und Vorrat stehen untereinander, und der Tag ist eine Karte. */
+.planrow--merk { grid-template-columns: minmax(0, 1fr); padding-left: .85rem; }
+
+/* .plan__far ist mit v37 fortgefallen: zwischen zwei Stationen stand bis v36
+   eine Warnung ab 1,2 km Luftlinie und sonst nichts. Jetzt steht dort der
+   gerechnete Weg (.tagweg, weiter unten) -- auch der kurze, denn auch der
+   kostet Zeit. Die Hervorhebung haengt nicht mehr an der Strecke, sondern an
+   der Dauer: fuenf Kilometer sind mit dem Rad zwanzig Minuten und zu Fuss
+   mehr als eine Stunde. */
+
+/* --- Wege im Tages-Sheet und in "Jetzt" --------------------------------- */
+/* Seit v37 steht zwischen zwei Stationen desselben Tages der gerechnete Weg,
+   nicht mehr nur eine Warnung ab 1,2 km Luftlinie. Alles hier ist gerechnet
+   und traegt deshalb ein "≈" -- gemessene Werte (walk_min ab dem Zeltplatz)
+   tragen keines. */
+.tagweg, .planheut__w {
+  display: flex; align-items: center; gap: .35rem;
+  padding: .3rem .85rem .35rem 2.65rem;
+  font-size: var(--t-meta); color: var(--soft);
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.tagweg--weit, .planheut__w--weit { color: var(--brick-ink); }
+.tagweg svg, .planheut__w svg { width: 14px; height: 14px; flex: 0 0 auto; fill: none;
+  stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Womit der Tag zurueckgelegt wird. Drei Moeglichkeiten bekommen im Haus
+   eine Segmentleiste -- anders als bei den zwei Sortierungen, wo ein Knopf
+   genuegt, der seinen Stand nennt: hier will man alle drei sehen, weil die
+   Wahl die Zeiten darunter veraendert. */
+.wmode { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3rem;
+  padding: .1rem 0 .6rem; }
+.wmode__b {
+  min-height: 2.75rem; padding: .4rem .5rem;
   font-family: var(--font-body); font-size: var(--t-meta); font-weight: 500;
   color: var(--soft); background: none;
   border: 1px solid var(--line); border-radius: var(--r-pill);
@@ -1505,80 +1620,78 @@ body.is-typing .tabs { transform: translateY(110%); }
   transition: color var(--t) var(--ease), background-color var(--t) var(--ease),
               border-color var(--t) var(--ease);
 }
-.ptab__n {
-  font-size: var(--t-micro); font-weight: 700; line-height: 1;
-  font-variant-numeric: tabular-nums;
-  padding: .15rem .4rem; border-radius: var(--r-pill);
-  background: var(--wash); color: var(--soft);
-}
-.ptab--an {
-  color: var(--card); background: var(--ink); border-color: var(--ink);
-  font-weight: 700;
-}
-.ptab--an .ptab__n { background: rgba(255,255,255,.22); color: var(--card); }
+.wmode__b--an { color: var(--card); background: var(--ink); border-color: var(--ink);
+  font-weight: 700; }
 
-/* Eine Merklisten-Zeile hat keine Nummer und keine Pfeile: dort gibt es
-   keine Reihenfolge, die etwas bedeutet. */
-.planrow--merk { grid-template-columns: minmax(0, 1fr); padding-left: .85rem; }
-
-/* Leerzustand einer der beiden Haelften. Steht IN der Liste, nicht im
-   globalen #empty -- sonst verschwaende die Umschaltleiste, und man kaeme
-   nicht mehr dorthin, wo etwas zu tun ist. */
-.planleer {
-  margin: .4rem 1rem 1rem;
-  padding: 1.4rem 1.1rem;
-  display: grid; justify-items: start; gap: .5rem;
-  background: var(--card);
-  border: 1px solid var(--line); border-radius: var(--r-card);
-}
-.planleer h3 { font-size: var(--t-title); }
-.planleer p { font-size: var(--t-body); color: var(--soft); }
-.planleer .btn { margin-top: .3rem; }
-
-/* Der Hinweis unter dem Merklisten-Kopf. */
-.plan__hint {
-  padding: .5rem 1rem .6rem;
-  font-size: var(--t-meta); color: var(--soft);
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
-}
-/* In der Merkliste steht der Hinweis ueber der Liste statt unter einem
-   Gruppenkopf -- ohne Trennlinie, die dort nichts trennt. */
-.plan__hint--frei { border-bottom: 0; padding-top: 0; }
-
-/* Der Tageskopf im gruppierten Plan. Fraunces wie jede Ueberschrift des
-   Hauses; die Summe rechts in Meta-Grau. "heute" als seeblaue Marke — die
-   Farbe, die im Haus "hier ist etwas an" heisst. */
-.plantag {
-  display: flex; align-items: baseline; gap: .5rem;
-  padding: 1.1rem 1rem .4rem;
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
-}
-.plantag__t { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name); }
-.plantag__jetzt {
-  font-size: var(--t-micro); font-weight: 700; line-height: 1;
-  color: var(--card); background: var(--lake);
-  border-radius: var(--r-pill); padding: .18rem .5rem;
-  align-self: center;
-}
-.plantag__sum { margin-left: auto; font-size: var(--t-meta); color: var(--soft);
-  font-variant-numeric: tabular-nums; text-align: right; }
-/* Mehr als 10 h: Ziegel, die Achtungsfarbe des Hauses. */
-.plantag__sum--voll { color: var(--brick-ink); font-weight: 500; }
-.plantag--offen .plantag__t { color: var(--soft); font-size: var(--t-meta);
-  font-family: var(--font-body); font-weight: 700; }
-
-/* Nur wo geo bei beiden Stationen steht — bei 23 von 101 fehlt es, dort
-   bleibt die Zeile weg statt zu raten. */
-.plan__far {
-  display: flex; align-items: center; gap: .35rem;
-  padding: .4rem .85rem .45rem 2.65rem;
+.tagsheet__budget { padding: 0 0 .5rem; font-size: var(--t-meta); color: var(--soft);
+  font-variant-numeric: tabular-nums; }
+/* Ueber 8 km rechnet die App keinen Fussweg -- genannt, nicht verboten. */
+.tagsheet__warn {
+  display: flex; align-items: flex-start; gap: .4rem;
+  margin: 0 0 .7rem; padding: .55rem .7rem;
   font-size: var(--t-meta); color: var(--brick-ink);
-  background: var(--bg); border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--brick) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brick) 35%, transparent);
+  border-radius: var(--r-card);
 }
-.plan__far svg { width: 14px; height: 14px; flex: 0 0 auto; fill: none; stroke: currentColor;
-  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tagsheet__warn svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: .1rem;
+  fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; }
+
+/* Was ein Vorschlag den heutigen Tag zusaetzlich kostet. Seeblau, die
+   Hausfarbe fuer "hier ist etwas an" -- die Zahl ist eine Auskunft, keine
+   Warnung. Sie steht zwischen Begruendung und Knoepfen, weil sie genau die
+   Frage beantwortet, die zwischen beiden liegt. */
+.today__umweg {
+  margin-top: .35rem; font-size: var(--t-meta); font-weight: 500;
+  color: var(--lake-ink); font-variant-numeric: tabular-nums;
+}
+.today__umweg--drin { color: var(--soft); font-weight: 400; }
+
+/* Die Suche im Tages-Sheet. Sie geht ueber ALLE 101 Orte, nicht nur ueber
+   den Vorrat: wer am Mittwoch etwas sucht, hat es in der Regel noch nicht
+   gemerkt. Das Feld steht ueber der Liste, weil es sie ersetzt, sobald etwas
+   darin steht -- kein zweites Ergebnisfenster daneben. */
+.tagsuche { display: block; margin: 1.1rem 0 .5rem; }
+.tagsuche__i {
+  width: 100%; min-height: 2.75rem;
+  padding: .5rem .9rem;
+  font-family: var(--font-body); font-size: var(--t-body);
+  color: var(--ink); background: var(--wash);
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  -webkit-appearance: none; appearance: none;
+}
+.tagsuche__i::placeholder { color: var(--soft); }
+/* Was die Suche hereinholt, ist noch nicht gemerkt -- das gehoert dazugesagt,
+   denn der Knopf daneben tut beides auf einmal. */
+.tagsheet__neu { color: var(--gold-ink); }
+
+/* Die kuerzeste Runde. Ein Angebot mit Zahlen, kein stiller Umbau: die App
+   kennt die Entfernungen, nicht die Oeffnungszeiten im Kopf des Planers
+   ("erst der Markt, der macht um eins zu"). Seeblau, die Hausfarbe fuer
+   "hier ist etwas an" -- kein Ziegel, denn hier ist nichts falsch. */
+.runde {
+  margin: 0 0 .8rem; padding: .7rem .8rem .75rem;
+  background: color-mix(in srgb, var(--lake) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--lake) 32%, transparent);
+  border-radius: var(--r-card);
+}
+.runde__t { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
+  color: var(--lake-ink); }
+.runde__s { margin-top: .2rem; font-size: var(--t-meta); color: var(--soft);
+  font-variant-numeric: tabular-nums; }
+.runde .btn { margin-top: .6rem; }
+/* Schon optimal: dann keine Kiste, nur eine Zeile -- ein Kasten fuer
+   "nichts zu tun" waere ein Bedienelement ohne Handlung. */
+.runde--gut {
+  display: flex; align-items: flex-start; gap: .4rem;
+  margin: 0 0 .7rem; padding: 0;
+  background: none; border: 0;
+  font-size: var(--t-meta); color: var(--verde-ink);
+}
+.runde--gut svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: .1rem;
+  fill: none; stroke: currentColor; stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round; }
 
 /* --- Ab 33rem: etwas mehr Luft, Spalte bleibt bei 32rem ---------------- */
 @media (min-width: 33rem) {

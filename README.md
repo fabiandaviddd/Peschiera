@@ -35,7 +35,7 @@ schreibt die Fassung dazu, für die es gilt.
 | **PWA** | `manifest.webmanifest` + `sw.js`. App-Shell und `places.json` liegen im Cache, nach einmaligem Laden läuft alles offline — Merkliste inklusive. Auf dem iPhone-Homescreen installierbar, mit Icon und Startbild. |
 | **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. **Seit v35 steht das Feld nur noch in „Entdecken"** — bis dahin auch auf der Startansicht, weil der Reiter „Orte" hieß und nicht sagte, dass 101 Orte dahinterliegen. Der Reiter sagt es jetzt selbst, und am Ende von „Jetzt" steht weiterhin „Alle 101 Orte durchsuchen". Oben sind damit rund 60 px frei, und dort steht der Tagesplan. |
 | **Jetzt** | Hieß bis v34 „Heute". Der Tagesplan ist seit v35 der **Hauptinhalt**, nicht mehr ein Block über einem Vorschlag: „Heute · 1 von 4 · noch 3,8 h" mit Fortschrittsbalken, darunter die Stationen zum Abhaken, jede mit ihrer Hundmarke. Ist für heute nichts geplant, steht der Block trotzdem da und sagt es, mit einem Knopf ins Tages-Sheet — bis v34 fehlte er ganz, und wer nie einen Tagesplan anlegte, erfuhr nicht, dass er könnte. Datum und Reisetag stehen in der Kopfleiste. Darunter eine Leiste über alle vier Abschnitte: vergangene sind gestrichelt umrandet, der laufende trägt eine Unterkante, jeder ist antippbar. Der Vorschlag nennt seine Position im Stapel („3 / 35") und hat Knöpfe vor und zurück; am Anfang ist der Zurück-Knopf deaktiviert. „Sonst noch" zeigt drei Alternativen mit der Gesamtzahl daneben und lässt sich ausklappen. Darunter ein Blick auf den nächsten Abschnitt („Abends dann"). Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert. Bei Regen ohne Treffer nennt der Leerzustand die Orte, die sicher im Trockenen sind; schränkt der Jum-Schalter ein, sagt er das und zeigt, was ohne ihn ginge. |
-| **Plan** | Hieß bis v13 „Gemerkt". Die Reihenfolge steckte immer schon in `pk.saved` — das Feld ist ein Array und wird beim Merken hinten angehängt —, wurde aber nie benutzt, weil die Ansicht nach Entfernung sortierte. Seit v28 gehört jede Station **einem Reisetag** — Wähler je Zeile, Gruppierung nach Tagen, Zeitsumme je Tag; ausführlich im Abschnitt „Plan" weiter unten. Dazu: nummerierte Stationen, Pfeile zum Umstellen innerhalb des Tages (keine Wischgeste — zwei Knöpfe sind bei einer Handvoll Stationen treffsicherer und lassen sich ohne echtes iOS prüfen), und darüber das Zeitbudget aus `time_min` und `walk_min`. Die Summe sagt dazu, auf wie viele Orte sie sich stützt, wenn Werte fehlen. Zwischen zwei Stationen mit `geo` steht ab 1,2 km die Luftlinie als Warnung; fehlt `geo` bei einer der beiden, bleibt die Zeile weg. Suche, Filter und Sortierung sind dort ausgeblendet — sie würden die Reihenfolge zerschießen, um die es gerade geht. Der Teilen-Link trägt die Reihenfolge automatisch mit. |
+| **Reise** | Hieß bis v13 „Gemerkt", bis v34 „Plan". Seit v28 gehört jede Station **einem Reisetag**, seit v37 zählen auch die **Wege** dazwischen mit — gerechnet, nicht geroutet, und als „≈" gekennzeichnet (siehe „Wege"). **Seit v36 ist es eine Ansicht statt zweier Hälften hinter einem Umschalter**: Kopf („Fünfzehn Tage · 4 verplant · 8 Orte"), Raster über alle fünfzehn Tage, eine Karte je verplantem Tag, eine Karte für den nächsten freien Tag, darunter der Vorrat. Bis v35 kostete der Umschalter einen Tipp für etwas, das man beim Planen ständig zusammen braucht — man zieht aus dem Vorrat in einen Tag. Nummerierte Stationen und die Pfeile zum Umstellen innerhalb des Tages stehen jetzt im Tages-Sheet (keine Wischgeste — zwei Knöpfe sind bei einer Handvoll Stationen treffsicherer und lassen sich ohne echtes iOS prüfen); die Übersicht zeigt, das Sheet ändert. Die Tageskarte nennt die Zeitsumme aus `time_min` und sagt dazu, auf wie viele Orte sie sich stützt, wenn Werte fehlen. Zwischen zwei Stationen mit `geo` steht ab 1,2 km die Luftlinie als Warnung; fehlt `geo` bei einer der beiden, bleibt die Zeile weg. Suche, Filter und Sortierung sind dort ausgeblendet — sie würden die Reihenfolge zerschießen, um die es gerade geht. Der Teilen-Link trägt Reihenfolge und Tage automatisch mit. Ausführlich im Abschnitt „Reise: Tage und Vorrat" weiter unten. |
 | **Ruhetage** | Steht der Ruhetag wörtlich in `hours` („Ruhetag Mittwoch", „Mi geschlossen", „Mo zu"), wird er gelesen: 14 der 101 Orte tragen einen, verteilt auf Mo 4, Di 4, Mi 6. In „Heute" sinken sie an ihrem Ruhetag ans Ende der Liste — vor jedem anderen Kriterium, eine gute Bewertung hilft an einem geschlossenen Mittwoch nicht. Herausgefiltert werden sie nicht, sonst schrumpfte die Liste still; wer weiterblättert, bekommt den Grund dazugeschrieben („heute Ruhetag"). In der Liste und im Detail ersetzt „heute zu" die Öffnungsangabe — derselbe Slot, dieselbe Zeilenhöhe. Gelesen wird nur `hours`, nie `note`: dort steht bei einem Ort eine Faustregel über italienische Fischläden allgemein, keine Angabe über diesen Laden. |
 | **Von hier** | Alle Entfernungen gelten ab dem Zeltplatz — richtig für „gehen wir heute Abend hin?", falsch, wenn man gerade in Sirmione steht. Im Filter-Sheet unter „Standort" misst ein Knopf ab dem Gerätestandort: Luftlinie, keine Gehzeit. Der Standort kommt vom Gerät, nicht von einem Dienst — er funktioniert im Flugmodus, verlässt das Gerät nicht und wird nirgends gespeichert; gefragt wird erst auf Tippen. Ist er an, misst die Sortierung „Entfernung" ab hier, die Faktenzeile zeigt im selben Slot „286 m von hier", und im Kopf steht ein Chip mit Kreuz. Orte ohne `geo` stünden hinten — seit 19.09. gibt es keine mehr. Im Detail bleibt die Angabe ab dem Zeltplatz als eigene Zeile stehen. |
 | **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". **Seit v34 blendet er nichts mehr aus** — er zählt, beschriftet und sortiert. Ausführlich unter „Die Hundregel" weiter unten. |
@@ -44,13 +44,13 @@ schreibt die Fassung dazu, für die es gilt.
 | **Tags** | Über achtzig Stück — zu viele für eine Chip-Reihe. Sie liegen hinter dem Knopf „Tags" im selben Sheet, das auch den Ort zeigt, nach Häufigkeit sortiert und mit laufender Trefferzahl. |
 | **Aufenthaltsdauer** | Auf jeder Karte kompakt (`3 h`, `45 Min`), im Detail die volle Textfassung („1–1,5 h, mit Museum 2 h"). |
 | **Sortierung** | Ein Knopf rechts in der Filterzeile, der seinen Stand nennt und beim Tippen umschaltet: Entfernung (Standard) oder Bewertung. Zwei Möglichkeiten brauchen keine dauerhafte Segmentleiste. Orte ohne Wert stehen hinten, nicht vorne. |
-| **Merkliste** | Stern auf jeder Karte, eigener Tab „Gemerkt" mit Zähler. Persistenz über `localStorage`, jeder Zugriff in try/catch. |
+| **Merkliste** | Stern auf jeder Karte, eigener Reiter „Reise" mit Zähler. Persistenz über `localStorage` (`pk.saved`), jeder Zugriff in try/catch. Die Reihenfolge steckt im Array und wird beim Merken hinten angehängt; innerhalb eines Tages ist sie die Reihenfolge der Stationen. Gemerktes ohne Tag heißt in der Ansicht **Vorrat**. |
 | **Eigene Notiz** | Ein einzeiliges Feld im Detail, direkt unter der Hundzeile — dort, wo die häufigste offene Frage steht: bei 58 von 101 Orten ist die Hunderegel ungeklärt, und wer vor Ort gefragt hat, konnte die Antwort bis v22 nirgends hinschreiben. Speichert beim Verlassen des Feldes **und** beim Schließen des Sheets, auch über die Zurück-Geste; ein Speichern-Knopf wäre ein zweiter Schritt für etwas, das man im Vorbeigehen tippt. In der Listenzeile steht die Notiz **vor** der Beschreibung — sie ist das, was man selbst herausgefunden hat. Liegt nur im Gerät (`pk.notes`), nie in `places.json`: Notizen sind persönlich. Wird aus einer Notiz eine Tatsache, führt der Weg über die offenen Punkte. Der Teilen-Link trägt sie mit, aber nur die vorhandenen; beim Zusammenführen gewinnt die eigene. |
 | **Termine mit Vorlauf** | Vier Orte tragen ein Datum im Badge. „Läuft heute" ist beim Wochenmarkt am Dienstag zu spät — wer morgens davon liest, packt keine Kühltasche mehr. Seit v22 steht über dem Tagesvorschlag eine Zeile je Termin, der in den nächsten **drei** Tagen anfängt: „Morgen · Wochenmarkt Desenzano · Di 22.09.", antippbar. Drei Tage, nicht sieben: bei fünfzehn Reisetagen und vier Terminen stünde die Zeile sonst an neun Tagen da und würde zur Tapete. |
 | **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch nicht gesehen" blendet sie aus. **In „Heute" verschwinden sie seit v20 ganz** — bis dahin standen sie nur hinten, was bei fünfzehn Reisetagen heißt, dass der Stapel sich mit Orten füllt, an denen man schon war, und „1 / 37" eine Auswahl verspricht, die es nicht mehr gibt. In der Liste bleiben sie sichtbar: dort sucht man, in „Heute" bekommt man vorgeschlagen. Wird ein Abschnitt dadurch leer, sagt der Leerzustand das und bietet „Trotzdem zeigen" — für diesen Abschnitt, bis zum nächsten Wechsel. Der Chip hieß bis v7 „Noch offen" und wurde neben Fakten wie „öffnet 9:30" als Öffnungszeit gelesen. Eigener Speicher, unabhängig vom Merken. |
-| **Teilen** | Im Tab „Gemerkt": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. **„Meine ersetzen" ist seit v19 umkehrbar**: der Knopf nennt vorher, was er kostet („Meine 12 ersetzen"), ist als einziger ziegelrot abgesetzt und steht zuletzt; danach steht zehn Sekunden lang „Rückgängig" im selben Kasten. Die Kopie liegt in einer Variablen, nicht im Speicher — nach dem Neuladen ist das Angebot ohnehin vorbei. Öffnet man in der Zeit einen Ort, endet es: hinter einem Sheet wäre der Knopf sichtbar, aber nicht antippbar. |
+| **Teilen** | Im Reiter „Reise": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. **„Meine ersetzen" ist seit v19 umkehrbar**: der Knopf nennt vorher, was er kostet („Meine 12 ersetzen"), ist als einziger ziegelrot abgesetzt und steht zuletzt; danach steht zehn Sekunden lang „Rückgängig" im selben Kasten. Die Kopie liegt in einer Variablen, nicht im Speicher — nach dem Neuladen ist das Angebot ohnehin vorbei. Öffnet man in der Zeit einen Ort, endet es: hinter einem Sheet wäre der Knopf sichtbar, aber nicht antippbar. |
 | **Suchtreffer** | Ein Treffer über die Notiz zeigt seit v19, *warum* der Ort dasteht: die Fundstelle ist im Notiztext hervorgehoben, in Liste und Detail, jeder Begriff einzeln. Die Markierung trägt nur einen Untergrund und erbt die Textfarbe — die Browservorgabe schwarz auf gelb fiele im dunklen Schema auf 2,1:1. In der Liste ist die Notiz einzeilig gekürzt; liegt die Fundstelle dahinter, sieht man sie erst im Detail. |
-| **Ansicht in der Adresse** | `?v=heute` und `?v=gemerkt` öffnen die App direkt in einer Ansicht — als Lesezeichen oder geteilter Link, ohne Installation. Geprüft gegen die Reiterkennungen, damit ein Tippfehler keine leere App erzeugt. Ein Teilen-Link mit Merkliste überstimmt den Parameter: eine geschickte Liste ist dringender. |
+| **Ansicht in der Adresse** | `?v=heute` und `?v=gemerkt` öffnen die App direkt in einer Ansicht (die Kennungen sind älter als die Reiternamen „Jetzt" und „Reise" und bleiben, damit Lesezeichen weiter gelten) — als Lesezeichen oder geteilter Link, ohne Installation. Geprüft gegen die Reiterkennungen, damit ein Tippfehler keine leere App erzeugt. Ein Teilen-Link mit Merkliste überstimmt den Parameter: eine geschickte Liste ist dringender. |
 | **Die Reiter heißen nach ihrer Frage** | Seit v35: **Jetzt** (was ist gerade dran?), **Entdecken** (was gibt es überhaupt?), **Reise** (was steht in fünfzehn Tagen an?), **Wissen** (was muss ich wissen?). „Heute" und „Plan" beantworteten beide die erste Frage und stritten sich darum; „Orte" beschrieb die Datei, nicht die Handlung. Die **Kennungen bleiben** `heute`, `orte`, `gemerkt`, `info` — an ihnen hängen `?v=`-Lesezeichen und der Speicher. Bis v26 hieß der vierte „Info" mit i-Kringel — das versprach ein Impressum. Er trägt Hunderegeln, Notruf, Trinkgeld, Bus-Zeiten und die offenen Punkte; ein Reitername muss sagen, was man bekommt. Die Kennung bleibt `info`, `?v=info` funktioniert als Lesezeichen weiter. Der Fuß zeigt seit v27 `meta.hinweis` (einen Satz für den Nutzer) statt `meta.note` (die Provenienz-Doku der Daten mit Feldnamen — die stand wörtlich in der App). |
 | **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail, Luftlinie nur im Detail. **Alle Zeilen sind 97 px hoch** — vorher waren es je nach Datenlage 97, 100 oder 123, und das Auge fand beim Scrollen kein Raster. Die Bewertung steht rechtsbündig auf der Namenszeile und wird damit zu einer Spalte, die man scannen kann; die Zahl der Bewertungen sitzt in einer eigenen, fest breiten Spalte, damit „(1.478)" die Note nicht weiter nach links schiebt als „(806)". Sie bleibt dabei — „4,9" aus 71 Stimmen ist nicht dasselbe wie „4,9" aus 1087. Die Faktenreihe hat feste Slots in fester Reihenfolge (Weg, Dauer, Hund, Öffnung); nur die Öffnung darf kürzen, weil sie als einzige Freitext ist. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind 6 Zeilen sichtbar statt 4, beim Scrollen 8. Steht „Mit Jum" an, trägt seit v34 **jede** Zeile ihre Hundmarke — „Jum ok", „Hund offen" oder „ohne Jum". Bis dahin entfiel sie, weil sie für alle galt; seit der Schalter nichts mehr ausblendet, gilt sie das nicht mehr. Ist ein Ort einem Reisetag zugeordnet, steht sein Tag im Öffnungs-Slot. |
 | **Detailansicht (neu)** | Bottom Sheet, oben drei Kacheln — Weg, Aufenthalt, Öffnung: die drei Fragen, die man vor Ort stellt. Die Öffnungs-Kachel zeigt nur ein ausgeschriebenes „bis 22:30" oder „ab 9:30" (22 der 54 Angaben); wo die Zeiten mehrdeutig sind („Mi–Sa 12:30–14 und 19:30–22"), bleibt sie leer und der volle Wortlaut steht darunter — eine Kachel „bis 14:00" über einem Restaurant, das abends bis 22 Uhr offen hat, wäre falsch. Darunter die Hundregel als eigene Fläche, seit v34 mit **vier** Zuständen und einer Frage darunter: grün „Jum darf mit", grau-durchgestrichen „Ohne Jum", ockerfarben-gestrichelt „Nicht geklärt — vorher fragen" (58 Orte, die häufigste Antwort) und grün mit zweitem Ring „von euch bestätigt". Bei offener Regel steht darunter „Wart ihr da?" mit zwei Knöpfen und, wo eine Nummer hinterlegt ist, „Anrufen" — siehe „Die Hundregel". Ebenfalls seit v34: ein **Tag-Wähler** für jeden Ort, nicht mehr nur für gemerkte. Eine Primäraktion („Route in Karten") statt vierer gleich breiter Pillen, darunter Merken, Gesehen und Anrufen als Icon-Reihe. Die Tags am Ende sind antippbar und setzen den Filter — der Weg von „das gefällt mir" zu „mehr davon". Die Systemzurück-Geste schließt das Sheet, statt die App zu verlassen. |
@@ -262,7 +262,9 @@ node scripts/test-logic.mjs
 
 Er prüft `hoursWindow`, `closedOn`, `closedToday`, `airKmPoint`, `momentsOf`,
 `momentNow`,
-`runsToday`, `tripDay`, `unverified`, `closingSoon`, `fitsLeft`, `indoorOf`
+`runsToday`, `tripDay`, `unverified`, `closingSoon`, `fitsLeft`, `indoorOf`,
+die Wegerechnung (`wegKm`, `wegMin`, `tagWege`, `tagModusVorschlag`,
+`rundenVorschlag` samt Eichung gegen die 48 gemessenen Fußwege)
 und die Formatierer gegen die Schreibweisen, die in den Daten wirklich
 vorkommen — und dazu `places.json` selbst: eindeutige `id`s, bekannte
 Kategorien, `dog` nur `true`/`false`/`null`, `moment` nur aus den vier
@@ -327,7 +329,7 @@ weg sein.
 ## Listen zwischen zwei Geräten abgleichen
 
 Es gibt keinen Server — die Markierungen liegen nur im jeweiligen Browser.
-Der Abgleich läuft deshalb über den Link selbst: im Tab „Gemerkt" auf
+Der Abgleich läuft deshalb über den Link selbst: im Reiter „Reise" auf
 **Teilen**, dann per iMessage, AirDrop oder sonstwie verschicken. Wo die
 Teilen-Funktion des Systems fehlt, landet der Link in der Zwischenablage.
 
@@ -353,7 +355,7 @@ Dienst dazwischen — siehe unten.
 ## Prüfstand
 
 ```bash
-node scripts/browser/run.mjs     # 173 Prüfungen im Browser, startet den Server selbst
+node scripts/browser/run.mjs     # 536 Prüfungen im Browser, startet den Server selbst
 node scripts/test-logic.mjs      # Logik ohne Browser
 ```
 
@@ -389,9 +391,6 @@ Die Seite gehört nicht zur App, ist aus ihr nicht verlinkt und stört nichts.
 - **Laufende Synchronisierung** statt Teilen auf Zuruf. Bräuchte einen Dienst
   dazwischen (etwa Supabase) und damit ein Backend — entgegen dem bisherigen
   Grundsatz, und es muss bei schlechtem Netz trotzdem offline funktionieren.
-- **Sortierung nach kürzester Runde** ab dem Zeltplatz. Die Tageszuordnung
-  ist seit `v28` gebaut (siehe „Plan"); was noch fehlt, ist das automatische
-  Legen einer sinnvollen Reihenfolge innerhalb eines Tages.
 
 ## Die Hundregel
 
@@ -467,75 +466,205 @@ Auswahl zu verlassen, die im Hintergrund Orte wegnimmt.
 
 ---
 
-## Plan und Merkliste
+## Reise: Tage und Vorrat
 
-**Es sind zwei Dinge mit zwei Aufgaben** — seit `v33` auch in der Oberfläche:
+**Es sind zwei Dinge mit zwei Aufgaben:**
 
 | | |
 |---|---|
-| **Plan** | Der Fahrplan. Was an welchem Tag ansteht. |
-| **Merkliste** | Der Vorrat. Was noch keinen Tag hat. |
+| **Die Tage** | Der Fahrplan. Was an welchem Tag ansteht. |
+| **Der Vorrat** | Was gemerkt ist und noch keinen Tag hat. |
 
 Bis `v32` teilten sie sich einen Bildschirm: unten am Plan hing die Merkliste
 als vierte „Tagesgruppe" namens *Gemerkt, noch ohne Tag*. Das las sich wie ein
-Tag, war aber keiner — und eine Summenzeile darüber musste beides zugleich
-beschreiben.
+Tag, war aber keiner. `v33` trennte sie in zwei Hälften hinter einer
+**Umschaltleiste**. Die Trennung war richtig gedacht — nur kostete sie einen
+Umschalter für etwas, das man beim Planen ständig zusammen braucht: man zieht
+aus dem Vorrat in einen Tag. Wer den Vorrat sehen wollte, verlor den Plan aus
+dem Bild.
 
-Jetzt liegen sie hinter einer **Umschaltleiste** oben in der Ansicht, jede mit
-ihrer Zahl. Die Mengen sind **überschneidungsfrei**: ein Ort ist entweder
-verplant oder im Vorrat, und ihn zu verplanen ist genau der Übergang. Die
-Summe der beiden Zahlen ist die Merkliste.
+Seit `v36` ist „Reise" **eine Ansicht**, untereinander:
+
+1. **Der Kopf** — „Fünfzehn Tage", darunter „4 verplant · 8 Orte".
+2. **Das Raster** über alle Reisetage (siehe unten). Es steht jetzt *immer*
+   da, auch ohne eine einzige Zuordnung.
+3. **Eine Karte je verplantem Tag**, in Datumsreihenfolge, plus **eine Karte
+   für den nächsten freien Tag**.
+4. **Der Vorrat** als eigener Abschnitt, mit eigener Zahl und eigener Zeit.
 
 - **Kein fünfter Reiter.** Die Leiste unten trägt vier; bei fünf blieben je
-  80 px. Und „Plan" und „Merkliste" gehören zusammen — man geht zwischen
-  ihnen hin und her, nicht von woanders zu einem von beiden.
-- **Merklisten-Zeilen haben keine Nummer und keine Pfeile.** Dort gibt es
-  keine Reihenfolge, die etwas bedeutet; Pfeile wären ein Bedienelement ohne
-  Aussage. Den Tag-Wähler haben sie, das ist der Weg in den Plan.
-- **Die Leerzustände stehen *in* der Liste**, nicht im globalen `#empty` —
-  sonst verschwände die Umschaltleiste, und man käme nicht mehr dorthin, wo
-  etwas zu tun ist. Ein Leerzustand, der den Weg verdeckt, ist eine Sackgasse.
-- **Die Gesamtzeit steht nur in der Merkliste.** Dort ist sie eine sinnvolle
-  Aussage („so lange bräuchtest du für alles, was noch keinen Tag hat"); im
-  Plan addierte dieselbe Zahl Tage und Vorrat zu einer Stunde, die nirgends
-  vorkommt. Die Zeit je Tag steht am Tageskopf.
-- **Die Teilen-Leiste nennt beide Zahlen** („8 verplant · 12 ohne Tag · 0
+  80 px. Tage und Vorrat gehören ohnehin zusammen.
+- **Die Mengen sind überschneidungsfrei**: ein Ort ist entweder verplant oder
+  im Vorrat, und ihn zu verplanen ist genau der Übergang — er verschwindet
+  unten und taucht oben als Station auf.
+- **Vorratszeilen haben keine Nummer und keine Pfeile.** Dort gibt es keine
+  Reihenfolge, die etwas bedeutet; Pfeile wären ein Bedienelement ohne
+  Aussage. Den Tag-Wähler haben sie, das ist der Weg hinaus.
+- **Die Übersicht zeigt, das Sheet ändert.** Nummern und Umstell-Pfeile
+  stehen seit `v36` im Tages-Sheet — dort, wo man ohnehin ist, wenn man einen
+  Tag umstellt. In der Übersicht waren sie vier Knöpfe je Zeile für etwas,
+  das man selten tut.
+- **Die Gesamtzeit steht nur am Vorrat.** Dort ist sie eine sinnvolle Aussage
+  („so lange bräuchtest du für alles, was noch keinen Tag hat"); über die
+  ganze Ansicht addierte dieselbe Zahl Tage und Vorrat zu einer Stunde, die
+  nirgends vorkommt. Die Zeit je Tag steht auf der Tageskarte.
+- **Die Teilen-Leiste nennt beide Zahlen** („8 verplant · 12 im Vorrat · 0
   gesehen"). „20 gemerkt" allein sagte nicht, wie viel davon schon einen Tag
   hat — und genau das ist die Frage, die diese Ansicht beantwortet.
-- **Welche Hälfte offen ist, wird nicht gespeichert.** Der Plan ist die
-  Antwort auf „was steht an" und damit die richtige Voreinstellung, wann
-  immer man die Ansicht neu betritt.
+- **Kein eigener Leerzustand mehr.** Bis `v35` bekam, wer nichts gemerkt
+  hatte, einen Absatz Text und sonst nichts — und erfuhr nie, dass diese
+  Ansicht fünfzehn Reisetage kennt. Jetzt steht das Raster da, der Vorrat
+  sagt in seiner eigenen Zeile, dass er leer ist, und ein Knopf führt nach
+  „Entdecken". Das Raster **ist** die Aufforderung.
 
-### Der Plan
+### Wege: gerechnet, nicht geroutet
 
-Bis `v27` eine Liste, die man nur umsortieren konnte — für vierzehn Tage Reise
-ist das kein Plan, sondern ein Stapel. Seit `v28` gehört jeder gemerkte Ort
-**einem Reisetag**.
+**Bis `v36` hieß „4,5 h" auf einer Tageskarte in Wahrheit „4,5 h Aufenthalt
+und null Wege".** Bei vier Stationen quer um den See fehlten darin zwei
+Stunden, und der Tag sah machbar aus, der es nicht war. Zwischen zwei
+Stationen stand nur dann etwas, wenn mehr als 1,2 km Luftlinie dazwischen
+lagen — und dann eine Warnung ohne Zeitangabe.
 
-- **Ein Tageswähler je Zeile.** Ein natives `<select>`, kein eigenes Menü: auf
-  dem Zielgerät öffnet iOS sein Wählrad — vertraut, treffsicher, und ohne eine
-  Zeile eigenen Menü-Codes, den `close.mjs` dann absichern müsste. Die Auswahl
-  sind die Reisetage aus `meta.subtitle`, plus „Tag offen". Der heutige Tag ist
-  in der Liste als solcher markiert.
-- **Die Ansicht gruppiert nach Tagen**, mit Wochentag, Datum und der Summe der
-  eingeplanten Zeit. Mehr als 10 h an einem Tag wird **genannt, nicht
-  bewertet** („— mehr als 10 h"): die Summe ist ohne An- und Abfahrt gerechnet,
-  die Grenze ist eine Annahme und steht deshalb wörtlich da.
-- **Gruppen erscheinen erst mit der ersten Zuordnung.** Wer den Plan nur als
-  Liste nutzt, bekommt keine leeren Köpfe vorgesetzt.
-- **Die Pfeile verschieben innerhalb des Tages**, nicht global. Seit der
-  Gruppierung wäre ein globaler Nachbar oft unsichtbar in einer anderen
-  Gruppe — man tippte und sähe nichts passieren.
+Der Grund: in den Daten stehen nur Wege **ab dem Zeltplatz** (`walk_min`,
+`distance_km`), und auch die nur bei 48 der 101 Orte. Zwischen zwei
+beliebigen Orten stand nichts.
+
+Geroutet wird trotzdem nicht: ein Routing-Dienst braucht Netz, und diese App
+funktioniert im Flugmodus. Seit `v37` wird gerechnet — aus der Luftlinie, die
+bei allen 101 Orten vorliegt:
+
+```
+weg_km   = luftlinie_km × 1,50        Umwegfaktor Straße/Luftlinie
+zu Fuß   = weg_km / 4,5 km/h          mit Hund, mit Pausen
+mit Rad  = weg_km / 15 km/h
+mit Auto = weg_km / 45 km/h + 10 Min Parken
+```
+
+**Beide Zahlen stammen aus den eigenen Daten, nicht aus einer Faustregel.**
+`scripts/make-matrix.mjs` rechnet sie aus: der Median Straße/Luftlinie über
+alle 101 Orte ist **1,50**, die Geschwindigkeit `distance_km / walk_min` ist
+im Median **4,50 km/h**. Beide stehen als Konstanten in `app.js`, und
+`scripts/test-logic.mjs` hält sie gegen genau diese Rechnung — ändern sich die
+Daten, fällt die Prüfung um, nicht die App.
+
+Gegenprobe gegen die 48 gemessenen Fußwege: **7,8 % Abweichung im Median**,
+5 von 48 liegen über 20 % daneben. Das Kriterium (Median ≤ 20 %) ist erfüllt.
+
+Dazu drei Regeln:
+
+- **Geschätztes trägt ein `≈`, Gemessenes nicht.** Dieselbe Beweislast, die
+  `hoursWindow()` schon trägt: `walk_min` ab dem Zeltplatz steht ohne Zeichen
+  da, jeder gerechnete Weg mit.
+- **Über 8 km rechnet die App keinen Fußweg.** Ein Tag mit Verona ist ein
+  Autotag; vier Stunden Fußweg zu behaupten wäre keine Auskunft, sondern eine
+  Zumutung. Genannt, nicht verboten — wer trotzdem „zu Fuß" wählt, bekommt
+  den Hinweis und behält die Wahl.
+- **Ohne `geo` wird nicht geraten.** Fehlt es bei einer der beiden Stationen,
+  bleibt die Wegzeile weg. Gezählt wird die Lücke trotzdem: „2 Wege ohne
+  Koordinate" steht in der Budgetzeile, damit die Summe sagt, worauf sie sich
+  stützt.
+
+**Womit ein Tag zurückgelegt wird, wählt man selbst** — zu Fuß, mit dem Rad
+oder mit dem Auto, als Segmentleiste im Tages-Sheet. Drei Möglichkeiten
+bekommen hier eine Leiste statt eines Knopfes, der seinen Stand nennt (wie bei
+den zwei Sortierungen): die Wahl verändert die Zeiten direkt darunter, also
+will man alle drei sehen. Der **Vorschlag** kommt aus dem größten Sprung der
+Kette — eine Kette mit einem Sprung von 30 km ist kein Fußweg, auch wenn die
+anderen drei je 500 m lang sind. Gewählt wird trotzdem von Hand: die App weiß
+nicht, ob das Auto heute dasteht. Gespeichert wird nur die **Abweichung** vom
+Vorschlag (`pk.mode`).
+
+Die Wege stehen an drei Stellen, und überall mit derselben Zahl — zwei
+Wahrheiten für denselben Weg wären schlimmer als gar keine:
+
+| Wo | Was |
+|---|---|
+| **Tageskarte** | zwischen den Stationen „≈ 1,2 km · 16 Min", im Kopf die Summe **mit** Wegen, darunter die Aufteilung („4,5 h vor Ort · ≈ 50 Min Wege zu Fuß") |
+| **Tages-Sheet** | dieselbe Zeile ausführlich, mit Modus; darüber die Modus-Leiste und die Budgetzeile |
+| **Jetzt** | zwischen den Stationen des heutigen Tages; die Restzeit zählt die Wege mit, die **noch bevorstehen** |
+
+Die 10-Stunden-Marke misst seit `v37` an der Summe **mit** Wegen — das ist die
+Zahl, die der Tag wirklich kostet.
+
+### Die kürzeste Runde
+
+„Sortierung nach kürzester Runde" stand seit `v28` unter *Später angedacht*.
+Sie war nicht machbar, solange die App keine Wege zwischen zwei beliebigen
+Orten kannte. Seit `v37` kennt sie welche, und der Punkt ist erledigt.
+
+- **Gerechnet wird eine Runde, kein Pfad.** Abends schläft man wieder auf dem
+  Zeltplatz, also gehören Hin- und Rückweg dazu. Ein Pfad hätte die letzte
+  Station ans andere Ende des Sees gelegt und den Rückweg verschwiegen.
+- **Bis acht Stationen exakt**, darüber Nächster-Nachbar plus 2-opt. 7! = 5040
+  Reihenfolgen ab festem Start brauchen unter fünf Millisekunden; darüber ist
+  die Heuristik bei dieser Größe praktisch immer optimal. **Kein Fremdpaket** —
+  dieselbe Begründung wie beim Bündeln der Kartennadeln in `v25`.
+- **Vorgeschlagen, nicht durchgesetzt.** Die App kennt die Entfernungen, nicht
+  die Öffnungszeiten im Kopf des Planers („erst der Markt, der macht um eins
+  zu"). Im Tages-Sheet steht deshalb ein Angebot mit beiden Zahlen („≈ 8,2 km
+  statt ≈ 12,6 km — ≈ 50 Min weniger unterwegs") und ein Knopf, kein stiller
+  Umbau.
+- **Ist die Reihenfolge schon die kürzeste**, steht dort eine Zeile, die das
+  sagt — und kein Knopf ohne Wirkung.
+- **Unter drei Stationen gibt es keinen Vorschlag.** A–B und B–A sind dieselbe
+  Runde.
+- **Orte ohne `geo` lassen sich nicht einsortieren.** Sie bleiben in ihrer
+  Reihenfolge und hängen hinten an; der Vorschlag sagt das dazu.
+
+Übernommen wird, indem die **globalen Positionen der Tagesgruppe** in
+`pk.saved` neu belegt werden — alles außerhalb der Gruppe bleibt unberührt,
+dieselbe Regel wie beim Verschieben mit den Pfeilen.
+
+### Die Tageskarte
+
+Eine Karte je verplantem Tag. Sie ist **ein Knopf** und öffnet dasselbe Sheet
+wie eine Rasterzelle — ein Einstieg statt zweier.
+
+- **Kopf**: Wochentag und Datum, davor „Heute ·" am heutigen Tag, rechts die
+  Summe der eingeplanten Zeit. Mehr als 10 h wird **genannt, nicht bewertet**
+  („· mehr als 10 h"): die Summe ist ohne An- und Abfahrt gerechnet, die
+  Grenze ist eine Annahme und steht deshalb wörtlich da. Stehen an dem Tag
+  Orte ohne `time_min`, sagt die Summe „(3 von 5)" statt zu raten.
+- **Stationen**: eine Zeile je Ort, mit Kategoriefarbe links. Rechts steht,
+  was an dem Tag zählt — „erledigt", „an dem Tag zu" oder die Aufenthaltsdauer.
+  Erledigte sind gedämpft und durchgestrichen und bleiben stehen: sie
+  verschwinden zu lassen hieße, den Fortschritt zu verstecken.
+- **Fuß**: „2 von 4 erledigt", sobald etwas abgehakt ist. An vergangenen Tagen
+  nicht — dort ist der Fortschritt keine Frage mehr.
+- **Eine Karte für den nächsten freien Tag**, nicht für alle: bei fünfzehn
+  Reisetagen und vier verplanten wären das elf leere Karten, und die Ansicht
+  bestünde aus Lücken. Das Raster darüber zeigt ohnehin alle. Was fehlt, ist
+  der Anstoß — und der gilt dem nächsten.
+
+### Der Tageswähler
+
+Seit `v28` gehört jeder gemerkte Ort **einem Reisetag**. Bis `v27` war der Plan
+eine Liste, die man nur umsortieren konnte — für vierzehn Tage Reise ist das
+kein Plan, sondern ein Stapel.
+
+- **Ein natives `<select>`**, kein eigenes Menü: auf dem Zielgerät öffnet iOS
+  sein Wählrad — vertraut, treffsicher, und ohne eine Zeile eigenen
+  Menü-Codes, den `close.mjs` dann absichern müsste. Die Auswahl sind die
+  Reisetage aus `meta.subtitle`, plus „Tag offen". Der heutige Tag ist als
+  solcher markiert, vergangene als „vorbei" und nicht mehr wählbar.
+- **Er steht an jeder Vorratszeile und in jedem Ort-Sheet.** Seit `v34` legt
+  der Wähler im Ort-Sheet den Ort zugleich in die Merkliste — bis dahin war
+  `setDay` nur über den Stern erreichbar, und wer im Ort einen Tag wählte,
+  ohne vorher zu merken, bekam nichts.
 - **Die Warnung „x km Luftlinie" gilt Nachbarn desselben Tages.** Zwischen dem
   letzten Ort von Dienstag und dem ersten von Mittwoch liegt eine Nacht, keine
-  Wanderung.
+  Wanderung. Sie steht im Tages-Sheet, zwischen den beiden Stationen.
 - **Die Zuordnung ist eine Zutat der Merkliste, kein eigener Zustand.** Fliegt
-  ein Ort aus dem Plan, bleibt sein Tag gespeichert und gilt wieder, wenn man
-  ihn erneut merkt — ein Fehltipp auf den Stern kostet keine Planung.
+  ein Ort aus der Merkliste, bleibt sein Tag gespeichert und gilt wieder, wenn
+  man ihn erneut merkt — ein Fehltipp auf den Stern kostet keine Planung.
 - **Der Teilen-Link trägt die Tage mit** (`d` im Payload). `v` bleibt `1`: eine
   ältere Fassung ignoriert das Feld einfach, statt den ganzen Link zu
   verwerfen. Beim Zusammenführen gewinnt die **eigene** Planung; ein fremder
   Tag füllt nur Lücken — dieselbe Regel wie bei den Notizen.
+
+Womit ein Tag zurückgelegt wird, steht in `pk.mode` als
+`{ 'JJJJ-MM-TT': 'fuss'|'rad'|'auto' }` — und dort steht **nur die Abweichung**
+vom Vorschlag, den die App aus dem größten Sprung der Kette ableitet.
 
 Gespeichert unter `pk.days` als `{ ortId: 'JJJJ-MM-TT' }`. Eine Zuordnung
 außerhalb des Reisezeitraums zählt als „offen" statt als Tag.
@@ -566,8 +695,12 @@ Seit `v30` steht oben im Plan ein Raster über alle Reisetage:
   Bis `v30` sprangen volle Zellen nur zu ihrer Gruppe und leere taten gar
   nichts — fünfzehn gleich aussehende Knöpfe, zwei Verhalten, und ausgerechnet
   der freie Tag, den die Übersicht gerade zur Frage gemacht hatte, war der tote.
-- **Das Raster erscheint erst mit der ersten Zuordnung**, wie die Tagesgruppen.
-  Ohne Zuordnung wäre es ein leeres Raster über einer Merkliste.
+- **Das Raster steht seit `v36` immer da**, auch ohne eine einzige Zuordnung.
+  Bis `v35` erschien es erst mit der ersten — mit der Begründung, es wäre
+  sonst ein leeres Raster über einer Merkliste. Die Merkliste darunter gibt es
+  nicht mehr, und wenn nichts geplant ist, **ist** das Raster die
+  Aufforderung: fünfzehn leere Tage mit einem `+` sagen deutlicher, dass hier
+  etwas hingehört, als jede Zeile Text.
 
 ### Ein Reisetag als Sheet
 
@@ -577,12 +710,19 @@ Merkliste suchen, den richtigen Ort finden und dessen Wähler auf den richtigen
 Tag stellen. **Drei Schritte für etwas, das die Übersicht gerade erst zur Frage
 gemacht hatte.**
 
-Seit `v31` öffnet jede Tageszelle ein Sheet für diesen Tag:
+Seit `v31` öffnet jede Tageszelle ein Sheet für diesen Tag — seit `v36` auch
+jede Tageskarte, mit demselben Ziel:
 
 - **„An diesem Tag"** — was dort steht, mit Zeitsumme, jedes mit einem `−` zum
   Herunternehmen. Herunternehmen **löscht nicht**: der Ort wandert zurück in
-  die Merkliste, er verlässt den Plan nicht.
-- **„Aus deiner Merkliste"** — alles ohne Tag, jedes mit einem `+`. Steht an
+  den Vorrat, er verlässt die Merkliste nicht.
+- **Nummer und Umstell-Pfeile stehen seit `v36` hier**, nicht mehr in der
+  Übersicht: die Übersicht zeigt, das Sheet ändert. Die Pfeile verschieben
+  **innerhalb des Tages** — zwischen dem letzten Ort von Dienstag und dem
+  ersten von Mittwoch liegt eine Nacht, keine Wanderung. Nach dem Verschieben
+  wird nur der Sheet-Inhalt neu gebaut und der Fokus auf denselben Pfeil
+  zurückgesetzt; ein `render()` ließe die Seite unter dem Finger springen.
+- **„Aus deinem Vorrat"** — alles ohne Tag, jedes mit einem `+`. Steht an
   dem Tag ein Ruhetag an, sagt die Zeile das schon hier: der richtige Zeitpunkt
   für diese Auskunft ist der, an dem man den Tag wählt.
 - **Sortiert nach Nähe** (seit `v32`). Bis dahin stand die Merkliste in der
@@ -597,29 +737,39 @@ Seit `v31` öffnet jede Tageszelle ein Sheet für diesen Tag:
   Kopf** („Nach Nähe zu Porta Verona"). Eine Reihenfolge, die man nicht
   erklären kann, ist schlechter als gar keine — dann rät man, warum
   ausgerechnet das oben steht. Luftlinie, keine Gehzeit.
+- **Ein Suchfeld über alle 101 Orte** (seit `v37`), nicht nur über den
+  Vorrat. Wer am Mittwoch etwas sucht, hat es in der Regel noch nicht
+  gemerkt — „erst merken, dann Tag wählen" waren zwei Schritte für einen
+  Gedanken. Das Feld steht über der Liste und **ersetzt** sie, sobald etwas
+  darin steht: kein zweites Ergebnisfenster daneben. Treffer, die noch nicht
+  gemerkt sind, sagen das („noch nicht gemerkt"); der `+` daneben legt sie in
+  einem Schritt auf den Tag **und** in die Merkliste. Was an dem Tag schon
+  steht, taucht nicht als Treffer auf. Beim Tippen wird **nur die
+  Trefferliste** neu gebaut, nicht das Sheet — sonst verlöre das Feld den
+  Fokus und die Schreibmarke mitten im Wort. Der Begriff gilt diesem Besuch,
+  nicht dem nächsten.
 - **Das Sheet bleibt beim Hinzufügen offen.** Einen Tag füllt man selten mit
   einem einzigen Ort, und jedes Mal neu zu öffnen wäre eine Strafe fürs Planen
   — dieselbe Entscheidung wie beim Filter-Sheet.
 - **„Im Plan anzeigen"** schließt das Sheet und springt zur Tagesgruppe. Erst
   nach dem Schließen: während das Sheet offen ist, liegt `body` auf `fixed`,
   und ein `scrollIntoView` liefe ins Leere.
-- Ist die Merkliste leer, sagt das Sheet das und bietet den Weg zu „Orte".
+- Ist der Vorrat leer, sagt das Sheet das und bietet den Weg zu „Entdecken".
 
 Dazu zwei Zeilen, die vorher nicht stimmten:
 
 - **Die Summenzeile** sagte „20 Orte · 30,8 h Aufenthalt · 8 h Weg" — sie
   addierte drei verplante Tage und dreizehn unverplante Orte zu einer Stunde,
-  die nirgends vorkommt. Jetzt: „7 Orte an 3 Tagen · 13 noch ohne Tag". Die
-  Zeit je Tag steht ohnehin an jedem Tageskopf. Ist **nichts** zugeordnet,
-  bleibt die alte Zeile: dann ist die Merkliste der Plan, und die Gesamtzeit
-  ist eine sinnvolle Aussage.
+  die nirgends vorkommt. Seit `v36` gibt es sie nicht mehr: der Kopf der
+  Ansicht zählt „4 verplant · 8 Orte", der Vorrat zählt sich selbst, und die
+  Zeit je Tag steht auf der Tageskarte. Keine Zahl vermischt noch beides.
 - **Die Teilen-Leiste** sagte „20 im Plan", während die Summenzeile darunter
   „7 Orte an 3 Tagen" sagte — zwei Zahlen für dieselbe Ansicht, die sich
-  widersprechen. Sie zählt Gemerktes und heißt jetzt auch so.
+  widersprechen. Sie zählt jetzt beide Hälften: „8 verplant · 12 im Vorrat ·
+  0 gesehen".
 
-Und der Rest heißt nicht mehr „Noch keinem Tag zugeordnet", sondern **„Gemerkt,
-noch ohne Tag"** — das ist kein Restehaufen, sondern der Vorrat, aus dem man in
-Tage zieht. Ein Hinweis darunter sagt, wie.
+Und der Rest heißt nicht mehr „Noch keinem Tag zugeordnet", sondern schlicht
+**„Vorrat"** — das ist kein Restehaufen, sondern das, woraus man Tage füllt.
 
 ### Die Brücke zu „Heute"
 
@@ -642,7 +792,21 @@ Seit `v29` steht **„Dein Plan für heute"** ganz oben in „Heute":
   Grund, morgens hierherzuschauen.
 - **Die Restzeit zählt nur die offenen Stationen.** Die erledigten sind vorbei;
   sie in der Restzeit zu führen wäre schlicht falsch.
-- **Die Marke am Plan-Reiter zählt die heute offenen Stationen**, sobald für
+- **Was ein Vorschlag kostet, steht seit `v37` dabei** („≈ 12 Min Umweg —
+  käme nach Rocca Scaligera"). Gerechnet wird die **günstigste
+  Einfügestelle** in die Kette des Tages, Zeltplatz am Anfang und am Ende:
+  `d(vorher, neu) + d(neu, nachher) − d(vorher, nachher)`. Das ist der
+  ehrliche Preis — was der Tag länger wird, nicht die Entfernung vom
+  Zeltplatz. Bis `v36` sagte der Vorschlag nur, *was* er vorschlägt: ein Ort
+  auf dem Weg und einer am anderen Ende des Sees sahen gleich einladend aus.
+- **„In den Tag" statt „Merken"**, sobald für heute etwas geplant ist: ein
+  Tipp legt den Ort an genau die errechnete Stelle, in die Merkliste und auf
+  den heutigen Tag. Vorher waren das drei Schritte (Stern, Reiterwechsel,
+  Tagwähler). Steht der Ort schon im Tag, sagt die Zeile das — statt einen
+  Knopf ohne Wirkung anzubieten. Für „morgen früh" gibt es keinen Umweg:
+  morgen hat eine andere Kette, und eine Zahl für eine Kette, die es noch
+  nicht gibt, wäre geraten.
+- **Die Marke am Reise-Reiter zählt die heute offenen Stationen**, sobald für
   heute etwas geplant ist — sonst die ganze Merkliste. Wer vierzehn Tage
   plant, hat dort schnell dreißig Einträge, und „30" sagt am Dienstag nichts
   darüber, was heute noch zu tun ist. Ist heute alles abgehakt, verschwindet
@@ -775,9 +939,16 @@ data/places.json        Alle Inhalte
 fonts/                  Fraunces und Karla als woff2 (latin, latin-ext)
 icons/                  App-Icons und iOS-Startbilder
 scripts/test-logic.mjs  Prüfstand für die Freitext-Logik und die Daten (node)
+scripts/browser/run.mjs Sammelläufer: startet den Server und alle Suiten daneben
+scripts/browser/*.mjs   eine Datei je Thema (plan, hund, karte, close, ios …)
+scripts/browser-abnahme.mjs  ältere Gesamtabnahme samt Bildschirmabzügen
 scripts/add-coords.mjs  einmaliges Geocoding für die Karte
 scripts/make-icons.py   Icon-Generator
+scripts/make-matrix.mjs Eichung der Wegerechnung (Umwegfaktor, Gegenprobe)
+scripts/make-mockups.mjs     rendert die Entwürfe zum Relaunch-Konzept
 docs/uebergabe.md       Übergabe: Regeln des Hauses, Fallen, offene Punkte
+docs/app-relaunch-konzept.md Analyse, Produktkonzept und Umbauplan ab v34
+docs/bilder/            Bildschirmabzüge (ist/) und Entwürfe (konzept/)
 docs/redesign-vorschlag.md   Audit, Design-Richtung, die vier Schritte
 docs/koordinaten-pruefliste.md   Regeln der Geocodierung
 ```
@@ -788,7 +959,7 @@ Kontrast richtig messen, was iOS anders macht) und was offen ist.
 
 ## Getestet
 
-80 Browser-Checks in Chromium auf iPhone-Viewport (390×844): Suche, Filter und
+536 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
 Sortierung kombiniert, Merkliste über einen Reload, Detail-Sheet ohne
 Layout-Shift, Dark Mode samt Override und Systempräferenz, Touch-Ziele,
 Flugmodus-Test (offline laden, suchen, Merkliste), Fehlerzustand mit Retry und

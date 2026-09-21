@@ -78,7 +78,12 @@ await page.waitForSelector('#app:not([hidden])', { timeout: 10000 });
 /* ------------------------------------------------------------- Startansicht */
 console.log('\nStartansicht "Heute"');
 ok('boot ist weg', await page.locator('#boot').isHidden());
-ok('Suchfeld ist auf Heute sichtbar', await page.locator('#search-wrap').isVisible());
+/* Seit v35 steht das Suchfeld nur noch in "Entdecken". Auf der Startansicht
+   nahm es rund 60 px fuer etwas weg, das dort niemand tippt -- und der Reiter
+   hiess damals "Orte" und sagte nicht, dass 101 Orte dahinterliegen. Der
+   Reiter sagt es jetzt selbst, und am Ende von "Jetzt" steht weiterhin
+   "Alle 101 Orte durchsuchen". */
+ok('Suchfeld bleibt auf Jetzt verborgen', await page.locator('#search-wrap').isHidden());
 ok('Filterleiste bleibt auf Heute verborgen', await page.locator('#filters').isHidden());
 ok('Zählzeile bleibt auf Heute verborgen', await page.locator('#meta-row').isHidden());
 ok('Heute-Block ist da', await page.locator('#today').isVisible());
@@ -92,13 +97,10 @@ ok('Theme-Knopf nennt sein Ziel',
    /umschalten auf (hell|dunkel|automatisch)/.test(await page.locator('#theme-btn').getAttribute('title')));
 await page.screenshot({ path: OUT + '/01-heute.png' });
 
-/* -------------------------------------------- Suchfeld führt in die Liste */
-console.log('\nSuche von Heute aus');
-await page.locator('#q').focus();
-await page.waitForTimeout(150);
-ok('Fokus im Suchfeld wechselt in die Liste',
-   await page.locator('.tab[aria-current="page"]').getAttribute('data-tab'), 'orte');
-ok('Fokus liegt noch im Feld', await page.evaluate(() => document.activeElement.id), 'q');
+/* ------------------------------------------------------ Suche in "Entdecken" */
+console.log('\nSuche in "Entdecken"');
+await goTab('orte');
+ok('in "Entdecken" ist das Suchfeld da', await page.locator('#search-wrap').isVisible());
 await page.locator('#q').fill('caffe');
 await page.waitForTimeout(150);
 const nCaffe = await page.locator('.card').count();
@@ -239,24 +241,32 @@ await page.waitForTimeout(200);
 ok('Jum ist an', await page.locator('#jum-btn').getAttribute('aria-checked'), 'true');
 const cnt = await page.locator('#count').textContent();
 ok('Zählzeile nennt Jum', /mit Jum/.test(cnt));
-ok('Zählzeile nennt die Ausgeblendeten', /ohne Jum ausgeblendet/.test(cnt));
+/* Seit v34 blendet der Schalter NICHTS mehr aus. Er filterte bis v33 auf
+   dog === true und nahm damit 62 von 101 Orten weg -- darunter die 58, bei
+   denen die Regel schlicht ungeklaert ist. Ungeklaert ist nicht nein. Jetzt
+   zaehlt, beschriftet und sortiert er: die Zaehlzeile nennt die Aufteilung,
+   die Liste bleibt vollstaendig. */
+ok('Zählzeile nennt die Aufteilung', /\d+ sicher/.test(cnt));
 const jumN = await page.locator('.card').count();
-ok('Jum blendet aus', jumN > 0 && jumN < nAll);
+ok('Jum blendet nichts aus', jumN, nAll);
+ok('… und jede Zeile traegt ihre Hundmarke',
+   await page.locator('.fact--dog, .fact--dogno, .fact--dogopen, .fact--dogyou').count(), jumN);
 await page.screenshot({ path: OUT + '/03-jum.png' });
 await page.locator('#jum-btn').click();
 await page.waitForTimeout(200);
 
-/* ------------------------------------- Luftlinie im Plan haengt an geo */
-/* Zwischen zwei Stationen steht ab 1,2 km die Luftlinie als Warnung — aber nur,
-   wenn beide ein geo tragen. Fehlt es bei einer, muss die Zeile wegbleiben statt
-   eine Entfernung aus einem Gemeindepunkt zu rechnen.
+/* ------------------------------------------ Wege im Tag haengen an geo */
+/* Zwischen zwei Stationen desselben Tages steht seit v37 der gerechnete Weg
+   ("≈ 2,1 km · 28 Min zu Fuss") -- aber nur, wenn beide ein geo tragen.
+   Fehlt es bei einer, muss die Zeile wegbleiben statt eine Entfernung aus
+   einem Gemeindepunkt zu rechnen.
 
    Der zweite Fall braucht eine Station OHNE Koordinate. Vorher stand dafuer
-   fortezza fest im Text — als der am 19.09. eine bekam, meldete der Test eine
-   Luftlinie, wo er keine erwartete, obwohl die App genau das Richtige tat.
-   Geprueft wird die Regel, nicht der Datenstand: die Station ohne Koordinate
-   wird deshalb ueber die geladene Datei erzeugt, nicht in den Daten gesucht. */
-console.log('\nPlan: Luftlinie nur mit echten Koordinaten');
+   fortezza fest im Text -- als der am 19.09. eine bekam, meldete der Test
+   eine Luftlinie, wo er keine erwartete, obwohl die App genau das Richtige
+   tat. Geprueft wird die Regel, nicht der Datenstand: die Station ohne
+   Koordinate wird deshalb ueber die geladene Datei erzeugt. */
+console.log('\nTages-Sheet: Wege nur mit echten Koordinaten');
 {
   const mk = async (ids, ohneGeo) => {
     const c = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE' });
@@ -270,35 +280,44 @@ console.log('\nPlan: Luftlinie nur mit echten Koordinaten');
                               body: JSON.stringify(daten) });
       });
     }
-    /* Beide auf denselben Reisetag: die Luftlinien-Warnung gilt Nachbarn
-       EINES Tages -- zwischen dem letzten Ort von Dienstag und dem ersten
-       von Mittwoch liegt eine Nacht, keine Wanderung. Seit v33 stehen
-       Stationen ohne Tag ausserdem in der Merkliste statt im Plan. */
-    await pg.addInitScript((list) => {
+    await pg.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await pg.waitForSelector('#app:not([hidden])');
+    await pg.locator('.tab[data-tab="gemerkt"]').click();
+    await pg.waitForTimeout(400);
+    /* Der Reisetag wird aus dem Raster gelesen, nicht eingetippt: ein festes
+       Datum faellt mit jedem Tag der Reise weiter in die Vergangenheit. */
+    const tag = await pg.evaluate(() => {
+      const z = document.querySelector('.uebs__d:not(.uebs__d--vorbei):not(.uebs__d--heute)');
+      return z ? z.getAttribute('data-dayopen') : '';
+    });
+    /* Beide auf denselben Reisetag: der Weg gilt Nachbarn EINES Tages --
+       zwischen dem letzten Ort von Dienstag und dem ersten von Mittwoch
+       liegt eine Nacht, keine Wanderung. */
+    await pg.evaluate(([list, t]) => {
       try {
         localStorage.setItem('pk.saved', JSON.stringify(list));
         const d = {};
-        list.forEach((id) => { d[id] = '2026-09-21'; });
+        list.forEach((id) => { d[id] = t; });
         localStorage.setItem('pk.days', JSON.stringify(d));
       } catch (e) {}
-    }, ids);
-    await pg.goto(BASE + '/index.html', { waitUntil: 'load' });
+    }, [ids, tag]);
+    await pg.reload({ waitUntil: 'load' });
     await pg.waitForSelector('#app:not([hidden])');
-    await pg.evaluate(() => { const q = document.getElementById('q'); if (q) q.blur(); });
-    await pg.waitForTimeout(240);
     await pg.locator('.tab[data-tab="gemerkt"]').click();
-    await pg.waitForTimeout(350);
-    const n = await pg.locator('.plan__far').count();
-    const rows = await pg.locator('.planrow').count();
+    await pg.waitForTimeout(400);
+    const stationen = await pg.locator('.tagk__st').count();
+    await pg.locator('.tagk:not(.tagk--frei)').first().click();
+    await pg.waitForTimeout(500);
+    const wege = await pg.locator('.tagweg').count();
     await c.close();
-    return { far: n, rows };
+    return { wege: wege, rows: stationen };
   };
   const both = await mk(['bip', 'mantova']);          // beide mit geo, weit auseinander
   ok('zwei Stationen mit geo: zwei Zeilen', both.rows, 2);
-  ok('… und die Luftlinie steht da', both.far > 0);
+  ok('… und der Weg dazwischen steht da', both.wege, 1);
   const one = await mk(['fortezza', 'mantova'], 'fortezza');  // fortezza hier ohne geo
   ok('ohne geo bei einer Station: zwei Zeilen', one.rows, 2);
-  ok('… aber keine Luftlinie', one.far, 0);
+  ok('… aber kein gerechneter Weg', one.wege, 0);
 }
 
 /* ------------------------------------------------------------------- Merken */
@@ -315,39 +334,45 @@ ok('Haken ist gesetzt', await page.locator('.seen').first().getAttribute('aria-p
 ok('Karte ist gedämpft', await page.locator('.card').first().evaluate((e) => e.classList.contains('card--seen')));
 
 await goTab('gemerkt');
-/* Seit v33 sind Plan und Merkliste zwei Haelften einer Ansicht: der Plan
-   traegt, was einen Reisetag hat, die Merkliste den Vorrat. Frisch gemerkt
-   und ohne Tag landet ein Ort in der Merkliste -- der Plan ist dann leer
-   und sagt das. */
-ok('die Umschaltleiste ist da', await page.locator('.ptabs').count(), 1);
-ok('der leere Plan sagt es',
-   (await page.locator('.planleer h3').textContent()).trim(), 'Noch kein Tag geplant');
-ok('die Merkliste zaehlt den einen Ort', await page.evaluate(() =>
-   +document.querySelector('[data-ptab="merk"] .ptab__n').textContent), 1);
-
-await page.locator('.ptabs [data-ptab="merk"]').click();
-await page.waitForTimeout(350);
-ok('Merkliste zeigt den Ort', await page.locator('.planrow').count(), 1);
-/* Keine Nummer: in der Merkliste gibt es keine Reihenfolge, die etwas
-   bedeutet. Die Nummern stehen im Plan. */
+/* Seit v36 ist "Reise" EINE Ansicht: Kopf, Raster ueber alle fuenfzehn Tage,
+   eine Karte je verplantem Tag, darunter der Vorrat. Frisch gemerkt und ohne
+   Tag landet ein Ort im Vorrat -- verplant ist dann noch nichts, und der Kopf
+   sagt das. */
+ok('es gibt keine Umschaltleiste mehr', await page.locator('.ptabs').count(), 0);
+ok('das Raster steht auch ohne Zuordnung da', await page.locator('.uebs__d').count(), 15);
+ok('der Kopf sagt, dass noch nichts verplant ist',
+   (await page.locator('.reise__s').textContent()).trim(), 'noch nichts verplant');
+ok('der Vorrat zaehlt den einen Ort',
+   (await page.locator('.vorrat__n').textContent()).trim(), '1');
+ok('… und zeigt ihn als Zeile', await page.locator('.planrow').count(), 1);
+/* Keine Nummer: im Vorrat gibt es keine Reihenfolge, die etwas bedeutet.
+   Die Nummern stehen seit v36 im Tages-Sheet. */
 ok('… ohne Nummer', await page.locator('.planrow__n').count(), 0);
 ok('… und mit einem Tageswaehler', await page.locator('select[data-day]').count(), 1);
-ok('darüber steht das Zeitbudget',
-   /Ort|Orte/.test(await page.locator('.plan__sum').textContent()));
+ok('der Vorrat nennt seine Zeit',
+   /Aufenthalt|ohne hinterlegte Dauer/.test(await page.locator('.vorrat__s').textContent()));
 
-/* Mit Tag wandert er in den Plan und bekommt dort seine Nummer. Er
-   verschwindet dabei aus der Merkliste -- genau das ist der Uebergang
-   zwischen den zwei Haelften, und deshalb muss man hinueberwechseln. */
-await page.selectOption('select[data-day]', '2026-09-21');
+/* Mit Tag wandert er in eine Tageskarte und verlaesst den Vorrat -- genau
+   dieser Uebergang ist die Aufgabe der beiden Abschnitte. Der Tag wird aus
+   dem Raster gelesen: ein fest eingetragenes Datum faellt mit jedem Tag der
+   Reise in die Vergangenheit und ist dann nicht mehr waehlbar. */
+const reiseTag = await page.evaluate(() => {
+  const z = document.querySelector('.uebs__d:not(.uebs__d--vorbei):not(.uebs__d--heute)');
+  return z ? z.getAttribute('data-dayopen') : '';
+});
+ok('es gibt einen Reisetag, der noch kommt', /^\d{4}-\d{2}-\d{2}$/.test(reiseTag));
+await page.selectOption('select[data-day]', reiseTag);
 await page.waitForTimeout(400);
-ok('die Merkliste ist danach leer',
-   (await page.locator('.planleer h3').textContent()).trim(), 'Alles verplant');
-await page.locator('.ptabs [data-ptab="plan"]').click();
-await page.waitForTimeout(350);
-ok('mit Tag steht er im Plan', await page.locator('.planrow').count(), 1);
-ok('… und ist dort nummeriert',
-   (await page.locator('.planrow__n').first().textContent()).trim(), '1');
-ok('… unter einem Tageskopf', await page.locator('.plantag').count(), 1);
+ok('der Vorrat ist danach leer',
+   (await page.locator('.vorrat__n').textContent()).trim(), '0');
+ok('… und sagt das auch',
+   (await page.locator('.vorrat__leer').textContent()).trim(),
+   'Jeder gemerkte Ort hat einen Reisetag.');
+ok('mit Tag steht er auf einer Tageskarte',
+   await page.locator('.tagk:not(.tagk--frei)').count(), 1);
+ok('… als eine Station', await page.locator('.tagk__st').count(), 1);
+ok('… und der Kopf zaehlt ihn',
+   (await page.locator('.reise__s').textContent()).trim(), '1 verplant · 1 Ort');
 ok('Teilen-Leiste ist da', await page.locator('#sharebar').isVisible());
 ok('Teilen-Knopf ist sichtbar', await page.locator('#share-btn').isVisible());
 await page.screenshot({ path: OUT + '/04-gemerkt.png' });

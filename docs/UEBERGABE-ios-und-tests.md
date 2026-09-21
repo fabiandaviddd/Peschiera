@@ -13,8 +13,11 @@ bleibt der Hintergrund stehen, kommt der neue Stand beim Benutzer an.
 
 Konkret gehören dazu:
 
-- `scripts/browser/` — 173 Prüfungen im Browser (neu, war vorher nur in einem
-  Temporärordner dieser Sitzung und wäre mit ihr verloren gegangen)
+- `scripts/browser/` — der Browser-Prüfstand, eine Datei je Thema, gestartet
+  von `scripts/browser/run.mjs` (neu, war vorher nur in einem Temporärordner
+  dieser Sitzung und wäre mit ihr verloren gegangen). Die aktuelle Zahl der
+  Prüfungen steht in der README und wird vom Läufer selbst gezählt —
+  abgeschrieben veraltet sie, gezählt nicht.
 - `koordinaten.html` und `scripts/add-coords.mjs` — die einmalige Koordinatensuche
 - `selbsttest.html` — Diagnoseseite für echte Geräte
 - `docs/koordinaten-pruefliste.md` — Stand und Regeln der Koordinaten

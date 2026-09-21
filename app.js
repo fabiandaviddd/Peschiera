@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v35 · 2026-09-20';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v37 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
@@ -21,6 +21,10 @@
      ueberschreibt den Katalog und faehrt beim Teilen mit.
        { ortId: { v: true|false, at: 'JJJJ-MM-TTTHH:MM' } }                */
   var LS_DOG   = 'pk.dog';
+  /* Womit ein Tag zurueckgelegt wird: { 'JJJJ-MM-TT': 'fuss'|'rad'|'auto' }.
+     Nur was ABWEICHT steht drin -- der Vorschlag kommt aus dem groessten
+     Sprung der Kette und braucht keinen Eintrag. */
+  var LS_MODE  = 'pk.mode';
   var SS_WET   = 'pk.wet';    // Wetter gilt fuer diesen Besuch, nicht fuer immer
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
   var SHORT_MAX = 60;         // Schwelle für den Filter "Unter 1 h"
@@ -44,10 +48,11 @@
     /* Welcher Reisetag gerade als Sheet offen ist. Nur fuer die Dauer des
        Sheets -- nichts, was den Neustart ueberlebt. */
     dayOpen: null,
-    /* Plan oder Merkliste. Bewusst nicht gespeichert: der Plan ist die
-       Antwort auf "was steht an", und damit die richtige Voreinstellung,
-       wann immer man die Ansicht neu betritt. */
-    planTab: 'plan',
+    /* Die Suche im Tages-Sheet. Sie geht ueber ALLE 101 Orte, nicht nur ueber
+       den Vorrat: wer am Mittwoch etwas sucht, hat es in der Regel noch nicht
+       gemerkt, und "erst merken, dann Tag waehlen" waeren zwei Schritte fuer
+       einen Gedanken. Auch nur fuer die Dauer des Sheets. */
+    daySuche: '',
     wet: false,             // vom Benutzer gesagt, nicht abgerufen
     pick: 0,                // welcher Vorschlag gerade dran ist
     mid: null,              // gewaehlter Tagesabschnitt; null = aus der Uhr
@@ -79,6 +84,8 @@
     days: {},               // { id: 'JJJJ-MM-TT' }
     /* Die vor Ort geklaerten Hundregeln. Siehe LS_DOG. */
     dog: {},                // { id: { v: bool, at: iso } }
+    /* Der gewaehlte Fortbewegungsmodus je Reisetag. Siehe LS_MODE. */
+    mode: {},               // { 'JJJJ-MM-TT': 'fuss'|'rad'|'auto' }
     theme: 'auto',
     openId: null
   };
@@ -448,6 +455,15 @@
       var e = rohDog[id];
       if (ids[id] && e && typeof e.v === 'boolean') {
         S.dog[id] = { v: e.v, at: typeof e.at === 'string' ? e.at : '' };
+      }
+    });
+
+    var rohMode = lsGet(LS_MODE, {}) || {};
+    S.mode = {};
+    Object.keys(rohMode).forEach(function (iso) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)
+          && ['fuss', 'rad', 'auto'].indexOf(rohMode[iso]) >= 0) {
+        S.mode[iso] = rohMode[iso];
       }
     });
 
@@ -1238,24 +1254,20 @@
     /* Der Plan hat seine eigene Darstellung: Reihenfolge statt Sortierung,
        Zeitbudget statt Trefferzahl. */
     if (isPlan) {
-      var plan = planList();
-      if (!plan.length) {
-        $('list').hidden = true;
-        $('list').innerHTML = ''; $('list').setAttribute('data-voll', '1');
-        $('empty').hidden = false;
-        $('empty-h').textContent = 'Noch nichts gemerkt';
-        $('empty-p').textContent = 'In „Orte“ auf einer Zeile den Stern antippen. Gemerktes landet '
-          + 'in der Merkliste; von dort bekommt es einen Reisetag und wandert in den Plan. '
-          + 'Beides bleibt auch offline erhalten.';
-        $('empty-reset').hidden = true;
-        return;
-      }
+      /* Bis v35 stand hier ein eigener Leerzustand: wer nichts gemerkt
+         hatte, bekam einen Absatz Text und sonst nichts -- und erfuhr nie,
+         dass diese Ansicht fuenfzehn Reisetage kennt. Seit v36 zeichnet
+         planHtml() auch den leeren Fall: das Raster mit fuenfzehn Tagen
+         steht da, der Vorrat sagt in seiner eigenen Zeile, dass er leer ist,
+         und ein Knopf fuehrt nach „Entdecken“. Das Raster IST die
+         Aufforderung. */
       $('empty').hidden = true;
       $('list').hidden = false;
-      var gPlan = tagKennungen();
-      var nPlan = plan.filter(function (p) { return planTagVon(p.id, gPlan); }).length;
-      $('list').innerHTML = planTabsHtml(nPlan, plan.length - nPlan)
-        + (S.planTab === 'merk' ? merkHtml() : planHtml());
+      /* Seit v36 eine Ansicht statt zweier Haelften hinter einem Umschalter:
+         Raster, Tage, Vorrat untereinander. Man zieht beim Planen staendig
+         aus dem Vorrat in einen Tag -- wer den Vorrat sehen wollte, verlor
+         bis v35 den Plan aus dem Bild. */
+      $('list').innerHTML = planHtml();
       $('list').setAttribute('data-voll', '1');
       return;
     }
@@ -1891,16 +1903,42 @@
 
   function pickHtml(p, mins, until, ref, tomorrow, atStart) {
     var on = S.saved.indexOf(p.id) >= 0;
+    /* Der Umweg. Er gilt nur fuer HEUTE: "morgen frueh" hat seine eigene
+       Kette, und ein Ort, der heute drei Minuten kostet, kann morgen eine
+       Stunde kosten. Steht fuer heute nichts, gibt es auch keine Kette, in
+       die man einfuegen koennte -- dann steht hier nichts statt einer Null. */
+    var heute = isoTag(new Date());
+    var gueltig = tagKennungen();
+    var tagesOrte = tomorrow ? [] : planList().filter(function (x) {
+      return planTagVon(x.id, gueltig) === heute;
+    });
+    var schonDrin = S.days[p.id] === heute;
+    var u = schonDrin ? null : umwegFuer(p, tagesOrte, tagModus(heute, tagesOrte));
+
     return '<p class="today__cat ' + accentClass(p.category) + '">' + esc(catLabel(p.category))
       + (has(p.hours) ? '<span class="today__hours">' + esc(String(p.hours).replace(/^geöffnet\s+/i, '')) + '</span>' : '')
       + '</p>'
       + '<h3 class="today__name">' + esc(p.name) + '</h3>'
       + (has(p.note) ? '<p class="today__note">' + esc(p.note) + '</p>' : '')
       + '<p class="today__why">' + whyLine(p, mins, until, ref, tomorrow) + '</p>'
+      /* Was es kostet, ihn mitzunehmen -- und wo er hinkaeme. Ohne diese
+         Zahl sahen ein Ort auf dem Weg und einer am anderen Ende des Sees
+         gleich einladend aus. */
+      + (u
+          ? '<p class="today__umweg">≈ ' + esc(dur(u.min)) + ' Umweg'
+            + (u.nach ? ' — käme nach ' + esc(u.nach) : ' — käme als Erstes')
+            + '</p>'
+          : schonDrin
+            ? '<p class="today__umweg today__umweg--drin">Steht heute schon im Plan.</p>'
+            : '')
       + '<div class="today__acts">'
       + '<button type="button" class="btn btn--primary" data-open="' + esc(p.id) + '">Ansehen</button>'
-      + '<button type="button" class="btn" data-save="' + esc(p.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
-      + ICON.star + (on ? 'Gemerkt' : 'Merken') + '</button>'
+      + (u
+          ? '<button type="button" class="btn" data-einfuegen="' + esc(p.id) + '">'
+            + ICON.plus + 'In den Tag</button>'
+          : '<button type="button" class="btn" data-save="' + esc(p.id) + '" aria-pressed="'
+            + (on ? 'true' : 'false') + '">'
+            + ICON.star + (on ? 'Gemerkt' : 'Merken') + '</button>')
       + '</div>'
       /* Zwei Knoepfe statt eines: der Stapel hat jetzt Anfang, Ende und
          Rueckweg. Der Zaehler steht oben im Kicker. */
@@ -2011,10 +2049,21 @@
 
     var fertig = orte.filter(function (p) { return S.seen.indexOf(p.id) >= 0; }).length;
     var alles = fertig === orte.length;
+    var modus = tagModus(heute, orte);
+    var w = tagWege(orte, modus);
     var rest = 0, restN = 0;
     orte.forEach(function (p) {
       if (S.seen.indexOf(p.id) < 0 && has(p.time_min)) { rest += p.time_min; restN++; }
     });
+    /* Seit v37 zaehlen auch die Wege in die Restzeit -- aber nur die, die
+       noch bevorstehen. Der Weg von Station 1 zu Station 2 ist vorbei, wenn
+       2 schon abgehakt ist; ihn weiter mitzufuehren waere dieselbe Luege wie
+       eine erledigte Aufenthaltsdauer. */
+    var restWeg = 0;
+    for (var wi = 1; wi < orte.length; wi++) {
+      if (S.seen.indexOf(orte[wi].id) >= 0) continue;
+      if (w.wege[wi - 1]) restWeg += w.wege[wi - 1].min;
+    }
 
     /* "Heute", nicht "Dein Plan für heute": seit v35 ist der Tagesplan der
        Hauptinhalt dieser Ansicht und nicht mehr ein Block ueber einem
@@ -2023,13 +2072,15 @@
     var kopf = '<p class="planheut__h">'
       + '<span class="planheut__t">' + (alles ? 'Heute erledigt' : 'Heute') + '</span>'
       + '<span class="planheut__n">' + fertig + ' von ' + orte.length
-      + (restN && !alles ? ' · noch ' + esc(dur(rest)) : '') + '</span></p>'
+      + (restN && !alles
+          ? ' · noch ' + (restWeg ? '≈ ' : '') + esc(dur(rest + restWeg)) : '')
+      + '</span></p>'
       /* Ein Balken sagt in einem Blick, was "2 von 5" erst gelesen werden
          muss. aria-hidden, weil die Zahl daneben dasselbe schon sagt. */
       + '<div class="planheut__bar" aria-hidden="true"><i style="width:'
       + Math.round((fertig / orte.length) * 100) + '%"></i></div>';
 
-    var zeilen = orte.map(function (p) {
+    var zeilen = orte.map(function (p, i) {
       var ab = S.seen.indexOf(p.id) >= 0;
       return '<div class="planheut__row' + (ab ? ' planheut__row--ab' : '') + ' '
         + accentClass(p.category) + '">'
@@ -2049,7 +2100,16 @@
         + (S.jum ? dogKurz(p) : '')
         + (closedToday(p, now) ? ' · <span class="planheut__zu">heute zu</span>' : '')
         + '</span></button>'
-        + '</div>';
+        + '</div>'
+        /* Der Weg zur naechsten Station -- dieselbe Rechnung wie in der
+           Reise, damit an beiden Stellen dieselbe Zahl steht. */
+        + (function () {
+            var weg = w.wege[i];
+            if (!weg) return '';
+            return '<p class="planheut__w' + (weg.min >= WEG_LANG ? ' planheut__w--weit' : '')
+              + '"><span>≈ ' + esc(km(weg.km)) + ' · ' + esc(dur(weg.min)) + ' '
+              + esc(MODI[modus].name) + '</span></p>';
+          }());
     }).join('');
 
     /* Der Fuss sagt, was noch vor einem liegt -- und wenn nichts mehr, dann
@@ -2065,8 +2125,12 @@
         + 'Alle ' + orte.length + ' Stationen abgehakt.</p>'
       : (restN && restN < offen
           ? '<p class="planheut__f">Die Restzeit stützt sich auf ' + restN
-            + ' von ' + offen + ' offenen Stationen.</p>'
-          : '');
+            + ' von ' + offen + ' offenen Stationen'
+            + (restWeg ? ' und ≈ ' + esc(dur(restWeg)) + ' Wege' : '') + '.</p>'
+          : (restWeg
+              ? '<p class="planheut__f">In der Restzeit stecken ≈ '
+                + esc(dur(restWeg)) + ' Wege ' + esc(MODI[modus].name) + '.</p>'
+              : ''));
 
     return '<section class="planheut' + (alles ? ' planheut--fertig' : '') + '">'
       + kopf + '<div class="planheut__l">' + zeilen + '</div>' + fuss + '</section>';
@@ -3241,6 +3305,22 @@
     var i = S.saved.indexOf(id), j = S.saved.indexOf(nachbar);
     S.saved[i] = nachbar; S.saved[j] = id;
     lsSet(LS_SAVED, S.saved);
+    /* Seit v36 wird im Tages-Sheet umsortiert, nicht mehr in der Uebersicht.
+       Ein render() baute dort die Liste DAHINTER neu und liesse das Sheet
+       stehen, wie es war -- die Reihenfolge haette sich nicht sichtbar
+       geaendert. Also das Sheet neu bauen und den Fokus zurueckgeben. */
+    if (!$('sheet').hidden && S.dayOpen) {
+      var war = document.activeElement;
+      var richtung = war && war.hasAttribute && war.hasAttribute('data-down') ? 'down' : 'up';
+      $('sheet-body').innerHTML = daySheetHtml(S.dayOpen);
+      listeNeuBeimSchliessen = true;
+      var wieder = $('sheet-body').querySelector(
+        '[data-' + richtung + '="' + id.replace(/"/g, '\\"') + '"]:not([disabled])')
+        || $('sheet-body').querySelector(
+          '[data-' + (richtung === 'up' ? 'down' : 'up') + '="' + id.replace(/"/g, '\\"') + '"]');
+      if (wieder) { try { wieder.focus({ preventScroll: true }); } catch (e) { /* egal */ } }
+      return;
+    }
     render();
   }
 
@@ -3300,6 +3380,307 @@
      bleibt die Zeile weg statt zu raten. */
   function airKm(a, b) {
     return airKmPoint(a && a.geo, b && b.geo);
+  }
+
+  /* --- Wege zwischen zwei Orten ---------------------------------------
+
+     Bis v36 kannte die App nur Entfernungen AB DEM ZELTPLATZ: walk_min und
+     distance_km stehen je Ort, nicht je Paar. Damit liess sich kein Tag
+     ehrlich summieren -- "4,5 h" hiess "4,5 h Aufenthalt und null Wege", und
+     bei vier Stationen quer um den See fehlten darin zwei Stunden.
+
+     Geroutet wird nicht: ein Routing-Dienst braucht Netz, und diese App
+     funktioniert im Flugmodus. Gerechnet wird aus der Luftlinie, die bei
+     allen 101 Orten vorliegt:
+
+         weg_km  = luftlinie_km × 1,50        (Umwegfaktor Strasse/Luft)
+         zu Fuss = weg_km / 4,5 km/h          (mit Hund, mit Pausen)
+         mit Rad = weg_km / 15 km/h
+         mit Auto= weg_km / 45 km/h + 10 Min Parken
+
+     Beide Zahlen stammen aus den eigenen Daten, nicht aus einer Faustregel:
+     scripts/make-matrix.mjs rechnet sie aus den 48 gemessenen Fusswegen aus
+     und meldet die Abweichung. Der Median Strasse/Luftlinie ueber alle 101
+     Orte ist 1,50, die Geschwindigkeit distance_km/walk_min ist im Median
+     4,50 km/h -- beides auf zwei Stellen genau so, wie es hier steht.
+
+     Zwei Ehrlichkeitsregeln gehoeren dazu:
+
+     1. Geschaetztes traegt ein "≈". Gemessenes (walk_min ab dem Zeltplatz)
+        nicht. Dieselbe Beweislast, die hoursWindow() schon traegt.
+     2. Ueber 8 km wird nicht mehr zu Fuss gerechnet. Ein Tag mit Verona ist
+        ein Autotag; die Rechnung sagt das, statt vier Stunden Fussweg zu
+        behaupten. */
+  var UMWEG       = 1.50;   /* Median Strasse/Luftlinie, alle 101 Orte */
+  var V_FUSS      = 4.5;    /* km/h -- Median aus 48 gemessenen Fusswegen */
+  var V_RAD       = 15;
+  var V_AUTO      = 45;
+  var PARKEN_MIN  = 10;
+  var FUSS_MAX_KM = 8;
+  var MODI = {
+    fuss: { v: V_FUSS, fix: 0,          name: 'zu Fuß' },
+    rad:  { v: V_RAD,  fix: 0,          name: 'mit dem Rad' },
+    auto: { v: V_AUTO, fix: PARKEN_MIN, name: 'mit dem Auto' }
+  };
+
+  /* Wegstrecke zwischen zwei Orten in km, oder null. */
+  function wegKm(a, b) {
+    var luft = airKm(a, b);
+    return luft === null ? null : luft * UMWEG;
+  }
+
+  /* Minuten fuer eine Strecke in einem Modus. Der feste Zuschlag faellt je
+     Fahrt an, nicht je Kilometer -- Parken kostet einmal. */
+  function wegMin(strecke, modus) {
+    if (strecke === null || !isFinite(strecke)) return null;
+    var m = MODI[modus] || MODI.fuss;
+    return Math.round(strecke / m.v * 60 + (strecke > 0.05 ? m.fix : 0));
+  }
+
+  /* Der Modus, den ein Tag vertraegt. Entscheidend ist der GROESSTE Sprung:
+     eine Kette mit einem Sprung von 30 km ist kein Fussweg, auch wenn die
+     anderen drei je 500 m lang sind. Gewaehltes schlaegt Gerechnetes -- wer
+     den Tag als Radtag markiert hat, bekommt Radzeiten. */
+  function tagModus(iso, orte) {
+    if (S.mode[iso] && MODI[S.mode[iso]]) return S.mode[iso];
+    return tagModusVorschlag(orte);
+  }
+
+  function tagModusVorschlag(orte) {
+    var max = 0;
+    for (var i = 1; i < (orte || []).length; i++) {
+      var d = wegKm(orte[i - 1], orte[i]);
+      if (d !== null && d > max) max = d;
+    }
+    return max > FUSS_MAX_KM ? 'auto' : 'fuss';
+  }
+
+  function setTagModus(iso, modus) {
+    if (!MODI[modus]) delete S.mode[iso];
+    else S.mode[iso] = modus;
+    lsSet(LS_MODE, S.mode);
+  }
+
+  /* Die Wege einer Tageskette: je Nachbarpaar km und Minuten, dazu die
+     Summe. Paare ohne geo fehlen -- sie zaehlen nicht mit und werden
+     gezaehlt, damit die Summe sagen kann, worauf sie sich stuetzt. */
+  function tagWege(orte, modus) {
+    var wege = [], min = 0, km = 0, luecken = 0, weit = 0;
+    for (var i = 1; i < (orte || []).length; i++) {
+      var d = wegKm(orte[i - 1], orte[i]);
+      if (d === null) { wege.push(null); luecken++; continue; }
+      var t = wegMin(d, modus);
+      wege.push({ km: d, min: t });
+      min += t; km += d;
+      if (d > weit) weit = d;
+    }
+    return { wege: wege, min: min, km: km, luecken: luecken, weit: weit };
+  }
+
+  /* "≈ 12 Min" / "≈ 1,2 km · 16 Min". Alles hier ist gerechnet, also traegt
+     jede Ausgabe das Zeichen. */
+  function wegText(w, modus) {
+    if (!w) return '';
+    return '≈ ' + km(w.km) + ' · ' + dur(w.min) + ' ' + (MODI[modus] || MODI.fuss).name;
+  }
+
+  /* --- Die kuerzeste Runde --------------------------------------------
+
+     Die README fuehrte "Sortierung nach kuerzester Runde" seit v28 unter
+     "Spaeter angedacht". Sie war nicht machbar, solange die App keine Wege
+     zwischen zwei Orten kannte -- seit v37 kennt sie welche.
+
+     Gerechnet wird eine RUNDE, kein Pfad: abends schlaeft man wieder auf dem
+     Zeltplatz, also gehoeren Hin- und Rueckweg dazu. Ein Pfad haette die
+     letzte Station ans andere Ende des Sees gelegt und den Rueckweg
+     verschwiegen.
+
+     Bis acht Stationen wird exakt gerechnet: 7! = 5 040 Reihenfolgen ab
+     festem Start, in unter fuenf Millisekunden. Darueber Naechster-Nachbar
+     plus 2-opt -- das ist bei dieser Groesse praktisch immer optimal und
+     braucht kein Fremdpaket. Dieselbe Begruendung wie beim Buendeln der
+     Nadeln in v25: die naive Schleife war bei 101 Punkten schneller als der
+     Aufwand, ein Paket einzubinden.
+
+     Orte ohne geo koennen nicht einsortiert werden. Sie bleiben in ihrer
+     Reihenfolge und haengen hinten an -- geraten wird nicht. */
+  var RUNDE_EXAKT = 8;
+
+  function rundenKm(folge, start) {
+    var summe = 0, vorher = start;
+    for (var i = 0; i < folge.length; i++) {
+      var d = wegKm(vorher, folge[i]);
+      if (d === null) return null;
+      summe += d;
+      vorher = folge[i];
+    }
+    var zurueck = wegKm(vorher, start);
+    return zurueck === null ? null : summe + zurueck;
+  }
+
+  /* Alle Reihenfolgen durchgehen. Nur fuer kleine Mengen -- der Aufrufer
+     entscheidet, ob er darf. */
+  function exakteRunde(orte, start) {
+    var beste = null, bestKm = Infinity;
+    var idx = orte.map(function (_, i) { return i; });
+    (function permutiere(rest, gebaut) {
+      if (!rest.length) {
+        var folge = gebaut.map(function (i) { return orte[i]; });
+        var d = rundenKm(folge, start);
+        if (d !== null && d < bestKm) { bestKm = d; beste = folge; }
+        return;
+      }
+      for (var i = 0; i < rest.length; i++) {
+        permutiere(rest.slice(0, i).concat(rest.slice(i + 1)), gebaut.concat([rest[i]]));
+      }
+    }(idx, []));
+    return beste;
+  }
+
+  /* Naechster Nachbar ab dem Start, danach 2-opt: solange zwei Kanten
+     tauschen, wie das die Runde verkuerzt. */
+  function heuristischeRunde(orte, start) {
+    var offen = orte.slice(), folge = [], hier = start;
+    while (offen.length) {
+      var k = 0, best = Infinity;
+      for (var i = 0; i < offen.length; i++) {
+        var d = wegKm(hier, offen[i]);
+        if (d !== null && d < best) { best = d; k = i; }
+      }
+      hier = offen[k];
+      folge.push(hier);
+      offen.splice(k, 1);
+    }
+    var besser = true, runden = 0;
+    while (besser && runden < 50) {
+      besser = false; runden++;
+      for (var a = 0; a < folge.length - 1; a++) {
+        for (var b = a + 1; b < folge.length; b++) {
+          var neu = folge.slice(0, a).concat(
+            folge.slice(a, b + 1).reverse(), folge.slice(b + 1));
+          var alt = rundenKm(folge, start), jetzt = rundenKm(neu, start);
+          if (alt !== null && jetzt !== null && jetzt < alt - 0.0001) {
+            folge = neu; besser = true;
+          }
+        }
+      }
+    }
+    return folge;
+  }
+
+  /* Der Vorschlag fuer einen Tag. Gibt null, wenn nichts zu holen ist --
+     zu wenige Stationen, kein Bezugspunkt oder keine Koordinaten. */
+  function rundenVorschlag(orte, modus) {
+    var start = D && D.meta && D.meta.base_geo ? { geo: D.meta.base_geo } : null;
+    if (!start) return null;
+    var mit = orte.filter(function (p) { return p.geo; });
+    var ohne = orte.filter(function (p) { return !p.geo; });
+    if (mit.length < 3) return null;     /* unter drei gibt es nichts zu drehen */
+
+    var jetzt = rundenKm(mit, start);
+    var beste = mit.length <= RUNDE_EXAKT
+      ? exakteRunde(mit, start)
+      : heuristischeRunde(mit, start);
+    if (!beste) return null;
+    var neuKm = rundenKm(beste, start);
+    if (neuKm === null || jetzt === null) return null;
+
+    return {
+      orte: beste.concat(ohne),
+      exakt: mit.length <= RUNDE_EXAKT,
+      ohne: ohne.length,
+      km: neuKm, altKm: jetzt,
+      min: wegMin(neuKm, modus), altMin: wegMin(jetzt, modus),
+      gleich: beste.every(function (p, i) { return mit[i] && mit[i].id === p.id; })
+    };
+  }
+
+  /* --- Der Umweg: was ein Ort den heutigen Tag zusaetzlich kostet -------
+
+     Bis v36 sagte der Vorschlag in "Jetzt", WAS er vorschlaegt, aber nie,
+     was es kostet, ihn mitzunehmen. Bei einem Tag mit vier Stationen ist das
+     die entscheidende Zahl: ein Ort auf dem Weg kostet fuenf Minuten, einer
+     am anderen Ende des Sees zwei Stunden -- und beide sahen gleich
+     einladend aus.
+
+     Gerechnet wird die guenstigste EINFUEGESTELLE in die Kette des Tages,
+     Zeltplatz am Anfang und am Ende:
+
+         umweg = d(vorher, neu) + d(neu, nachher) - d(vorher, nachher)
+
+     Das ist der ehrliche Preis: was der Tag laenger wird, nicht die
+     Entfernung vom Zeltplatz. Ohne geo, ohne Tagesplan oder ohne
+     Bezugspunkt gibt es keine Zahl -- und dann steht auch keine da. */
+  function umwegFuer(p, orte, modus) {
+    var start = D && D.meta && D.meta.base_geo ? { geo: D.meta.base_geo } : null;
+    if (!start || !p || !p.geo || !orte || !orte.length) return null;
+    var kette = [start].concat(orte.filter(function (o) { return o.geo; }), [start]);
+    if (kette.length < 2) return null;
+
+    var beste = null;
+    for (var i = 0; i < kette.length - 1; i++) {
+      var hin = wegKm(kette[i], p), weiter = wegKm(p, kette[i + 1]);
+      var direkt = wegKm(kette[i], kette[i + 1]);
+      if (hin === null || weiter === null || direkt === null) continue;
+      var mehr = hin + weiter - direkt;
+      if (beste === null || mehr < beste.km) {
+        beste = { km: mehr, pos: i,
+                  nach: i === 0 ? null : kette[i].name || null };
+      }
+    }
+    if (!beste) return null;
+    beste.min = wegMin(beste.km, modus || 'fuss');
+    return beste;
+  }
+
+  /* Einfuegen an genau dieser Stelle: der Ort bekommt den heutigen Tag,
+     landet in der Merkliste und steht in der Reihenfolge dort, wo er den
+     kleinsten Umweg macht. */
+  function einfuegenHeute(id) {
+    var heute = isoTag(new Date());
+    var gueltig = tagKennungen();
+    var ort = D.places.filter(function (x) { return x.id === id; })[0];
+    if (!ort) return false;
+    var drin = planList().filter(function (x) { return planTagVon(x.id, gueltig) === heute; });
+    var u = umwegFuer(ort, drin, tagModus(heute, drin));
+
+    S.days[id] = heute;
+    lsSet(LS_DAYS, S.days);
+    if (S.saved.indexOf(id) < 0) S.saved.push(id);
+    else S.saved.splice(S.saved.indexOf(id), 1), S.saved.push(id);
+
+    /* Die Stelle in der Tagesgruppe auf die Position im globalen Array
+       uebersetzen -- wie beim Verschieben mit den Pfeilen bleibt alles
+       ausserhalb der Gruppe unberuehrt. */
+    if (u) {
+      var gruppe = S.saved.filter(function (x) { return planTagVon(x, gueltig) === heute; });
+      var ohne = gruppe.filter(function (x) { return x !== id; });
+      var neu = ohne.slice(0, u.pos).concat([id], ohne.slice(u.pos));
+      var plaetze = [];
+      S.saved.forEach(function (x, i) { if (planTagVon(x, gueltig) === heute) plaetze.push(i); });
+      neu.forEach(function (x, i) { if (plaetze[i] !== undefined) S.saved[plaetze[i]] = x; });
+    }
+    lsSet(LS_SAVED, S.saved);
+    return true;
+  }
+
+  /* Uebernehmen heisst: die globalen Positionen der Tagesgruppe in
+     pk.saved neu belegen. Alles ausserhalb der Gruppe bleibt unberuehrt --
+     dieselbe Regel wie beim Verschieben mit den Pfeilen. */
+  function setzeRunde(iso) {
+    var gueltig = tagKennungen();
+    var drin = planList().filter(function (p) { return planTagVon(p.id, gueltig) === iso; });
+    var v = rundenVorschlag(drin, tagModus(iso, drin));
+    if (!v || v.gleich) return false;
+    var plaetze = [];
+    S.saved.forEach(function (id, i) {
+      if (planTagVon(id, gueltig) === iso) plaetze.push(i);
+    });
+    v.orte.forEach(function (p, i) {
+      if (plaetze[i] !== undefined) S.saved[plaetze[i]] = p.id;
+    });
+    lsSet(LS_SAVED, S.saved);
+    return true;
   }
 
   /* Vom Geraetestandort zu einem Ort. Ohne Standort oder ohne geo: null.
@@ -3368,7 +3749,14 @@
       + 'nicht gespeichert und verlässt es nicht. ' + ohne;
   }
 
-  var PLAN_FAR = 1.2;   // ab hier ist der Weg zwischen zwei Stationen erwaehnenswert
+  var PLAN_FAR = 1.2;   // ab hier ist die Luftlinie zwischen zwei Stationen erwaehnenswert
+  /* Ab einer dreiviertel Stunde ist ein Weg kein Uebergang mehr, sondern ein
+     Programmpunkt -- dann wird er hervorgehoben. Gemessen an der Zeit, nicht
+     an der Strecke: fuenf Kilometer sind mit dem Rad zwanzig Minuten und zu
+     Fuss mehr als eine Stunde. Die Grenze lag zuerst bei 30 Minuten -- an
+     einem gewoehnlichen Fusstag um den Hafen stand dann JEDER Weg in Ziegel,
+     und eine Warnung, die immer leuchtet, warnt vor nichts. */
+  var WEG_LANG = 45;
 
   /* Die Reiseuebersicht: alle Reisetage auf einen Blick.
 
@@ -3397,10 +3785,13 @@
       var t = planTagVon(id, gueltig);
       if (t) zahl[t] = (zahl[t] || 0) + 1;
     });
-    /* Wie die Tagesgruppen: erscheint erst, wenn etwas zugeordnet ist. Ohne
-       Zuordnung waere es ein leeres Raster ueber einer Merkliste. */
+    /* Bis v35 erschien das Raster erst mit der ersten Zuordnung -- mit der
+       Begruendung, es waere sonst ein leeres Raster ueber einer Merkliste.
+       Die Merkliste darunter gibt es seit v36 nicht mehr, und wenn nichts
+       geplant ist, IST das Raster die Aufforderung: fuenfzehn leere Tage mit
+       einem Plus sagen deutlicher, dass hier etwas hingehoert, als jede
+       Zeile Text. */
     var verplant = Object.keys(zahl).length;
-    if (!verplant) return '';
 
     var zellen = tage.map(function (t) {
       var n = zahl[t.iso] || 0;
@@ -3436,9 +3827,11 @@
     /* "Noch ohne Plan" zaehlt nur, was noch kommt -- ein freier Montag vom
        14. ist keine Luecke mehr, sondern Vergangenheit. */
     var frei = tage.filter(function (t) { return !zahl[t.iso] && t.iso >= heute; }).length;
-    return '<section class="uebs">'
-      + '<p class="uebs__h">Reiseplan'
-      + '<span class="uebs__s">' + verplant + ' von ' + tage.length + ' Tagen verplant</span></p>'
+    /* Kein eigener Kopf mehr: seit v36 steht direkt darueber "Fünfzehn Tage ·
+       4 verplant", und "Reiseplan · 4 von 15 Tagen verplant" sagte dasselbe
+       noch einmal. Fuer Vorleser bleibt die Auskunft als sr-only stehen. */
+    return '<section class="uebs" aria-label="Reiseplan">'
+      + '<p class="sr-only">' + verplant + ' von ' + tage.length + ' Tagen verplant.</p>'
       + '<div class="uebs__g">' + zellen + '</div>'
       + (frei ? '<p class="sr-only">' + frei + (frei === 1 ? ' Tag ist' : ' Tage sind')
           + ' noch ohne Plan.</p>' : '')
@@ -3462,41 +3855,37 @@
      Das Sheet bleibt beim Hinzufuegen offen: einen Tag fuellt man selten mit
      einem einzigen Ort, und jedes Mal neu zu oeffnen waere eine Strafe fuers
      Planen. Dieselbe Entscheidung wie beim Filter-Sheet. */
-  function daySheetHtml(iso) {
-    var tage = tripTage();
-    var tag = null;
-    for (var i = 0; i < tage.length; i++) if (tage[i].iso === iso) tag = tage[i];
-    if (!tag) return '';
+  /* Der Bezugspunkt eines Tages und der danach sortierte Vorrat.
 
-    var heute = isoTag(new Date());
+     Bis v31 stand die Merkliste im Tages-Sheet in der Reihenfolge, in der
+     man gemerkt hat -- bei zwanzig Eintraegen sucht man darin. Gemessen wird
+     gegen den NAECHSTEN schon verplanten Ort des Tages, nicht gegen deren
+     Mittelpunkt: liegen Verona und Peschiera an einem Tag, faellt der
+     Mittelpunkt auf ein Feld dazwischen, und die Reihenfolge waere nach
+     niemandem sortiert. Die Frage lautet "was kann ich mitnehmen, wenn ich
+     schon dort bin" -- und das misst sich am naechsten Nachbarn.
+
+     Ist der Tag leer, gibt es keinen Anker im Tag. Dann gilt der Bezugspunkt
+     der ganzen App: der Geraetestandort, wenn gesetzt, sonst der Zeltplatz.
+
+     Die Entfernung steht an jeder Zeile und der Grund der Sortierung im
+     Kopf. Eine Reihenfolge, die man nicht erklaeren kann, ist schlechter als
+     gar keine -- dann raet man, warum ausgerechnet das oben steht.
+
+     Luftlinie, keine Wegzeit: hier geht es um "liegt das nah beieinander",
+     nicht um eine Dauer. Seit v37 rechnet die App zwar Wege -- aber erst,
+     wenn ein Ort WIRKLICH an dem Tag steht. Eine Wegzeit an jeder Zeile des
+     Vorrats waere eine Zahl fuer eine Entscheidung, die noch niemand
+     getroffen hat.
+
+     Eigene Funktion, weil die Suche im Sheet denselben Bezugspunkt braucht
+     und beim Tippen nur die Trefferliste neu gebaut wird. */
+  function tagBezug(iso) {
     var gueltig = tagKennungen();
     var alle = planList();
     var drin = alle.filter(function (p) { return planTagVon(p.id, gueltig) === iso; });
     var frei = alle.filter(function (p) { return !planTagVon(p.id, gueltig); });
 
-    var min = 0, minN = 0;
-    drin.forEach(function (p) { if (has(p.time_min)) { min += p.time_min; minN++; } });
-
-    /* Die Merkliste nach Naehe sortieren.
-
-       Bis v31 stand sie in der Reihenfolge, in der man gemerkt hat -- bei
-       zwanzig Eintraegen sucht man darin. Gemessen wird gegen den NAECHSTEN
-       schon verplanten Ort des Tages, nicht gegen deren Mittelpunkt: liegen
-       Verona und Peschiera an einem Tag, faellt der Mittelpunkt auf ein Feld
-       dazwischen, und die Reihenfolge waere nach niemandem sortiert. Die
-       Frage lautet "was kann ich mitnehmen, wenn ich schon dort bin" -- und
-       das misst sich am naechsten Nachbarn.
-
-       Ist der Tag leer, gibt es keinen Anker im Tag. Dann gilt der
-       Bezugspunkt der ganzen App: der Geraetestandort, wenn gesetzt, sonst
-       der Zeltplatz.
-
-       Die Entfernung steht an jeder Zeile und der Grund der Sortierung im
-       Kopf. Eine Reihenfolge, die man nicht erklaeren kann, ist schlechter
-       als gar keine -- dann raet man, warum ausgerechnet das oben steht.
-
-       Luftlinie, keine Gehzeit: aus der Luftlinie wird in dieser App nie
-       eine Wegzeit, der Weg ums Becken herum ist nicht die Strecke darueber. */
     var anker = drin.slice();
     var ankerText = '';
     if (drin.length) {
@@ -3524,17 +3913,35 @@
       return klein;
     }
 
-    var weit = {};
-    frei.forEach(function (o) { weit[o.id] = anker.length ? naehe(o) : null; });
-    if (anker.length) {
-      frei = frei.slice().sort(function (a, b) {
-        var da = weit[a.id], db = weit[b.id];
-        if (da === null && db === null) return 0;
-        if (da === null) return 1;
-        if (db === null) return -1;
-        return da - db;
-      });
-    }
+    var nachNaehe = function (a, b) {
+      var da = naehe(a), db = naehe(b);
+      if (da === null && db === null) return 0;
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db;
+    };
+    if (anker.length) frei = frei.slice().sort(nachNaehe);
+
+    return { drin: drin, frei: frei, alle: alle, gueltig: gueltig,
+             ankerText: ankerText, naehe: anker.length ? naehe : function () { return null; },
+             nachNaehe: nachNaehe };
+  }
+
+  function daySheetHtml(iso) {
+    var tage = tripTage();
+    var tag = null;
+    for (var i = 0; i < tage.length; i++) if (tage[i].iso === iso) tag = tage[i];
+    if (!tag) return '';
+
+    var heute = isoTag(new Date());
+    var bez = tagBezug(iso);
+    var drin = bez.drin;
+
+    var min = 0, minN = 0;
+    drin.forEach(function (p) { if (has(p.time_min)) { min += p.time_min; minN++; } });
+    var modus = tagModus(iso, drin);
+    var vorschlag = tagModusVorschlag(drin);
+    var w = tagWege(drin, modus);
 
     var h = '<p class="sheet__cat">Reisetag' + (iso === heute ? ' · heute' : '') + '</p>'
       + '<h2 class="sheet__name" id="sheet-name">' + esc(tag.lang) + '</h2>';
@@ -3542,97 +3949,211 @@
     if (drin.length) {
       h += '<p class="tagsheet__h">An diesem Tag'
         + '<span class="tagsheet__n">' + drin.length
-        + (minN ? ' · ' + esc(dur(min)) : '') + '</span></p>'
+        + (minN || w.min ? ' · ' + (w.min ? '≈ ' : '') + esc(dur(min + w.min)) : '')
+        + '</span></p>'
+        /* Womit der Tag zurueckgelegt wird. Der Vorschlag kommt aus dem
+           groessten Sprung der Kette: eine Kette mit einem Sprung von 30 km
+           ist kein Fussweg, auch wenn die anderen drei je 500 m lang sind.
+           Gewaehlt wird trotzdem von Hand -- die App weiss nicht, ob das Auto
+           heute dasteht. Nur die Abweichung wird gespeichert. */
+        + '<div class="wmode" role="group" aria-label="Womit dieser Tag zurückgelegt wird">'
+        + ['fuss', 'rad', 'auto'].map(function (k) {
+            var an = k === modus;
+            return '<button type="button" class="wmode__b' + (an ? ' wmode__b--an' : '') + '"'
+              + ' data-wmode="' + k + '" aria-pressed="' + (an ? 'true' : 'false') + '">'
+              + esc(MODI[k].name)
+              + (k === vorschlag ? '<span class="sr-only"> (vorgeschlagen)</span>' : '')
+              + '</button>';
+          }).join('')
+        + '</div>'
+        + (w.min || w.luecken
+            ? '<p class="tagsheet__budget">'
+              + esc(dur(min)) + ' vor Ort'
+              + (w.min ? ' · ≈ ' + esc(dur(w.min)) + ' Wege · ≈ ' + esc(km(w.km)) : '')
+              + (w.luecken ? ' · ' + w.luecken
+                  + (w.luecken === 1 ? ' Weg ohne Koordinate' : ' Wege ohne Koordinate') : '')
+              + '</p>' : '')
+        /* Ueber 8 km wird nicht mehr zu Fuss gerechnet: ein Tag mit Verona
+           ist ein Autotag, und vier Stunden Fussweg zu behaupten waere keine
+           Auskunft, sondern eine Zumutung. */
+        + (modus === 'fuss' && w.weit > FUSS_MAX_KM
+            ? '<p class="tagsheet__warn">' + ICON.warn + 'Der längste Sprung ist ≈ '
+              + esc(km(w.weit)) + '. Über ' + FUSS_MAX_KM
+              + ' km rechnet die App keinen Fußweg mehr — das ist ein Auto- oder Radtag.</p>'
+            : '')
+        /* Die kuerzeste Runde. Vorgeschlagen, nicht durchgesetzt: die App
+           kennt die Entfernungen, nicht die Oeffnungszeiten im Kopf des
+           Planers ("erst der Markt, der macht um eins zu"). Deshalb steht
+           hier ein Angebot mit Zahlen und kein stiller Umbau. */
+        + (function () {
+            var v = rundenVorschlag(drin, modus);
+            if (!v) return '';
+            if (v.gleich) {
+              return '<p class="runde runde--gut">' + ICON.check
+                + '<span>Die Reihenfolge ist schon die kürzeste Runde ab dem '
+                + 'Zeltplatz: ≈ ' + esc(km(v.km)) + '.</span></p>';
+            }
+            var spart = v.altMin - v.min;
+            return '<div class="runde">'
+              + '<p class="runde__t">Kürzere Runde möglich</p>'
+              + '<p class="runde__s">≈ ' + esc(km(v.km)) + ' statt ≈ ' + esc(km(v.altKm))
+              + (spart > 0 ? ' — ≈ ' + esc(dur(spart)) + ' weniger unterwegs' : '')
+              + '. Gerechnet ab dem Zeltplatz und zurück.'
+              + (v.ohne ? ' ' + v.ohne + (v.ohne === 1 ? ' Station ohne' : ' Stationen ohne')
+                  + ' Koordinate bleibt hinten stehen.' : '')
+              + '</p>'
+              + '<button type="button" class="btn" data-runde="' + esc(iso) + '">'
+              + 'Reihenfolge übernehmen</button></div>';
+          }())
         + '<div class="tagsheet__l">'
-        + drin.map(function (p) {
-            return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
+        + drin.map(function (p, i) {
+            return '<div class="tagsheet__row tagsheet__row--drin '
+              + accentClass(p.category) + '">'
+              /* Die Nummer sagt, in welcher Reihenfolge der Tag gedacht ist.
+                 Sie stand bis v35 an der Planzeile; seit die Uebersicht nur
+                 noch zeigt, gehoert sie dorthin, wo geaendert wird. */
+              + '<span class="tagsheet__nr">' + (i + 1) + '</span>'
               + '<span class="tagsheet__txt">'
               + '<span class="tagsheet__name">' + esc(p.name) + '</span>'
               + '<span class="tagsheet__m">' + esc(catLabel(p.category))
-              + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '') + '</span></span>'
-              /* Herausnehmen, nicht loeschen: der Ort wandert zurueck in die
-                 Merkliste, er verlaesst den Plan nicht. */
+              + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
+              + (S.jum ? dogKurz(p) : '') + '</span></span>'
+              /* Zwei Knoepfe statt einer Wischgeste: bei einer Handvoll
+                 Stationen treffsicherer, und ohne echtes iOS pruefbar.
+                 Verschoben wird innerhalb des Tages -- zwischen dem letzten
+                 Ort von Dienstag und dem ersten von Mittwoch liegt eine
+                 Nacht, keine Wanderung. */
+              + '<span class="tagsheet__move">'
+              + '<button type="button" class="pmove" data-up="' + esc(p.id) + '"'
+              + (i === 0 ? ' disabled' : '')
+              + ' aria-label="' + esc(p.name) + ' nach vorn">'
+              + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14.5l6-6 6 6"/></svg></button>'
+              + '<button type="button" class="pmove" data-down="' + esc(p.id) + '"'
+              + (i === drin.length - 1 ? ' disabled' : '')
+              + ' aria-label="' + esc(p.name) + ' nach hinten">'
+              + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></button>'
+              + '</span>'
+              /* Herausnehmen, nicht loeschen: der Ort wandert zurueck in den
+                 Vorrat, er verlaesst die Reise nicht. */
               + '<button type="button" class="tagsheet__b tagsheet__b--weg"'
               + ' data-dayset="' + esc(p.id) + '" data-dayiso=""'
               + ' aria-label="' + esc(p.name) + ' von diesem Tag herunternehmen">'
-              + ICON.minus + '</button></div>';
+              + ICON.minus + '</button>'
+              + '</div>'
+              /* Der Weg zur naechsten Station. Er gilt Nachbarn DESSELBEN
+                 Tages -- zwischen dem letzten Ort von Dienstag und dem
+                 ersten von Mittwoch liegt eine Nacht, keine Wanderung.
+                 Fehlt geo bei einer der beiden, bleibt die Zeile weg statt
+                 zu raten; bis v36 stand hier nur eine Warnung ab 1,2 km
+                 Luftlinie, und zwischen den anderen Stationen gar nichts. */
+              + (function () {
+                  var weg = w.wege[i];
+                  if (!weg) return '';
+                  return '<p class="tagweg' + (weg.min >= WEG_LANG ? ' tagweg--weit' : '')
+                    + '">' + (weg.min >= WEG_LANG ? ICON.warn : '')
+                    + '<span>≈ ' + esc(km(weg.km)) + ' · ' + esc(dur(weg.min)) + ' '
+                    + esc(MODI[modus].name) + '</span></p>';
+                }());
           }).join('')
         + '</div>'
         + '<button type="button" class="btn btn--wide" data-daygoto="' + esc(iso) + '">'
-        + 'Im Plan anzeigen</button>';
+        + 'In der Reise anzeigen</button>';
     } else {
       h += '<p class="tagsheet__leer">Für diesen Tag ist noch nichts geplant.</p>';
     }
 
-    if (frei.length) {
-      h += '<p class="tagsheet__h">Aus deiner Merkliste'
-        + '<span class="tagsheet__n">' + frei.length + '</span></p>'
-        + (ankerText ? '<p class="tagsheet__lead">' + ankerText + '</p>' : '')
-        + '<div class="tagsheet__l">'
-        + frei.map(function (p) {
-            return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
-              + '<span class="tagsheet__txt">'
-              + '<span class="tagsheet__name">' + esc(p.name) + '</span>'
-              + '<span class="tagsheet__m">' + esc(catLabel(p.category))
-              + (weit[p.id] !== null && weit[p.id] !== undefined
-                  ? ' · <span class="tagsheet__weit">' + esc(km(weit[p.id])) + '</span>' : '')
-              + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
-              + (closedToday(p, new Date(iso + 'T12:00:00'))
-                  ? ' · <span class="tagsheet__zu">an dem Tag zu</span>' : '')
-              + '</span></span>'
-              + '<button type="button" class="tagsheet__b" data-dayset="' + esc(p.id) + '"'
-              + ' data-dayiso="' + esc(iso) + '"'
-              + ' aria-label="' + esc(p.name) + ' auf ' + esc(tag.lang) + ' legen">'
-              + ICON.plus + '</button></div>';
-          }).join('')
-        + '</div>';
-    } else {
-      h += '<p class="tagsheet__leer">'
-        + (alle.length
-            ? 'Alle gemerkten Orte haben schon einen Tag.'
-            : 'Deine Merkliste ist leer — in „Orte" den Stern antippen.')
-        + '</p>'
-        + '<button type="button" class="btn btn--wide" id="tagsheet-orte">'
-        + 'Orte durchsuchen</button>';
-    }
+    /* Das Suchfeld geht ueber ALLE 101 Orte, nicht nur ueber den Vorrat.
+       Bis v37 brauchte "am Mittwoch die Rocca ansehen" sechs Schritte:
+       Reiter wechseln, suchen, oeffnen, merken, Tag waehlen, zurueck. Jetzt
+       einen. Das Feld steht ueber der Liste, weil es sie ersetzt, sobald
+       etwas darin steht. */
+    h += '<label class="tagsuche">'
+      + '<span class="sr-only">Orte für ' + esc(tag.lang) + ' suchen</span>'
+      + '<input type="search" id="tagsuche" class="tagsuche__i"'
+      + ' autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="search"'
+      + ' placeholder="Alle ' + D.places.length + ' Orte durchsuchen"'
+      + ' value="' + esc(S.daySuche) + '"></label>'
+      + '<div id="tagtreffer">' + tagTrefferHtml(iso) + '</div>';
     return h;
   }
+
+  /* Die Liste unter dem Suchfeld. Ohne Suchbegriff ist es der Vorrat, mit
+     Begriff die Suche ueber alle Orte -- ohne die, die an diesem Tag schon
+     stehen. Eigene Funktion, weil beim Tippen nur SIE neu gebaut wird: ein
+     neu gezeichnetes Sheet verloere den Fokus und die Schreibmarke. */
+  function tagTrefferHtml(iso) {
+    var tage = tripTage(), tag = null;
+    for (var t = 0; t < tage.length; t++) if (tage[t].iso === iso) tag = tage[t];
+    if (!tag) return '';
+    var bez = tagBezug(iso);
+    var q = S.daySuche.trim();
+    var liste = bez.frei, kopf = 'Aus deinem Vorrat', lead = bez.ankerText, suche = false;
+
+    if (q) {
+      suche = true;
+      var teile = norm(q).split(/\s+/).filter(Boolean);
+      liste = D.places.filter(function (p) {
+        if (planTagVon(p.id, bez.gueltig) === iso) return false;   /* steht schon da */
+        var heu = haystack(p);
+        return teile.every(function (x) { return heu.indexOf(x) >= 0; });
+      });
+      kopf = 'Gefunden';
+      /* Auch die Treffer stehen nach Naehe: dieselbe Frage wie beim Vorrat --
+         was kann ich mitnehmen, wenn ich schon dort bin. */
+      liste = liste.slice().sort(bez.nachNaehe);
+    }
+
+    if (!liste.length) {
+      return '<p class="tagsheet__leer">'
+        + (suche
+            ? 'Nichts gefunden für „' + esc(q) + '“.'
+            : bez.alle.length
+              ? 'Alle gemerkten Orte haben schon einen Tag. Das Feld darüber '
+                + 'durchsucht alle ' + D.places.length + ' Orte.'
+              : 'Dein Vorrat ist leer. Das Feld darüber durchsucht alle '
+                + D.places.length + ' Orte.')
+        + '</p>';
+    }
+
+    return '<p class="tagsheet__h">' + kopf
+      + '<span class="tagsheet__n">' + liste.length + '</span></p>'
+      + (lead ? '<p class="tagsheet__lead">' + lead + '</p>' : '')
+      + '<div class="tagsheet__l">'
+      + liste.map(function (p) {
+          var w = bez.naehe(p);
+          return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
+            + '<span class="tagsheet__txt">'
+            + '<span class="tagsheet__name">' + esc(p.name) + '</span>'
+            + '<span class="tagsheet__m">' + esc(catLabel(p.category))
+            + (w !== null && w !== undefined
+                ? ' · <span class="tagsheet__weit">' + esc(km(w)) + '</span>' : '')
+            + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
+            + (closedToday(p, new Date(iso + 'T12:00:00'))
+                ? ' · <span class="tagsheet__zu">an dem Tag zu</span>' : '')
+            /* Was die Suche neu hereinholt, ist noch nicht gemerkt. Das
+               gehoert dazugesagt: der Knopf legt es in einem Schritt auf den
+               Tag UND in die Merkliste. */
+            + (S.saved.indexOf(p.id) < 0
+                ? ' · <span class="tagsheet__neu">noch nicht gemerkt</span>' : '')
+            + '</span></span>'
+            + '<button type="button" class="tagsheet__b" data-dayset="' + esc(p.id) + '"'
+            + ' data-dayiso="' + esc(iso) + '"'
+            + ' aria-label="' + esc(p.name) + ' auf ' + esc(tag.lang) + ' legen">'
+            + ICON.plus + '</button></div>';
+        }).join('')
+      + '</div>';
+  }
+
 
   function openDaySheet(iso) {
     S.openId = null;
     S.filterOpen = false;
     S.dayOpen = iso;
+    /* Die Suche gilt diesem Besuch, nicht dem naechsten: wer einen Tag
+       schliesst und einen anderen oeffnet, faengt mit dem Vorrat an, nicht
+       mit dem letzten Suchbegriff. */
+    S.daySuche = '';
     showSheet(daySheetHtml(iso), 'sheet--tag');
-  }
-
-  /* ------------------------------------------- Plan und Merkliste getrennt
-
-     Bis v32 teilten sich zwei verschiedene Dinge einen Bildschirm: unten am
-     Plan haengte die Merkliste als vierte "Tagesgruppe" namens "Gemerkt,
-     noch ohne Tag". Das las sich wie ein Tag, war aber keiner -- und eine
-     Summenzeile darueber musste beides zugleich beschreiben.
-
-     Es sind zwei Dinge mit zwei Aufgaben:
-       Plan      -- der Fahrplan. Was an welchem Tag ansteht.
-       Merkliste -- der Vorrat. Was noch keinen Tag hat.
-
-     Die Mengen sind ueberschneidungsfrei: ein Ort ist entweder verplant oder
-     im Vorrat, und ihn zu verplanen ist genau der Uebergang. Deshalb zaehlt
-     die Umschaltleiste beide, und die Summe der zwei Zahlen ist die Zahl der
-     gemerkten Orte.
-
-     Kein fuenfter Reiter: die Leiste unten traegt vier, bei fuenf bleiben je
-     80 px, und "Plan" und "Merkliste" gehoeren ohnehin zusammen -- man geht
-     zwischen ihnen hin und her, nicht von woanders zu einem von beiden. */
-  function planTabsHtml(nPlan, nMerk) {
-    var ist = function (v) { return S.planTab === v; };
-    var knopf = function (v, label, n) {
-      return '<button type="button" class="ptab' + (ist(v) ? ' ptab--an' : '') + '"'
-        + ' data-ptab="' + v + '" aria-pressed="' + (ist(v) ? 'true' : 'false') + '">'
-        + label + '<span class="ptab__n">' + n + '</span></button>';
-    };
-    return '<div class="ptabs" role="group" aria-label="Plan oder Merkliste">'
-      + knopf('plan', 'Plan', nPlan) + knopf('merk', 'Merkliste', nMerk) + '</div>';
   }
 
   /* Der Waehler je Zeile. Ein natives select, kein eigenes Menue: auf dem
@@ -3655,15 +4176,13 @@
       + o + '</select></span>';
   }
 
-  /* Eine Zeile. pos/gruppe nur im Plan: dort traegt sie eine Nummer und die
-     Umstell-Pfeile. In der Merkliste gibt es keine Reihenfolge, die etwas
-     bedeutet -- Pfeile waeren dort ein Bedienelement ohne Aussage. */
-  function planZeile(p, gueltig, pos, gruppe) {
+  /* Eine Zeile im Vorrat. Keine Nummer und keine Pfeile: dort gibt es keine
+     Reihenfolge, die etwas bedeutet. Der Tag-Waehler ist der Weg hinaus --
+     er ist das einzige Bedienelement, das die Zeile braucht. */
+  function planZeile(p, gueltig) {
     var seen = S.seen.indexOf(p.id) >= 0;
-    var imPlan = pos !== undefined;
-    return '<div class="planrow' + (seen ? ' planrow--seen' : '')
-      + (imPlan ? '' : ' planrow--merk') + ' ' + accentClass(p.category) + '">'
-      + (imPlan ? '<span class="planrow__n">' + (pos + 1) + '</span>' : '')
+    return '<div class="planrow planrow--merk' + (seen ? ' planrow--seen' : '')
+      + ' ' + accentClass(p.category) + '">'
       + '<span class="planrow__mid">'
       + '<button type="button" class="planrow__open" data-open="' + esc(p.id) + '">'
       + '<span class="planrow__name">' + esc(p.name) + '</span>'
@@ -3673,115 +4192,185 @@
       + (seen ? ' · gesehen' : '') + '</span></button>'
       + tagWaehler(p, planTagVon(p.id, gueltig))
       + '</span>'
-      + (imPlan
-          ? '<span class="planrow__move">'
-            + '<button type="button" class="pmove" data-up="' + esc(p.id) + '"'
-            + (pos === 0 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach oben">'
-            + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>'
-            + '<button type="button" class="pmove" data-down="' + esc(p.id) + '"'
-            + (pos === gruppe.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(p.name) + ' nach unten">'
-            + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg></button>'
-            + '</span>'
-          : '')
       + '</div>';
   }
 
-  function tagGruppeHtml(orte, gueltig) {
-    return orte.map(function (p, i) {
-      var h = planZeile(p, gueltig, i, orte);
-      /* Die Warnung gilt Nachbarn DESSELBEN Tages — zwischen dem letzten
-         Ort von Dienstag und dem ersten von Mittwoch liegt eine Nacht,
-         keine Wanderung. */
-      var d = airKm(p, orte[i + 1]);
-      if (d !== null && d >= PLAN_FAR) {
-        h += '<p class="plan__far">' + ICON.warn + 'Zwischen ' + (i + 1) + ' und ' + (i + 2)
-          + ' liegen ' + esc(km(d)) + ' Luftlinie.</p>';
-      }
-      return h;
+  /* --- Die Reise: fuenfzehn Tage auf einen Blick ------------------------
+
+     Bis v35 waren das zwei Haelften hinter einer Umschaltleiste: "Plan" und
+     "Merkliste". Die Trennung war richtig gedacht -- der Fahrplan und der
+     Vorrat sind zwei Dinge -- aber sie kostete einen Umschalter fuer etwas,
+     das man beim Planen staendig zusammen braucht: man zieht aus dem Vorrat
+     in einen Tag. Wer den Vorrat sehen wollte, verlor den Plan aus dem Bild.
+
+     Seit v36 steht beides untereinander: das Raster, die Tage, der Vorrat.
+     Und die Tage sind KARTEN, keine Gruppen mit Zeilen -- sie zeigen, was an
+     dem Tag ansteht, und oeffnen zum Aendern dasselbe Tages-Sheet, das auch
+     das Raster oeffnet. Ein Einstieg statt zweier.
+
+     Damit wandert auch das Umsortieren ins Sheet. Es stand vorher an jeder
+     Planzeile; in einer Uebersicht, die nur zeigt, hat es nichts zu suchen. */
+
+  /* Die Tageskarte. Ein Knopf: antippen oeffnet das Tages-Sheet. */
+  function tagKarteHtml(t, orte, heute) {
+    var min = 0, minN = 0;
+    orte.forEach(function (p) { if (has(p.time_min)) { min += p.time_min; minN++; } });
+
+    /* Seit v37 zaehlen die Wege mit. Bis v36 hiess "4,5 h" in Wahrheit "4,5 h
+       Aufenthalt und null Wege" -- bei vier Stationen quer um den See fehlten
+       darin zwei Stunden, und der Tag sah machbar aus, der es nicht war.
+       Gerechnet, nicht geroutet: siehe wegKm(). Alles Gerechnete traegt "≈". */
+    var modus = tagModus(t.iso, orte);
+    var w = tagWege(orte, modus);
+    var gesamt = min + w.min;
+
+    /* Ab 10 h wird der Tag genannt, nicht bewertet: die Grenze ist eine
+       Annahme. Sie steht deshalb woertlich da. Gemessen wird jetzt an der
+       Summe MIT Wegen -- das ist die Zahl, die der Tag wirklich kostet. */
+    var voll = gesamt > 600;
+    var istHeute = t.iso === heute;
+    var vorbei = t.iso < heute;
+    var fertig = orte.filter(function (p) { return S.seen.indexOf(p.id) >= 0; }).length;
+
+    var kopf = '<span class="tagk__t">'
+      + (istHeute ? 'Heute · ' : '') + esc(t.lang) + '</span>'
+      + (minN || w.min ? '<span class="tagk__sum' + (voll ? ' tagk__sum--voll' : '') + '">'
+          + (w.min ? '≈ ' : '') + esc(dur(gesamt))
+          + (minN < orte.length ? ' (' + minN + ' von ' + orte.length + ')' : '')
+          + (voll ? ' · mehr als 10 h' : '') + '</span>' : '');
+
+    /* Die Aufteilung darunter, damit die Summe nachvollziehbar bleibt: was
+       davon vor Ort vergeht und was auf dem Weg. */
+    var auf = w.min
+      ? '<span class="tagk__auf">' + esc(dur(min)) + ' vor Ort · ≈ '
+        + esc(dur(w.min)) + ' Wege ' + esc(MODI[modus].name)
+        + (w.luecken ? ' · ' + w.luecken + ' ohne Koordinate' : '') + '</span>'
+      : '';
+
+    var zeilen = orte.map(function (p, i) {
+      var ab = S.seen.indexOf(p.id) >= 0;
+      var weg = w.wege[i];   /* der Weg VON dieser Station zur naechsten */
+      return '<li class="tagk__st' + (ab ? ' tagk__st--ab' : '') + ' '
+        + accentClass(p.category) + '">'
+        + '<span class="tagk__n">' + esc(p.name) + '</span>'
+        + '<span class="tagk__d">'
+        + (ab ? 'erledigt'
+             : closedToday(p, new Date(t.iso + 'T12:00:00')) ? 'an dem Tag zu'
+             : has(p.time_min) ? esc(dur(p.time_min)) : '')
+        + '</span></li>'
+        + (weg ? '<li class="tagk__wg' + (weg.min >= WEG_LANG ? ' tagk__wg--weit' : '') + '">'
+            + '<span>≈ ' + esc(km(weg.km)) + ' · ' + esc(dur(weg.min)) + '</span></li>' : '');
     }).join('');
+
+    return '<button type="button" class="tagk'
+      + (istHeute ? ' tagk--heute' : '') + (vorbei ? ' tagk--vorbei' : '')
+      + '" id="tag-' + t.iso + '" data-dayopen="' + t.iso + '"'
+      + ' aria-label="' + esc(t.lang) + ', ' + orte.length
+      + (orte.length === 1 ? ' Ort' : ' Orte') + ' geplant, öffnen">'
+      + '<span class="tagk__h">' + kopf + '</span>'
+      + auf
+      + '<ul class="tagk__l">' + zeilen + '</ul>'
+      + (fertig && !vorbei
+          ? '<span class="tagk__f">' + fertig + ' von ' + orte.length + ' erledigt</span>'
+          : '')
+      + '</button>';
   }
 
-  /* --- Der Plan: was an welchem Tag ansteht ------------------------------ */
+  /* Eine Karte fuer den naechsten Tag, an dem noch nichts steht.
+
+     Nicht fuer alle freien Tage: bei fuenfzehn Reisetagen und vier verplanten
+     waeren das elf leere Karten, und die Ansicht bestuende aus Luecken. Das
+     Raster darueber zeigt ohnehin alle. Was fehlt, ist der Anstoss -- und
+     der gilt dem naechsten. */
+  function freierTagHtml(t, vorrat) {
+    return '<button type="button" class="tagk tagk--frei" data-dayopen="' + t.iso + '"'
+      + ' aria-label="' + esc(t.lang) + ', noch nichts geplant, öffnen">'
+      + '<span class="tagk__h"><span class="tagk__t">' + esc(t.lang) + '</span>'
+      + '<span class="tagk__sum">frei</span></span>'
+      + '<span class="tagk__leer">'
+      + (vorrat
+          ? vorrat + (vorrat === 1 ? ' Ort liegt' : ' Orte liegen') + ' im Vorrat.'
+          : 'Noch nichts im Vorrat.')
+      + ' Antippen zum Füllen.</span></button>';
+  }
+
   function planHtml() {
     var gueltig = tagKennungen();
     var tage = tripTage();
     var heute = isoTag(new Date());
-    var zu = planList().filter(function (p) { return planTagVon(p.id, gueltig); });
+    var alle = planList();
+    var zu = alle.filter(function (p) { return planTagVon(p.id, gueltig); });
+    var vorrat = alle.filter(function (p) { return !planTagVon(p.id, gueltig); });
 
-    if (!zu.length) {
-      /* Der Leerzustand steht IN der Liste, nicht im globalen #empty: sonst
-         verschwaende die Umschaltleiste, und man kaeme nicht mehr in die
-         Merkliste, aus der man planen will. */
-      return '<div class="planleer"><h3>Noch kein Tag geplant</h3>'
-        + '<p>In der Merkliste bekommt ein Ort über den Tag-Wähler seinen '
-        + 'Reisetag — oder du tippst oben im Plan direkt auf einen Tag.</p>'
-        + '<button type="button" class="btn btn--primary" data-ptab="merk">'
-        + 'Zur Merkliste</button></div>';
-    }
-
-    var tageMitOrt = {};
-    zu.forEach(function (p) { tageMitOrt[planTagVon(p.id, gueltig)] = true; });
-    var nTage = Object.keys(tageMitOrt).length;
-    var sum = '<p class="plan__sum">' + zu.length + (zu.length === 1 ? ' Ort' : ' Orte')
-      + ' an ' + nTage + (nTage === 1 ? ' Tag' : ' Tagen') + '</p>';
-
-    var h = uebersichtHtml(gueltig, heute) + sum + '<div class="plan">';
-    tage.forEach(function (t) {
-      var orte = zu.filter(function (p) { return planTagVon(p.id, gueltig) === t.iso; });
-      if (!orte.length) return;
-      var min = 0, minN = 0;
-      orte.forEach(function (p) { if (has(p.time_min)) { min += p.time_min; minN++; } });
-      var istHeute = t.iso === heute;
-      /* Ab 10 h wird der Tag genannt, nicht bewertet: die Summe ist ohne An-
-         und Abfahrt gerechnet, mehr als 10 h sind schlicht mehr, als ein Tag
-         mit Wegen hergibt. Die Grenze ist eine Annahme und steht deshalb
-         woertlich im Text. */
-      var voll = min > 600;
-      h += '<div class="plantag' + (istHeute ? ' plantag--heute' : '') + '"'
-        + ' id="tag-' + t.iso + '">'
-        + '<span class="plantag__t">' + t.lang + '</span>'
-        + (istHeute ? '<span class="plantag__jetzt">heute</span>' : '')
-        + (minN ? '<span class="plantag__sum' + (voll ? ' plantag__sum--voll' : '') + '">'
-            + esc(dur(min)) + ' eingeplant'
-            + (minN < orte.length ? ' (' + minN + ' von ' + orte.length + ')' : '')
-            + (voll ? ' — mehr als 10 h' : '') + '</span>' : '')
-        + '</div>'
-        + tagGruppeHtml(orte, gueltig);
+    var proTag = {};
+    zu.forEach(function (p) {
+      var t = planTagVon(p.id, gueltig);
+      (proTag[t] = proTag[t] || []).push(p);
     });
-    return h + '</div>';
-  }
+    var nTage = Object.keys(proTag).length;
 
-  /* --- Die Merkliste: der Vorrat ohne Tag -------------------------------- */
-  function merkHtml() {
-    var gueltig = tagKennungen();
-    var offen = planList().filter(function (p) { return !planTagVon(p.id, gueltig); });
+    /* Die Kopfzeile der Ansicht. Sie sagt, worum es geht -- fuenfzehn Tage --
+       und wie weit man ist. Bis v35 stand hier eine Summenzeile, die im Plan
+       Tage und Vorrat zu einer Stunde addierte, die nirgends vorkam. */
+    var h = '<div class="reise__h">'
+      + '<h2 class="reise__t">' + ZAHLWORT(tage.length) + ' Tage</h2>'
+      + '<p class="reise__s">' + (nTage
+          ? nTage + ' verplant · ' + zu.length + (zu.length === 1 ? ' Ort' : ' Orte')
+          : 'noch nichts verplant') + '</p></div>';
 
-    if (!offen.length) {
-      return '<div class="planleer"><h3>Alles verplant</h3>'
-        + '<p>Jeder gemerkte Ort hat einen Reisetag. Neue kommen über den '
-        + 'Stern in „Orte“ dazu.</p>'
-        + '<button type="button" class="btn btn--primary" id="merk-orte">'
-        + 'Orte durchsuchen</button></div>';
+    /* Das Raster steht jetzt IMMER da, auch ohne eine einzige Zuordnung.
+       Bis v35 erschien es erst mit der ersten -- mit der Begruendung, es
+       waere sonst ein leeres Raster ueber einer Merkliste. Die Merkliste
+       darunter gibt es nicht mehr, und wenn nichts geplant ist, IST das
+       Raster die Aufforderung. */
+    h += uebersichtHtml(gueltig, heute);
+
+    var karten = [];
+    tage.forEach(function (t) {
+      if (proTag[t.iso]) karten.push(tagKarteHtml(t, proTag[t.iso], heute));
+    });
+
+    /* Der naechste freie Tag, der noch kommt. */
+    var frei = null;
+    for (var i = 0; i < tage.length; i++) {
+      if (tage[i].iso >= heute && !proTag[tage[i].iso]) { frei = tage[i]; break; }
     }
+    if (frei) karten.push(freierTagHtml(frei, vorrat.length));
 
-    /* Hier ist die Gesamtzeit eine sinnvolle Aussage: so lange braeuchte man
-       fuer alles, was noch keinen Tag hat. Im Plan waere dieselbe Zahl
-       falsch -- sie addierte dort Tage und Vorrat zu einer Stunde, die
-       nirgends vorkommt. */
-    var stay = 0, stayN = 0;
-    offen.forEach(function (p) { if (has(p.time_min)) { stay += p.time_min; stayN++; } });
+    h += '<div class="reise__tage">' + karten.join('') + '</div>';
 
-    return '<p class="plan__sum">' + offen.length + (offen.length === 1 ? ' Ort' : ' Orte')
-      + ' ohne Tag'
-      + (stayN ? ' · ' + esc(dur(stay)) + ' Aufenthalt'
-          + (stayN < offen.length ? ' (' + stayN + ' von ' + offen.length + ')' : '') : '')
-      + '</p>'
-      + '<p class="plan__hint plan__hint--frei">Über den Tag-Wähler an einer Zeile '
-      + 'wandert ein Ort in den Plan.</p>'
-      + '<div class="plan">' + offen.map(function (p) {
-          return planZeile(p, gueltig);
-        }).join('') + '</div>';
+    /* --- Der Vorrat ---------------------------------------------------- */
+    h += '<section class="vorrat"><p class="vorrat__h">Vorrat'
+      + '<span class="vorrat__n">' + vorrat.length + '</span></p>';
+
+    if (!vorrat.length) {
+      h += '<p class="vorrat__leer">'
+        + (alle.length
+            ? 'Jeder gemerkte Ort hat einen Reisetag.'
+            : 'Noch nichts gemerkt. In „Entdecken“ legt der Tag-Wähler im Ort einen Tag fest — oder der Stern legt ihn hier ab.')
+        + '</p>'
+        + '<button type="button" class="btn btn--wide" id="merk-orte">Orte durchsuchen</button>';
+    } else {
+      /* Hier ist die Gesamtzeit eine sinnvolle Aussage: so lange braeuchte
+         man fuer alles, was noch keinen Tag hat. */
+      var stay = 0, stayN = 0;
+      vorrat.forEach(function (p) { if (has(p.time_min)) { stay += p.time_min; stayN++; } });
+      h += '<p class="vorrat__s">' + (stayN ? esc(dur(stay)) + ' Aufenthalt'
+            + (stayN < vorrat.length ? ' (' + stayN + ' von ' + vorrat.length + ')' : '')
+            : 'ohne hinterlegte Dauer') + '</p>'
+        + '<div class="plan">' + vorrat.map(function (p) {
+            return planZeile(p, gueltig);
+          }).join('') + '</div>';
+    }
+    return h + '</section>';
   }
+
+  /* "Fuenfzehn" statt "15": im Kopf einer Ansicht liest sich das Wort besser
+     als die Ziffer, und es sind immer wenige. Darueber hinaus die Ziffer. */
+  var ZAHLWORTE = ['null', 'Ein', 'Zwei', 'Drei', 'Vier', 'Fünf', 'Sechs', 'Sieben',
+    'Acht', 'Neun', 'Zehn', 'Elf', 'Zwölf', 'Dreizehn', 'Vierzehn', 'Fünfzehn',
+    'Sechzehn', 'Siebzehn', 'Achtzehn', 'Neunzehn', 'Zwanzig'];
+  function ZAHLWORT(n) { return ZAHLWORTE[n] || String(n); }
 
   function renderShareBar() {
     var bar = $('sharebar');
@@ -3795,7 +4384,7 @@
     var gPlan = tagKennungen();
     var verplant = S.saved.filter(function (id) { return planTagVon(id, gPlan); }).length;
     $('sharebar-t').textContent = n || g
-      ? verplant + ' verplant · ' + (n - verplant) + ' ohne Tag · ' + g + ' gesehen'
+      ? verplant + ' verplant · ' + (n - verplant) + ' im Vorrat · ' + g + ' gesehen'
       : 'Noch nichts markiert';
     var btn = $('share-btn');
     btn.hidden = !(n || g);
@@ -3978,18 +4567,6 @@
       var zelle = e.target.closest('[data-dayopen]');
       if (zelle) { openDaySheet(zelle.getAttribute('data-dayopen')); return; }
 
-      var um = e.target.closest('[data-ptab]');
-      if (um) {
-        S.planTab = um.getAttribute('data-ptab');
-        render();
-        window.scrollTo(0, 0);
-        /* Fokus auf den jetzt aktiven Knopf: nach dem Neubau ist das alte
-           Element weg, und ohne das faellt der Fokus an den Seitenanfang. */
-        var neu = $('list').querySelector('[data-ptab="' + S.planTab + '"]');
-        if (neu) { try { neu.focus({ preventScroll: true }); } catch (err) { /* egal */ } }
-        return;
-      }
-
       if (e.target.closest('#merk-orte')) { setView('orte'); return; }
     });
 
@@ -4016,6 +4593,46 @@
     $('sheet-body').addEventListener('click', function (e) {
       /* Die Hundregel vor Ort klaeren. Steht vorn, weil der Knopf sonst als
          nichts erkannt und der Klick durchgereicht wuerde. */
+      /* Umsortieren im Tages-Sheet. Steht vorn, damit der Klick nicht als
+         Ortsoeffnen durchgereicht wird. */
+      var sup = e.target.closest('[data-up]');
+      if (sup) { e.preventDefault(); movePlan(sup.getAttribute('data-up'), -1); return; }
+      var sdown = e.target.closest('[data-down]');
+      if (sdown) { e.preventDefault(); movePlan(sdown.getAttribute('data-down'), 1); return; }
+
+      /* Womit dieser Tag zurueckgelegt wird. Nur der Sheet-Inhalt wird neu
+         gebaut und der Fokus auf denselben Knopf zurueckgesetzt -- ein
+         render() liesse die Seite unter dem Finger springen. Die Uebersicht
+         dahinter muss trotzdem mitziehen: die Tageskarte nennt dieselbe
+         Summe. */
+      var wm = e.target.closest('[data-wmode]');
+      if (wm && S.dayOpen) {
+        e.preventDefault();
+        var neu = wm.getAttribute('data-wmode');
+        setTagModus(S.dayOpen, neu);
+        render();
+        $('sheet-body').innerHTML = daySheetHtml(S.dayOpen);
+        var zurueck = $('sheet-body').querySelector('[data-wmode="' + neu + '"]');
+        if (zurueck) { try { zurueck.focus({ preventScroll: true }); } catch (err) { /* egal */ } }
+        return;
+      }
+
+      /* Die kuerzeste Runde uebernehmen. Wie beim Verschieben mit den
+         Pfeilen: nur der Sheet-Inhalt wird neu gebaut, die Uebersicht
+         dahinter zieht beim Schliessen nach. */
+      var rd = e.target.closest('[data-runde]');
+      if (rd && S.dayOpen) {
+        e.preventDefault();
+        if (setzeRunde(rd.getAttribute('data-runde'))) {
+          render();
+          $('sheet-body').innerHTML = daySheetHtml(S.dayOpen);
+          listeNeuBeimSchliessen = true;
+          var ziel = $('sheet-body').querySelector('.runde--gut, [data-runde]');
+          if (ziel) { try { ziel.focus({ preventScroll: true }); } catch (err) { /* egal */ } }
+        }
+        return;
+      }
+
       var ds = e.target.closest('[data-dogset]');
       if (ds) {
         e.preventDefault();
@@ -4038,6 +4655,14 @@
         var wen = setz.getAttribute('data-dayset');
         if (wohin) S.days[wen] = wohin; else delete S.days[wen];
         lsSet(LS_DAYS, S.days);
+        /* Seit v37 holt die Suche im Sheet auch Orte herein, die noch gar
+           nicht gemerkt sind. Einen Tag zu waehlen heisst, ihn einzuplanen --
+           und was eingeplant ist, gehoert in die Merkliste. Sonst stuende
+           der Ort an dem Tag und waere in der Reise nirgends zu finden. */
+        if (wohin && S.saved.indexOf(wen) < 0) {
+          S.saved.push(wen);
+          lsSet(LS_SAVED, S.saved);
+        }
         render();
         syncTabs();
         $('sheet-body').innerHTML = daySheetHtml(S.dayOpen);
@@ -4068,12 +4693,6 @@
         return;
       }
 
-      if (e.target.closest('#tagsheet-orte')) {
-        e.preventDefault();
-        closeSheet();
-        setView('orte');
-        return;
-      }
 
       /* Filter-Sheet: die Liste dahinter zieht sofort nach, das Sheet bleibt
          offen. Die Zahl am Tag-Knopf zeigt, wie viele Tags aktiv sind. */
@@ -4127,9 +4746,21 @@
 
     /* Das Feld steht im Sheet und lebt nur, solange es offen ist. */
     $('sheet-body').addEventListener('input', function (e) {
-      if (!e.target || e.target.id !== 'tag-q') return;
-      var pick = $('tagpick');
-      if (pick) pick.innerHTML = tagChipsHtml(e.target.value);
+      if (!e.target) return;
+      if (e.target.id === 'tag-q') {
+        var pick = $('tagpick');
+        if (pick) pick.innerHTML = tagChipsHtml(e.target.value);
+        return;
+      }
+      /* Die Suche im Tages-Sheet. Nur die Trefferliste wird neu gebaut, nicht
+         das Sheet: ein neu gezeichnetes Sheet verloere den Fokus und die
+         Schreibmarke -- mitten im Wort. Dieselbe Entscheidung wie beim
+         Tag-Suchfeld im Filter-Sheet darueber. */
+      if (e.target.id === 'tagsuche' && S.dayOpen) {
+        S.daySuche = e.target.value;
+        var treffer = $('tagtreffer');
+        if (treffer) treffer.innerHTML = tagTrefferHtml(S.dayOpen);
+      }
     });
 
     $('empty-reset').addEventListener('click', resetFilters);
@@ -4153,6 +4784,14 @@
       /* Nur fuer diesen Abschnitt und nur bis zum naechsten Wechsel --
          eine dauerhafte Ausnahme waere eine stille Voreinstellung. */
       if (e.target.closest('#today-seen')) { S.seenOk = true; render(); return; }
+      /* "In den Tag": ein Tipp statt Stern, Reiter wechseln, Tag waehlen.
+         Er landet an der Stelle, an der er den kleinsten Umweg macht. */
+      var ein = e.target.closest('[data-einfuegen]');
+      if (ein) {
+        e.preventDefault();
+        if (einfuegenHeute(ein.getAttribute('data-einfuegen'))) { render(); syncTabs(); }
+        return;
+      }
       if (e.target.closest('#today-next')) { S.pick += 1; render(); return; }
       if (e.target.closest('#today-prev')) { S.pick = S.pick > 0 ? S.pick - 1 : 0; render(); return; }
       if (e.target.closest('#wx-dry')) { setWet(false); return; }
@@ -4592,6 +5231,12 @@
       runsToday: runsToday, daysUntil: daysUntil, tripDay: tripDay, unverified: unverified,
       closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,
       dur: dur, km: km, norm: norm, haystack: haystack,
+      wegKm: wegKm, wegMin: wegMin, tagWege: tagWege,
+      tagModusVorschlag: tagModusVorschlag, rundenVorschlag: rundenVorschlag,
+      umwegFuer: umwegFuer,
+      RUNDE_EXAKT: RUNDE_EXAKT,
+      UMWEG: UMWEG, V_FUSS: V_FUSS, V_RAD: V_RAD, V_AUTO: V_AUTO,
+      PARKEN_MIN: PARKEN_MIN, FUSS_MAX_KM: FUSS_MAX_KM, WEG_LANG: WEG_LANG,
       dogOf: dogOf, dogState: dogState, dogBilanz: dogBilanz, dogCount: dogCount,
       byDistance: byDistance, byRating: byRating,
       grundmenge: grundmenge, markiere: markiere, normStellen: normStellen,

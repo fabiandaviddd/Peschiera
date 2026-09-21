@@ -271,6 +271,142 @@ ok('Lokal mit "indoor": false bleibt draußen',
 ok('Ausflug mit Tag "wasser" bleibt draußen',
    pk.indoorOf({ category: 'ausflug', tags: ['wasser'] }), false);
 
+/* ----------------------------------------------------------------- Wege */
+/* Seit v37 rechnet die App Wege ZWISCHEN Orten. Geroutet wird nicht -- ein
+   Routing-Dienst braucht Netz. Gerechnet wird aus der Luftlinie mal einem
+   Umwegfaktor, und beide Zahlen stammen aus den eigenen Daten, nicht aus
+   einer Faustregel. Genau das wird hier nachgerechnet: kippen die Daten,
+   kippt diese Pruefung -- nicht die App still. */
+group('Wege — gerechnet, nicht geroutet');
+
+const mitte = (xs) => {
+  const a = xs.slice().sort((x, y) => x - y);
+  return a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
+};
+const basis = data.meta.base_geo;
+
+/* 1. Der Umwegfaktor. Strasse geteilt durch Luftlinie ab dem Zeltplatz. */
+const faktoren = data.places
+  .filter((p) => p.geo && typeof p.distance_km === 'number' && p.distance_km > 0)
+  .map((p) => p.distance_km / pk.airKmPoint(basis, p.geo))
+  .filter(Number.isFinite);
+ok('UMWEG entspricht dem Median aus den Daten',
+   Number(mitte(faktoren).toFixed(2)), pk.UMWEG);
+
+/* 2. Die Gehgeschwindigkeit. Zurueckgerechnet aus walk_min und distance_km:
+      so schnell sind die beiden mit Jum wirklich unterwegs. */
+const tempi = data.places
+  .filter((p) => typeof p.walk_min === 'number' && p.walk_min > 0
+                 && typeof p.distance_km === 'number' && p.distance_km > 0)
+  .map((p) => p.distance_km / (p.walk_min / 60));
+ok('V_FUSS entspricht dem Median aus den gemessenen Fusswegen',
+   Number(mitte(tempi).toFixed(1)), pk.V_FUSS);
+
+/* 3. Die Gegenprobe gegen die Messung. Kriterium aus dem Konzept (Annahme
+      A7): der Median der Abweichung bleibt unter 20 %. Kein Mittelwert --
+      ein einziger Ort in Sichtweite mit auf 0,1 km gerundetem distance_km
+      kippt den, ohne dass irgendetwas falsch waere. */
+const abw = data.places
+  .filter((p) => p.geo && typeof p.walk_min === 'number' && p.walk_min > 0)
+  .map((p) => Math.abs(pk.wegMin(pk.wegKm({ geo: basis }, p), 'fuss') - p.walk_min) / p.walk_min);
+ok('die Rechnung trifft die Messung im Median auf 20 % genau',
+   mitte(abw) < 0.2, true);
+
+/* 4. Die Formeln selbst. 9 km Weg: zu Fuss zwei Stunden, mit dem Rad 36
+      Minuten, mit dem Auto 12 plus 10 Minuten Parken. */
+ok('zu Fuss: 9 km sind 120 Min', pk.wegMin(9, 'fuss'), 120);
+ok('mit Rad: 9 km sind 36 Min', pk.wegMin(9, 'rad'), 36);
+ok('mit Auto: 9 km sind 12 Min plus 10 Min Parken', pk.wegMin(9, 'auto'), 22);
+/* Der feste Zuschlag faellt je Fahrt an, nicht je Kilometer -- und bei einem
+   Weg von null faellt er gar nicht an, sonst kostete das Nebenhaus zehn
+   Minuten Parken. */
+ok('ohne Weg kein Parkzuschlag', pk.wegMin(0, 'auto'), 0);
+ok('ein unbekannter Modus rechnet zu Fuss', pk.wegMin(9, 'quatsch'), 120);
+ok('ohne Strecke kein Weg', pk.wegMin(null, 'fuss'), null);
+
+/* 5. Ohne geo wird nicht geraten. */
+ok('ein Ort ohne geo hat keinen Weg',
+   pk.wegKm({ geo: null }, data.places[0]), null);
+
+/* 6. Der Modusvorschlag haengt am GROESSTEN Sprung, nicht an der Summe:
+      eine Kette mit einem Sprung von 30 km ist kein Fussweg, auch wenn die
+      anderen drei je 500 m lang sind. */
+const nah = data.places
+  .filter((p) => p.geo && pk.airKmPoint(basis, p.geo) < 1.5).slice(0, 3);
+const fern = data.places
+  .filter((p) => p.geo && pk.airKmPoint(basis, p.geo) > 25)[0];
+ok('drei nahe Orte sind ein Fusstag', pk.tagModusVorschlag(nah), 'fuss');
+ok('einer weit draussen macht daraus einen Autotag',
+   pk.tagModusVorschlag(nah.concat([fern])), 'auto');
+ok('ein einzelner Ort hat keinen Weg und bleibt zu Fuss',
+   pk.tagModusVorschlag([nah[0]]), 'fuss');
+ok('ein leerer Tag auch', pk.tagModusVorschlag([]), 'fuss');
+
+/* 7. Die Kette. Summe, Strecke und der groesste Sprung muessen zu den
+      Einzelwegen passen -- und Paare ohne geo zaehlen nicht mit, sondern
+      werden gezaehlt. */
+const kette = pk.tagWege(nah.concat([fern]), 'auto');
+ok('drei Wege bei vier Stationen', kette.wege.length, 3);
+ok('die Summe ist die Summe der Einzelwege',
+   kette.min, kette.wege.reduce((a, x) => a + (x ? x.min : 0), 0));
+ok('der groesste Sprung ist der groesste Einzelweg',
+   Number(kette.weit.toFixed(3)),
+   Number(Math.max(...kette.wege.map((x) => (x ? x.km : 0))).toFixed(3)));
+const luecke = pk.tagWege([nah[0], { id: 'x', geo: null }, nah[1]], 'fuss');
+ok('ein Ort ohne geo reisst zwei Luecken', luecke.luecken, 2);
+ok('… und die Summe bleibt null', luecke.min, 0);
+
+/* ------------------------------------------------------- Die kuerzeste Runde */
+/* "Sortierung nach kuerzester Runde" stand seit v28 unter "Spaeter
+   angedacht". Sie war nicht machbar, solange die App keine Wege zwischen
+   zwei Orten kannte. Gerechnet wird eine RUNDE, kein Pfad: abends schlaeft
+   man wieder auf dem Zeltplatz. */
+group('rundenVorschlag — kuerzeste Runde ab dem Zeltplatz');
+
+pk.useData(data);
+
+/* Drei Orte in bewusst schlechter Reihenfolge: der weiteste zuerst. Die
+   Runde muss kuerzer werden -- oder die Reihenfolge war schon die beste. */
+const dreiNah = data.places
+  .filter((p) => p.geo && pk.airKmPoint(basis, p.geo) < 2)
+  .slice(0, 6);
+ok('genug nahe Orte fuer den Test', dreiNah.length, 6);
+
+const v6 = pk.rundenVorschlag(dreiNah, 'fuss');
+ok('sechs Stationen ergeben einen Vorschlag', !!v6, true);
+ok('… exakt gerechnet, nicht geschaetzt', v6.exakt, true);
+ok('… und er ist nie laenger als die jetzige Reihenfolge', v6.km <= v6.altKm + 1e-9, true);
+ok('… mit allen Stationen, keine verloren', v6.orte.length, dreiNah.length);
+ok('… und ohne Dubletten', new Set(v6.orte.map((p) => p.id)).size, dreiNah.length);
+
+/* Die exakte Rechnung gilt bis acht Stationen. Darueber uebernimmt
+   Naechster-Nachbar plus 2-opt -- das Ergebnis muss immer noch eine
+   vollstaendige, dublettenfreie Runde sein. */
+const neun = data.places.filter((p) => p.geo).slice(0, pk.RUNDE_EXAKT + 1);
+const v9 = pk.rundenVorschlag(neun, 'fuss');
+ok('ueber acht Stationen wird geschaetzt', v9.exakt, false);
+ok('… aber die Runde bleibt vollstaendig', v9.orte.length, neun.length);
+ok('… und dublettenfrei', new Set(v9.orte.map((p) => p.id)).size, neun.length);
+ok('… und nicht laenger als vorher', v9.km <= v9.altKm + 1e-9, true);
+
+/* Ein schon optimal sortierter Tag meldet das, statt eine Runde ohne
+   Gewinn anzubieten. */
+const schonGut = pk.rundenVorschlag(v6.orte, 'fuss');
+ok('eine schon optimale Reihenfolge wird als solche erkannt', schonGut.gleich, true);
+
+/* Orte ohne geo lassen sich nicht einsortieren. Sie bleiben hinten stehen,
+   statt an eine geratene Stelle zu wandern. */
+const mitLuecke = dreiNah.slice(0, 4).concat([{ id: 'ohne-geo', name: 'X', geo: null }]);
+const vL = pk.rundenVorschlag(mitLuecke, 'fuss');
+ok('ein Ort ohne geo wird gezaehlt', vL.ohne, 1);
+ok('… und steht hinten', vL.orte[vL.orte.length - 1].id, 'ohne-geo');
+
+/* Unter drei Stationen gibt es nichts zu drehen: A-B und B-A sind dieselbe
+   Runde. Ein Vorschlag waere dort ein Knopf ohne Wirkung. */
+ok('zwei Stationen ergeben keinen Vorschlag',
+   pk.rundenVorschlag(dreiNah.slice(0, 2), 'fuss'), null);
+ok('eine auch nicht', pk.rundenVorschlag(dreiNah.slice(0, 1), 'fuss'), null);
+
 /* ------------------------------------------------------------------- Formate */
 group('dur / km / norm');
 
@@ -825,6 +961,21 @@ function stats() {
   line('… verteilt auf', ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
     .map((w, i) => ({ w, n: shut.filter((p) => pk.closedOn(p.hours) === (i + 1) % 7).length }))
     .filter((x) => x.n).map((x) => `${x.w} ${x.n}`).join(' · '));
+  /* Die Wegerechnung in einer Zeile: wie weit die Orte auseinanderliegen und
+     wie viele Paare ueberhaupt noch zu Fuss in Frage kommen. Ausfuehrlich in
+     scripts/make-matrix.mjs. */
+  const mitGeo2 = P.filter((p) => p.geo);
+  const wegPaare = [];
+  for (let i = 0; i < mitGeo2.length; i++) {
+    for (let j = i + 1; j < mitGeo2.length; j++) {
+      wegPaare.push(pk.airKmPoint(mitGeo2[i].geo, mitGeo2[j].geo) * pk.UMWEG);
+    }
+  }
+  const sortP = wegPaare.slice().sort((a, b) => a - b);
+  line('Wege: Paare / median',
+    `${wegPaare.length} / ${sortP[Math.floor(sortP.length / 2)].toFixed(1)} km`);
+  line(`… zu Fuss rechenbar (bis ${pk.FUSS_MAX_KM} km)`,
+    wegPaare.filter((d) => d <= pk.FUSS_MAX_KM).length);
   line('verschiedene Tags', new Set(P.flatMap((p) => p.tags)).size);
   line('merken / offene Punkte / Faktencheck',
        `${data.merken.length} / ${data.open_questions.length} / ${data.faktencheck.length}`);
