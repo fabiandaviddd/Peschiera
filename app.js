@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v42 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v43 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -440,6 +440,13 @@
     pin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6.4-6 6.4-10.4A6.4 6.4 0 0 0 5.6 10.6C5.6 15 12 21 12 21z"/><circle cx="12" cy="10.4" r="2.4"/></svg>',
     phone: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.2 3.6h3l1.6 4-2 1.4a11 11 0 0 0 5.2 5.2l1.4-2 4 1.6v3a1.8 1.8 0 0 1-2 1.8C10.6 19.8 4.2 13.4 4.4 5.6a1.8 1.8 0 0 1 1.8-2z"/></svg>',
     list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.4h16M4 12h16M4 17.6h16"/></svg>',
+    /* Die Reiter tragen seit v43 das Zeichen ihrer FRAGE, nicht das ihrer
+       Darstellung: drei Striche hiessen "eine Liste", die Lupe heisst "hier
+       wird gesucht" -- und gesucht wird in "Entdecken". Der Stern hiess
+       "gemerkt"; die Ansicht heisst seit v35 "Reise" und zeigt fuenfzehn
+       Tage, also ein Kalenderblatt. */
+    lupe: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>',
+    kalender: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15v13h-15z"/><path d="M4.5 10.5h15M9 4.5v4M15 4.5v4"/></svg>',
     info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 10.8V17M12 7.6h.01"/></svg>',
     plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg>',
     minus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12h13"/></svg>',
@@ -989,10 +996,10 @@
      Dieselbe Entscheidung wie bei 'info' → "Wissen" in v26. */
   var TABS = [
     { id: 'heute', label: 'Jetzt', icon: ICON.sun },
-    { id: 'orte', label: 'Entdecken', icon: ICON.list },
+    { id: 'orte', label: 'Entdecken', icon: ICON.lupe },
     /* Die Kennung bleibt "gemerkt": daran haengen der Teilen-Link und der
        Speicher. Sichtbar ist es ein Plan. */
-    { id: 'gemerkt', label: 'Reise', icon: ICON.star },
+    { id: 'gemerkt', label: 'Reise', icon: ICON.kalender },
     /* Die Ansicht heisst innen "Gut zu wissen" und traegt Hunderegeln,
        Notruf, Trinkgeld, Bus-Zeiten und die offenen Punkte -- eine der
        nuetzlichsten Ansichten der App. "Info" mit i-Kringel versprach ein
@@ -1754,9 +1761,15 @@
       ? shown + ' von ' + total + (total === 1 ? ' Ort' : ' Orten')
       : total + (total === 1 ? ' Ort' : ' Orte'))
       + jumTxt
-      /* Der Standort verschiebt den Bezugspunkt still. Also steht hier, dass
-         ab hier gemessen wird und wie viele Orte dabei nicht mitkoennen. */
-      + (S.here ? ' · ab hier gemessen' : '')
+      /* Die Sortierung steht seit v43 in der Zeile. Eine Reihenfolge, die
+         man nicht erklaeren kann, ist schlechter als gar keine -- dann raet
+         man, warum ausgerechnet das oben steht. Dieselbe Ueberlegung, die im
+         Tages-Sheet seit v32 den Kopf "Nach Naehe zu ..." traegt. Der
+         Bezugspunkt gehoert dazu: "nach Entfernung" allein sagt nicht, von
+         wo. */
+      + ' · ' + (S.sort === 'rating'
+          ? 'nach Bewertung'
+          : 'nach Entfernung ' + (S.here ? 'ab hier' : 'ab dem Zeltplatz'))
       + (S.here && noGeoCount() ? ' · ' + noGeoCount() + ' ohne Koordinaten hinten' : '')
       + (seenHere ? ' · ' + seenHere + ' gesehen' : '');
 
