@@ -157,6 +157,18 @@
       <!-- Leaflet wird erst beim ersten Oeffnen geladen, siehe ladeKarte(). -->
       <div class="map" id="map" hidden></div>
       <p class="map__note" id="map-note" hidden></p>
+
+      <!-- Das Ergebnis-Sheet der vollflaechigen Karte. Drei Rastpunkte:
+           klein (nur die Zahl), mittel, gross. Es liegt UEBER der Karte und
+           UNTER der Reiterleiste -- eine Liste, die die Navigation verdeckt,
+           waere eine Sackgasse. render() fuellt es. -->
+      <section class="mapsheet" id="mapsheet" hidden aria-label="Treffer auf der Karte">
+        <button type="button" class="mapsheet__grip" id="mapsheet-grip">
+          <span class="mapsheet__bar" aria-hidden="true"></span>
+          <span class="mapsheet__t" id="mapsheet-t"></span>
+        </button>
+        <div class="mapsheet__l" id="mapsheet-l"></div>
+      </section>
       <div id="info"></div>
 
       <div class="empty" id="empty" hidden>

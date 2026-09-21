@@ -1844,6 +1844,90 @@ body.is-typing .tabs { transform: translateY(110%); }
   color: var(--soft);
 }
 
+/* --- Die Karte als Flaeche (seit v39) -----------------------------------
+   Bis v38 lag sie als Kasten im Scrollfluss: rund 410 x 400 px nutzbar, der
+   Rest der Seite darunter. Jetzt fuellt sie die Flaeche zwischen Kopf und
+   Reiterleiste -- 402 x 754 px, das 1,8-fache, bei unveraenderter
+   Filterlogik. */
+.map--voll {
+  position: fixed; left: 0; right: 0;
+  top: var(--bar-full, 9rem); bottom: 0;
+  height: auto; min-height: 0; margin: 0;
+  border: 0; border-radius: 0;
+}
+/* Hinter der fixierten Karte bleibt sonst eine leere, scrollbare Seite
+   stehen -- und der Kopf klappt beim Wischen ein, obwohl es nichts zu
+   scrollen gibt. */
+body.is-map { overflow: hidden; }
+body.is-map .map__note { display: none; }
+
+/* Das Ergebnis-Sheet. Drei Rastpunkte, die Karte bleibt in jedem sichtbar --
+   sie ist der Grund, warum man hier ist. Es endet ueber der Reiterleiste:
+   eine Liste, die die Navigation verdeckt, waere eine Sackgasse. */
+.mapsheet {
+  position: fixed; left: 0; right: 0; z-index: 36;
+  bottom: calc(3.6rem + env(safe-area-inset-bottom));
+  max-width: var(--col); margin-inline: auto;
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  height: 4.6rem;
+  background: var(--card);
+  border: 1px solid var(--line); border-bottom: 0;
+  border-radius: var(--r-card) var(--r-card) 0 0;
+  box-shadow: 0 -6px 24px rgba(31, 29, 24, .12);
+  transition: height 260ms var(--ease);
+}
+/* Auch am groessten Rastpunkt bleibt ein Streifen Karte stehen -- sie ist
+   der Grund, warum man hier ist. Ein Sheet, das sie ganz verdeckt, waere
+   wieder die Liste, nur mit einem Umweg. */
+.mapsheet[data-rast="1"] { height: 42dvh; }
+.mapsheet[data-rast="2"] { height: calc(100dvh - var(--bar-full) - 11rem); }
+
+.mapsheet__grip {
+  display: grid; justify-items: center; gap: .3rem;
+  width: 100%; min-height: 2.75rem; padding: .5rem .8rem .45rem;
+  background: none; border: 0; cursor: pointer;
+  font-family: inherit; color: inherit;
+  /* Der Griff ist die Ziehflaeche: ohne das faengt der Browser die Geste als
+     Seitenscroll ab, und der Rastpunkt aendert sich nie. */
+  touch-action: none;
+}
+.mapsheet__bar {
+  width: 2.4rem; height: 4px; border-radius: 2px; background: var(--line);
+}
+.mapsheet__t { font-size: var(--t-meta); color: var(--soft);
+  font-variant-numeric: tabular-nums; }
+
+.mapsheet__l { overflow-y: auto; -webkit-overflow-scrolling: auto;
+  border-top: 1px solid var(--line); }
+.mapsheet[data-rast="0"] .mapsheet__l { display: none; }
+
+.msrow {
+  display: grid; gap: .1rem; width: 100%; text-align: left;
+  min-height: 3.4rem; padding: .5rem .9rem;
+  background: none; border: 0; border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--accent, var(--line));
+  cursor: pointer; font-family: inherit; color: inherit;
+}
+.msrow__n { font-family: var(--font-head); font-weight: 600; font-size: var(--t-name);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msrow__m { font-size: var(--t-meta); color: var(--soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Das Grundnetz: Entfernungsringe um den Zeltplatz. Ohne Netz laedt keine
+   Kachel, und die Karte war bis v38 eine weisse Flaeche mit Nadeln -- man
+   sah, dass etwas rechts oben liegt, aber nicht, ob das zweihundert Meter
+   oder zwanzig Kilometer sind. currentColor, damit der Ring im Dunkeln
+   dieselbe Haarlinie ist wie ueberall sonst. */
+/* --soft statt --line: auf dem leeren Untergrund (ohne Netz) verschwaende
+   eine Haarlinie, und genau dort wird der Ring gebraucht. Ueber Kacheln
+   bleibt er durch opacity und Strichelung zurueckhaltend. */
+.grundring { color: var(--soft); }
+.grundlabel {
+  font-family: var(--font-body); font-size: var(--t-micro); font-weight: 500;
+  color: var(--soft); text-align: center; line-height: 16px;
+  text-shadow: 0 0 3px var(--card), 0 0 3px var(--card);
+}
+
 /* Die Nadel traegt die Kategoriefarbe, wie die Kante an der Listenzeile.
    Weisser Ring, damit sie auf jedem Kartenuntergrund steht -- ohne ihn
    verschwindet Verde im Gruen der Parks. */

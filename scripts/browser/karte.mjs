@@ -328,7 +328,113 @@ const browser2 = await chromium.launch();
   await ctx2.close();
 }
 await browser2.close();
-for (const [tab, name] of [['heute', 'Heute'], ['gemerkt', 'Plan'], ['info', 'Info']]) {
+/* --- Die Karte fuellt seit v39 die Flaeche ------------------------------- */
+/* Bis v38 lag sie als Kasten im Scrollfluss: rund 410 x 400 px nutzbar, der
+   Rest der Seite darunter. Die Nutzflaeche war damit kleiner als die Liste,
+   die sie ersetzen sollte -- und wer die Karte ansah, sah nie einen Namen. */
+{
+  await page.evaluate(() => { const q = document.getElementById('q'); if (q) q.blur(); });
+  await page.waitForTimeout(260);
+  await page.locator('.tab[data-tab="orte"]').click();
+  await page.waitForTimeout(450);
+  if ((await page.textContent('#map-btn')).trim() === 'Karte') {
+    await page.locator('#map-btn').click();
+    await page.waitForTimeout(1800);
+  }
+
+  const geo = await page.evaluate(() => {
+    const m = document.getElementById('map').getBoundingClientRect();
+    const bar = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--bar-full'), 10) || 0;
+    return { l: Math.round(m.left), r: Math.round(m.right),
+             t: Math.round(m.top), h: Math.round(m.height),
+             bar: bar, vw: window.innerWidth, vh: window.innerHeight,
+             fest: getComputedStyle(document.getElementById('map')).position };
+  });
+  ok('die Karte liegt fest, nicht im Fluss', geo.fest, 'fixed');
+  ok('… ueber die ganze Breite', [geo.l, geo.r], [0, geo.vw]);
+  ok('… direkt unter dem Kopf', geo.t, geo.bar);
+  ok('… bis zum unteren Rand', geo.t + geo.h, geo.vh);
+  /* Das war der Punkt: 402 x 607 statt rund 410 x 400. */
+  ok('… also deutlich groesser als der alte Kasten', geo.h > 500);
+  ok('die Seite bleibt seitwaerts unverschiebbar',
+    await page.evaluate(() => document.documentElement.scrollWidth), 402);
+
+  /* Das Ergebnis-Sheet: drei Rastpunkte, die Karte bleibt in jedem sichtbar. */
+  ok('das Ergebnis-Sheet steht da', await page.locator('#mapsheet').isVisible());
+  ok('… und nennt die Trefferzahl',
+    /^\d+ Treffer/.test((await page.locator('#mapsheet-t').textContent()).trim()));
+  ok('… klein zeigt es noch keine Zeilen',
+    await page.locator('#mapsheet').getAttribute('data-rast'), '0');
+  ok('… und keine Zeile ist sichtbar',
+    await page.locator('.msrow').first().isVisible(), false);
+
+  const hoehe = async () => page.evaluate(() =>
+    Math.round(document.getElementById('mapsheet').getBoundingClientRect().height));
+  const klein = await hoehe();
+  await page.locator('#mapsheet-grip').click();
+  await page.waitForTimeout(450);
+  ok('ein Tipp auf den Griff wandert einen Rastpunkt weiter',
+    await page.locator('#mapsheet').getAttribute('data-rast'), '1');
+  const mittel = await hoehe();
+  ok('… und das Sheet wird groesser', mittel > klein);
+  ok('… jetzt stehen Zeilen da', (await page.locator('.msrow').count()) > 0);
+  await page.locator('#mapsheet-grip').click();
+  await page.waitForTimeout(450);
+  const gross = await hoehe();
+  ok('noch ein Tipp: gross', await page.locator('#mapsheet').getAttribute('data-rast'), '2');
+  ok('… und noch groesser', gross > mittel);
+  /* Auch gross bleibt die Karte sichtbar -- sie ist der Grund, warum man
+     hier ist. Und die Reiterleiste bleibt frei: eine Liste, die die
+     Navigation verdeckt, waere eine Sackgasse. */
+  ok('… die Karte bleibt sichtbar', await page.evaluate(() => {
+    const m = document.getElementById('map').getBoundingClientRect();
+    const s2 = document.getElementById('mapsheet').getBoundingClientRect();
+    return Math.round(s2.top - m.top) > 80;
+  }));
+  ok('… und die Reiterleiste bleibt frei', await page.evaluate(() => {
+    const t = document.querySelector('.tabs').getBoundingClientRect();
+    const s2 = document.getElementById('mapsheet').getBoundingClientRect();
+    return Math.round(s2.bottom) <= Math.round(t.top) + 1;
+  }));
+  await page.locator('#mapsheet-grip').click();
+  await page.waitForTimeout(450);
+  ok('und wieder von vorn', await page.locator('#mapsheet').getAttribute('data-rast'), '0');
+
+  /* Die Zeilen im Sheet zeigen dieselben Treffer wie die Karte -- eine
+     zweite Wahrheit waere schlimmer als keine Liste. */
+  await page.locator('#mapsheet-grip').click();
+  await page.waitForTimeout(450);
+  ok('das Sheet zeigt so viele Zeilen, wie die Zaehlzeile nennt',
+    await page.locator('.msrow').count(), await gezaehlt());
+
+  /* Eine Zeile oeffnet ihren Ort -- wie eine Nadel. */
+  await page.locator('.msrow').first().click();
+  await page.waitForTimeout(600);
+  ok('eine Zeile im Sheet oeffnet das Detail', await page.locator('#sheet').isVisible());
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+
+  /* --- Das Grundnetz ---------------------------------------------------- */
+  /* Ohne Netz laedt keine Kachel. Bis v38 war die Karte dann eine leere
+     Flaeche mit Nadeln: man sah, dass etwas rechts oben liegt, aber nicht,
+     ob das zweihundert Meter oder zwanzig Kilometer sind. */
+  ok('das Grundnetz zieht Entfernungsringe', (await page.locator('.grundring').count()) >= 4);
+  ok('… und beschriftet sie', (await page.locator('.grundlabel').count()) >= 4);
+  ok('… mit Kilometerangaben', await page.evaluate(() =>
+    [...document.querySelectorAll('.grundlabel')].every((e) => /^\d+ km$/.test(e.textContent))));
+  /* Sie liegen ueber den Kacheln, aber unter den Nadeln: Orientierung, kein
+     Ziel. Und sie fangen keinen Tipp ab. */
+  ok('… sie liegen unter den Nadeln', await page.evaluate(() => {
+    const g = document.querySelector('.leaflet-grundnetz-pane');
+    const m = document.querySelector('.leaflet-marker-pane');
+    return g && m && +getComputedStyle(g).zIndex < +getComputedStyle(m).zIndex;
+  }));
+  ok('… und nehmen keinem Ort den Tipp weg', await page.evaluate(() =>
+    getComputedStyle(document.querySelector('.leaflet-grundnetz-pane')).pointerEvents), 'none');
+}
+
+for (const [tab, name] of [['heute', 'Heute'], ['gemerkt', 'Reise'], ['info', 'Wissen']]) {
   await page.evaluate(() => { const q = document.getElementById('q'); if (q) q.blur(); });
   await page.waitForTimeout(260);
   await page.locator(`.tab[data-tab="${tab}"]`).click();

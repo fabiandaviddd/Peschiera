@@ -35,7 +35,7 @@ schreibt die Fassung dazu, für die es gilt.
 | **PWA** | `manifest.webmanifest` + `sw.js`. App-Shell und `places.json` liegen im Cache, nach einmaligem Laden läuft alles offline — Merkliste inklusive. Auf dem iPhone-Homescreen installierbar, mit Icon und Startbild. |
 | **Suche** | Ein Feld, Volltext über Name, Adresse, Notiz und Tags. Filtert bei jedem Tastendruck, kein Enter nötig. Diakritika werden normalisiert: „cafe" findet „Caffè", „strasse" findet „Straße". Mehrere Begriffe sind UND-verknüpft. **Seit v35 steht das Feld nur noch in „Entdecken"** — bis dahin auch auf der Startansicht, weil der Reiter „Orte" hieß und nicht sagte, dass 101 Orte dahinterliegen. Der Reiter sagt es jetzt selbst, und am Ende von „Jetzt" steht weiterhin „Alle 101 Orte durchsuchen". Oben sind damit rund 60 px frei, und dort steht der Tagesplan. |
 | **Jetzt** | Hieß bis v34 „Heute". Der Tagesplan ist seit v35 der **Hauptinhalt**, nicht mehr ein Block über einem Vorschlag: „Heute · 1 von 4 · noch 3,8 h" mit Fortschrittsbalken, darunter die Stationen zum Abhaken, jede mit ihrer Hundmarke. Ist für heute nichts geplant, steht der Block trotzdem da und sagt es, mit einem Knopf ins Tages-Sheet — bis v34 fehlte er ganz, und wer nie einen Tagesplan anlegte, erfuhr nicht, dass er könnte. Datum und Reisetag stehen in der Kopfleiste. Darunter eine Leiste über alle vier Abschnitte: vergangene sind gestrichelt umrandet, der laufende trägt eine Unterkante, jeder ist antippbar. Der Vorschlag nennt seine Position im Stapel („3 / 35") und hat Knöpfe vor und zurück; am Anfang ist der Zurück-Knopf deaktiviert. „Sonst noch" zeigt drei Alternativen mit der Gesamtzahl daneben und lässt sich ausklappen. Darunter ein Blick auf den nächsten Abschnitt („Abends dann"). Das Wetter wird **gefragt**, nicht abgerufen — kein externer Dienst, offline unverändert. Bei Regen ohne Treffer nennt der Leerzustand die Orte, die sicher im Trockenen sind; schränkt der Jum-Schalter ein, sagt er das und zeigt, was ohne ihn ginge. |
-| **Reise** | Hieß bis v13 „Gemerkt", bis v34 „Plan". Seit v28 gehört jede Station **einem Reisetag**, seit v37 zählen auch die **Wege** dazwischen mit — gerechnet, nicht geroutet, und als „≈" gekennzeichnet (siehe „Wege"). **Seit v36 ist es eine Ansicht statt zweier Hälften hinter einem Umschalter**: Kopf („Fünfzehn Tage · 4 verplant · 8 Orte"), Raster über alle fünfzehn Tage, eine Karte je verplantem Tag, eine Karte für den nächsten freien Tag, darunter der Vorrat. Bis v35 kostete der Umschalter einen Tipp für etwas, das man beim Planen ständig zusammen braucht — man zieht aus dem Vorrat in einen Tag. Nummerierte Stationen und die Pfeile zum Umstellen innerhalb des Tages stehen jetzt im Tages-Sheet (keine Wischgeste — zwei Knöpfe sind bei einer Handvoll Stationen treffsicherer und lassen sich ohne echtes iOS prüfen); die Übersicht zeigt, das Sheet ändert. Die Tageskarte nennt die Zeitsumme aus `time_min` und sagt dazu, auf wie viele Orte sie sich stützt, wenn Werte fehlen. Zwischen zwei Stationen mit `geo` steht ab 1,2 km die Luftlinie als Warnung; fehlt `geo` bei einer der beiden, bleibt die Zeile weg. Suche, Filter und Sortierung sind dort ausgeblendet — sie würden die Reihenfolge zerschießen, um die es gerade geht. Der Teilen-Link trägt Reihenfolge und Tage automatisch mit. Ausführlich im Abschnitt „Reise: Tage und Vorrat" weiter unten. |
+| **Reise** | Hieß bis v13 „Gemerkt", bis v34 „Plan". Seit v28 gehört jede Station **einem Reisetag**, seit v37 zählen auch die **Wege** dazwischen mit — gerechnet, nicht geroutet, und als „≈" gekennzeichnet (siehe „Wege"). **Seit v36 ist es eine Ansicht statt zweier Hälften hinter einem Umschalter**: Kopf („Fünfzehn Tage · 4 verplant · 8 Orte"), Raster über alle fünfzehn Tage, eine Karte je verplantem Tag, eine Karte für den nächsten freien Tag, darunter der Vorrat. Bis v35 kostete der Umschalter einen Tipp für etwas, das man beim Planen ständig zusammen braucht — man zieht aus dem Vorrat in einen Tag. Nummerierte Stationen und die Pfeile zum Umstellen innerhalb des Tages stehen jetzt im Tages-Sheet (keine Wischgeste — zwei Knöpfe sind bei einer Handvoll Stationen treffsicherer und lassen sich ohne echtes iOS prüfen); die Übersicht zeigt, das Sheet ändert. Die Tageskarte nennt die Zeitsumme aus `time_min` und sagt dazu, auf wie viele Orte sie sich stützt, wenn Werte fehlen. Zwischen zwei Stationen mit `geo` steht seit v37 der gerechnete Weg („≈ 2,1 km · 28 Min zu Fuß"), ab einer Dreiviertelstunde in Ziegel; fehlt `geo` bei einer der beiden, bleibt die Zeile weg. Suche, Filter und Sortierung sind dort ausgeblendet — sie würden die Reihenfolge zerschießen, um die es gerade geht. Der Teilen-Link trägt Reihenfolge und Tage automatisch mit. Ausführlich im Abschnitt „Reise: Tage und Vorrat" weiter unten. |
 | **Ruhetage** | Steht der Ruhetag wörtlich in `hours` („Ruhetag Mittwoch", „Mi geschlossen", „Mo zu"), wird er gelesen: 14 der 101 Orte tragen einen, verteilt auf Mo 4, Di 4, Mi 6. In „Heute" sinken sie an ihrem Ruhetag ans Ende der Liste — vor jedem anderen Kriterium, eine gute Bewertung hilft an einem geschlossenen Mittwoch nicht. Herausgefiltert werden sie nicht, sonst schrumpfte die Liste still; wer weiterblättert, bekommt den Grund dazugeschrieben („heute Ruhetag"). In der Liste und im Detail ersetzt „heute zu" die Öffnungsangabe — derselbe Slot, dieselbe Zeilenhöhe. Gelesen wird nur `hours`, nie `note`: dort steht bei einem Ort eine Faustregel über italienische Fischläden allgemein, keine Angabe über diesen Laden. |
 | **Von hier** | Alle Entfernungen gelten ab dem Zeltplatz — richtig für „gehen wir heute Abend hin?", falsch, wenn man gerade in Sirmione steht. Im Filter-Sheet unter „Standort" misst ein Knopf ab dem Gerätestandort: Luftlinie, keine Gehzeit. Der Standort kommt vom Gerät, nicht von einem Dienst — er funktioniert im Flugmodus, verlässt das Gerät nicht und wird nirgends gespeichert; gefragt wird erst auf Tippen. Ist er an, misst die Sortierung „Entfernung" ab hier, die Faktenzeile zeigt im selben Slot „286 m von hier", und im Kopf steht ein Chip mit Kreuz. Orte ohne `geo` stünden hinten — seit 19.09. gibt es keine mehr. Im Detail bleibt die Angabe ab dem Zeltplatz als eigene Zeile stehen. |
 | **Mit Jum** | Dauerschalter im Kopf, kein Chip: der Hund ist vierzehn Tage lang bei jeder Entscheidung dabei, also bleibt die Einstellung an. Persistenz über `localStorage` (`pk.jum`), unabhängig von „Filter zurücksetzen". **Seit v34 blendet er nichts mehr aus** — er zählt, beschriftet und sortiert. Ausführlich unter „Die Hundregel" weiter unten. |
@@ -358,7 +358,7 @@ Dienst dazwischen — siehe unten.
 ## Prüfstand
 
 ```bash
-node scripts/browser/run.mjs     # 574 Prüfungen im Browser, startet den Server selbst
+node scripts/browser/run.mjs     # 599 Prüfungen im Browser, startet den Server selbst
 node scripts/test-logic.mjs      # Logik ohne Browser
 ```
 
@@ -885,11 +885,91 @@ Tastendruck.
 
 ## Karte
 
-Seit `v21` gebaut. **Kein eigener Reiter**, sondern ein Umschalter in der
-Filterzeile der Ortsansicht: *Karte* ⇄ *Liste*. Damit gelten Suche, Filter,
-der Jum-Schalter und die Sortierung unverändert weiter — die Karte zeigt
-genau die Treffer, die die Zählzeile darüber nennt, statt eine zweite
-Wahrheit aufzumachen.
+Seit `v21` gebaut, seit `v39` **vollflächig**. **Kein eigener Reiter**,
+sondern ein Umschalter in der Filterzeile der Ortsansicht: *Karte* ⇄ *Liste*.
+
+### Die Fläche statt des Kästchens
+
+Bis `v38` lag die Karte als **Block im Scrollfluss**: rund 410 × 400 px
+nutzbar, der Rest der Seite darunter. Die Nutzfläche war damit kleiner als
+die Liste, die sie ersetzen sollte — und wer die Karte ansah, sah nie einen
+Namen.
+
+Seit `v39` füllt sie die Fläche zwischen Kopf und Reiterleiste: **402 × 607
+px statt 410 × 400**, also rund das 1,5-fache, bei unveränderter
+Filterlogik. Der Kopf mit Suche, Filter und Sortierung schwebt darüber und
+gilt weiter.
+
+- **`body` bekommt `is-map`**, nicht nur die Karte. Ohne das bliebe hinter der
+  fixierten Karte eine leere, scrollbare Seite stehen, und der Kopf klappte
+  beim Wischen ein, obwohl es nichts zu scrollen gibt.
+- **Ohne Treffer fällt beides weg.** Der Leerzustand braucht seinen Scroll.
+
+### Das Ergebnis-Sheet
+
+Die Treffer liegen in einem Sheet über der Karte, mit **drei Rastpunkten**:
+
+| Rastpunkt | Was man sieht |
+|---|---|
+| **klein** (4,6 rem) | nur die Trefferzahl — die Karte hat die Fläche |
+| **mittel** (42 dvh) | rund fünf Zeilen |
+| **groß** | so viele Zeilen wie möglich, **und immer noch ein Streifen Karte** |
+
+- **Auch groß bleibt die Karte sichtbar.** Ein Sheet, das sie ganz verdeckt,
+  wäre wieder die Liste — nur mit einem Umweg dorthin.
+- **Die Reiterleiste bleibt frei.** Eine Liste, die die Navigation verdeckt,
+  ist eine Sackgasse.
+- **Tippen und Ziehen führen beide zum Ziel.** Ein Tipp auf den Griff wandert
+  einen Rastpunkt weiter, ein Zug von mehr als 24 px setzt ihn nach Richtung.
+  Zwei Wege, weil der eine treffsicher und der andere natürlich ist —
+  dieselbe Überlegung wie beim Detail-Sheet, das sich tippen *und* wischen
+  läßt. Nach einem Zug liefert Safari noch einen Klick hinterher; der wird
+  verworfen, sonst schaltete er gleich wieder weiter.
+- **Dieselben Treffer wie die Zählzeile**, in derselben Reihenfolge wie die
+  Liste. Orte ohne `geo` stehen mit dabei und sagen „nicht auf der Karte" —
+  sie sind Treffer, auch wenn sie keine Nadel haben.
+- **`fitBounds` rechnet die Sheet-Höhe mit** (`paddingBottomRight`). Ohne das
+  lägen Nadeln dahinter: sichtbar gerechnet, unsichtbar gezeichnet.
+- **Der Rastpunkt wird nicht gespeichert.** Wer die Karte öffnet, will zuerst
+  die Karte sehen.
+
+### Das Grundnetz — und warum es kein Vektorgrund ist
+
+**Ohne Netz lädt keine einzige Kachel.** Bis `v38` war die Karte dann eine
+leere Fläche mit Nadeln darauf: man sah, daß etwas rechts oben liegt, aber
+nicht, ob das zweihundert Meter oder zwanzig Kilometer sind.
+
+Das Konzept (`docs/app-relaunch-konzept.md`, 5.4) schlägt dafür einen
+**mitgelieferten Vektorgrund** vor — Seeufer, Mincio-Kanal und das
+Festungsfünfeck als `karte/basis.svg`. **Das ist hier bewußt nicht gebaut
+worden**, und der Grund gehört dazu:
+
+> Diese Geometrie gibt es im Repository nicht, und sie läßt sich in dieser
+> Umgebung nicht beschaffen — der Agent-Proxy bricht fremde Anfragen ab. Eine
+> Uferlinie zu *zeichnen*, statt sie zu haben, wären erfundene Geodaten in
+> einer App, mit der jemand vor Ort navigiert. Das wäre schlechter als gar
+> kein Untergrund. Wer die Geometrie hat, kann sie nachliefern; die Stelle
+> dafür ist `grundnetz()` in `app.js`.
+
+Gebaut ist stattdessen, was sich aus den **eigenen** Daten wirklich ableiten
+läßt: **Entfernungsringe um den Zeltplatz** bei 1, 2, 5, 10, 20 und 40 km,
+beschriftet. Sie beantworten genau die Frage, die ohne Kacheln offenbleibt —
+*wie weit ist das*.
+
+- **Projektionsgenau**, weil Leaflet sie bei jedem Zoom neu rechnet. Eine
+  mitgelieferte Bilddatei müßte dafür Bounds tragen und könnte veralten.
+- **Ein eigener Pane** (`grundnetz`, `z-index: 250`) zwischen Kacheln (200)
+  und Nadeln (600): Orientierung, kein Ziel. `pointer-events: none` — sie
+  nehmen keinem Ort den Tipp weg.
+- **`currentColor`** über die Klasse `.grundring`, damit der Ring im Dunkeln
+  dieselbe Linie ist wie jede andere im Haus.
+
+### Nadeln, Bezugspunkte und Bündel
+
+Weil die Karte nur ein Modus der Ortsansicht ist, gelten Suche, Filter, der
+Jum-Schalter und die Sortierung unverändert weiter — die Karte zeigt genau
+die Treffer, die die Zählzeile darüber nennt, statt eine zweite Wahrheit
+aufzumachen.
 
 - **Nadeln in den Kategoriefarben**, dieselben fünf wie die Kante an der
   Listenzeile. Weißer Ring, sonst verschwindet Verde im Grün der Parks.
@@ -1028,7 +1108,7 @@ Kontrast richtig messen, was iOS anders macht) und was offen ist.
 
 ## Getestet
 
-574 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
+599 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
 Sortierung kombiniert, Merkliste über einen Reload, Detail-Sheet ohne
 Layout-Shift, Dark Mode samt Override und Systempräferenz, Touch-Ziele,
 Flugmodus-Test (offline laden, suchen, Merkliste), Fehlerzustand mit Retry und

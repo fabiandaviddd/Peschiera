@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v38 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v39 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -84,6 +84,10 @@
        einer Notiz eine Tatsache, fuehrt der Weg ueber die offenen Punkte. */
     notes: {},              // { id: text }, nur im Geraet
     map: false,             // Liste oder Karte in der Ortsansicht
+    /* Der Rastpunkt des Ergebnis-Sheets auf der Karte: 0 klein, 1 mittel,
+       2 gross. Nur fuer diesen Besuch -- wer die Karte neu oeffnet, faengt
+       klein an und sieht erst einmal die Karte. */
+    mapRast: 0,
     /* Der Geraetestandort. Bewusst nirgends gespeichert: eine Position ist
        nach dem naechsten Spaziergang falsch, und eine falsche Entfernung ist
        schlechter als gar keine. Wer ihn wieder will, tippt wieder. */
@@ -1317,7 +1321,20 @@
        suchen und wird weggeraeumt. */
     var kartenAnsicht = !bare && !isPlan && S.map;
     $('map').hidden = !kartenAnsicht;
-    if (!kartenAnsicht) mapNote('');
+    /* Seit v39 fuellt die Karte die Flaeche statt als Kasten im Scrollfluss
+       zu liegen. Die Nutzflaeche waechst von rund 410x400 px auf 402x754 --
+       um das 1,8-fache, bei unveraenderter Filterlogik. Der Kopf schwebt
+       darueber, die Treffer liegen im Sheet darunter.
+
+       body bekommt die Klasse, nicht nur die Karte: ohne sie bleibt hinter
+       der fixierten Karte eine leere, scrollbare Seite stehen, und der Kopf
+       klappt beim Wischen ein, obwohl es nichts zu scrollen gibt. */
+    document.body.classList.toggle('is-map', kartenAnsicht);
+    $('map').classList.toggle('map--voll', kartenAnsicht);
+    if (!kartenAnsicht) {
+      mapNote('');
+      $('mapsheet').hidden = true;
+    }
     $('map-btn').hidden = bare || isPlan;
     $('map-btn').innerHTML = ICON.map + (S.map ? 'Liste' : 'Karte');
     $('map-btn').setAttribute('aria-label',
@@ -1373,6 +1390,11 @@
       $('list').hidden = true;
       $('list').innerHTML = ''; $('list').setAttribute('data-voll', '1');
       $('map').hidden = true;
+      /* Ohne Treffer gibt es keine Karte, und damit auch nichts, was die
+         Seite festhalten muesste -- der Leerzustand braucht seinen Scroll. */
+      document.body.classList.remove('is-map');
+      $('map').classList.remove('map--voll');
+      $('mapsheet').hidden = true;
       mapNote('');
       $('empty').hidden = false;
       {
@@ -1391,6 +1413,9 @@
     if (kartenAnsicht) {
       $('list').hidden = true;
       $('list').innerHTML = ''; $('list').setAttribute('data-voll', '1');
+      /* Erst das Sheet, dann die Karte: fitBounds braucht seine Hoehe, um
+         die Nadeln nicht dahinter zu legen. */
+      mapSheetFuellen(items);
       zeigeKarte(items);
       return;
     }
@@ -4968,6 +4993,41 @@
       window.scrollTo(0, 0);
     });
 
+    /* Der Griff des Karten-Sheets. Tippen wandert einen Rastpunkt weiter,
+       Ziehen setzt ihn nach Richtung. Zwei Wege zu demselben Ziel, weil der
+       eine treffsicher und der andere natuerlich ist -- dieselbe Ueberlegung
+       wie beim Detail-Sheet, das sich tippen UND wischen laesst. */
+    $('mapsheet-grip').addEventListener('click', function () {
+      /* Nach einem Zug kommt in Safari noch ein Klick hinterher. Der wuerde
+         den eben gezogenen Rastpunkt gleich wieder weiterschalten. */
+      if (gripGezogen) { gripGezogen = false; return; }
+      setMapRast(S.mapRast + 1);
+    });
+
+    var gripY = null, gripGezogen = false;
+    $('mapsheet-grip').addEventListener('touchstart', function (e) {
+      gripY = e.touches[0].clientY;
+      gripGezogen = false;
+    }, { passive: true });
+    $('mapsheet-grip').addEventListener('touchmove', function (e) {
+      if (gripY === null) return;
+      var d = gripY - e.touches[0].clientY;
+      /* 24 px, nicht 12 wie beim Detail-Sheet: hier wird nur die Hoehe
+         geaendert, ein Fehlgriff kostet nichts -- aber ein Finger, der beim
+         Tippen wackelt, soll keinen Rastpunkt verstellen. */
+      if (Math.abs(d) < 24) return;
+      setMapRast(S.mapRast + (d > 0 ? 1 : -1));
+      gripY = null;
+      gripGezogen = true;
+    }, { passive: true });
+    $('mapsheet-grip').addEventListener('touchend', function () { gripY = null; }, { passive: true });
+
+    /* Eine Zeile im Sheet oeffnet ihren Ort -- wie eine Nadel auf der Karte. */
+    $('mapsheet-l').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-open]');
+      if (b) openSheet(b.getAttribute('data-open'));
+    });
+
     $('empty-reset').addEventListener('click', resetFilters);
 
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -5119,6 +5179,108 @@
       document.head.appendChild(js);
     });
     return leafletLaedt;
+  }
+
+  /* --- Das Ergebnis-Sheet der Karte ------------------------------------
+
+     Drei Rastpunkte: klein zeigt nur die Zahl, mittel eine Handvoll Zeilen,
+     gross die ganze Liste. Die Karte bleibt in jedem davon sichtbar -- sie
+     ist der Grund, warum man hier ist.
+
+     Kein zweites Bedienmuster: getippt wird auf den Griff (er wandert einen
+     Rastpunkt weiter), gezogen wird auch an ihm. Bis v38 gab es die Liste
+     auf der Karte gar nicht; man sah Nadeln und musste zurueck in die Liste,
+     um Namen zu lesen. */
+  var MAP_RAST = ['klein', 'mittel', 'groß'];
+
+  function mapSheetFuellen(items) {
+    var box = $('mapsheet');
+    box.hidden = false;
+    setMapRast(S.mapRast);
+
+    var mitGeo = items.filter(function (p) { return p.geo; });
+    var ohne = items.length - mitGeo.length;
+    $('mapsheet-t').textContent = items.length
+      + (items.length === 1 ? ' Treffer' : ' Treffer')
+      + (ohne ? ' · ' + ohne + ' ohne Koordinate' : '');
+    $('mapsheet-grip').setAttribute('aria-label',
+      'Trefferliste, Rastpunkt ' + MAP_RAST[S.mapRast] + ' von drei — antippen zum Wechseln');
+
+    /* Dieselbe Reihenfolge wie in der Liste: die Karte darf keine zweite
+       Wahrheit aufmachen. Gezeigt werden auch Orte ohne geo -- sie fehlen
+       auf der Karte, sind aber Treffer. */
+    $('mapsheet-l').innerHTML = items.map(function (p) {
+      var d = S.here ? hereKm(p) : (D.meta && D.meta.base_geo ? airKmPoint(D.meta.base_geo, p.geo) : null);
+      return '<button type="button" class="msrow ' + accentClass(p.category) + '"'
+        + ' data-open="' + esc(p.id) + '">'
+        + '<span class="msrow__n">' + esc(p.name) + '</span>'
+        + '<span class="msrow__m">' + esc(catLabel(p.category))
+        + (d !== null && d !== undefined ? ' · ' + esc(km(d)) : '')
+        + (p.geo ? '' : ' · nicht auf der Karte')
+        + (S.jum ? dogKurz(p) : '') + '</span></button>';
+    }).join('');
+  }
+
+  function setMapRast(i) {
+    S.mapRast = ((i % 3) + 3) % 3;
+    var box = $('mapsheet');
+    box.setAttribute('data-rast', String(S.mapRast));
+    $('mapsheet-grip').setAttribute('aria-expanded', S.mapRast ? 'true' : 'false');
+    $('mapsheet-grip').setAttribute('aria-label',
+      'Trefferliste, Rastpunkt ' + MAP_RAST[S.mapRast] + ' von drei — antippen zum Wechseln');
+  }
+
+  /* --- Das Grundnetz ---------------------------------------------------
+
+     Ohne Netz laedt keine einzige Kachel, und die Karte war bis v38 eine
+     weisse Flaeche mit Nadeln darauf: man sah, dass etwas rechts oben liegt,
+     aber nicht, ob das zweihundert Meter oder zwanzig Kilometer sind.
+
+     Das Konzept schlaegt dafuer einen mitgelieferten Vektorgrund vor --
+     Seeufer, Mincio-Kanal, Festungsfuenfeck als karte/basis.svg. Diese
+     Geometrie gibt es im Repo nicht, und sie laesst sich hier auch nicht
+     beschaffen: der Agent-Proxy bricht fremde Anfragen ab, und eine Uferlinie
+     zu ZEICHNEN, statt sie zu haben, waere erfundene Geodaten in einer App,
+     mit der jemand vor Ort navigiert. Das waere schlimmer als gar kein
+     Untergrund.
+
+     Gebaut ist deshalb, was sich aus den eigenen Daten wirklich ableiten
+     laesst: Entfernungsringe um den Zeltplatz, beschriftet. Sie beantworten
+     genau die Frage, die ohne Kacheln offenbleibt -- wie weit ist das. Sie
+     sind projektionsgenau (Leaflet rechnet sie bei jedem Zoom neu), kosten
+     keine Datei, die veralten kann, und sind im Dunkeln dieselbe Farbe wie
+     jede andere Haarlinie des Hauses.
+
+     Kommt das Netz, legen sich die Kacheln darunter, und die Ringe bleiben
+     als duenne gestrichelte Linien stehen. */
+  var GRUND_KM = [1, 2, 5, 10, 20, 40];
+
+  function grundnetz(base) {
+    var L = window.L;
+    if (!L || !base) return;
+    /* Ein eigener Pane ueber den Kacheln, aber unter den Nadeln: die Ringe
+       sind Orientierung, kein Ziel. 250 liegt zwischen tilePane (200) und
+       markerPane (600). */
+    if (!karte.getPane('grundnetz')) {
+      var pane = karte.createPane('grundnetz');
+      pane.style.zIndex = 250;
+      pane.style.pointerEvents = 'none';
+    }
+    GRUND_KM.forEach(function (r) {
+      L.circle([base.lat, base.lon], {
+        radius: r * 1000, pane: 'grundnetz',
+        color: 'currentColor', weight: 1, opacity: .55,
+        dashArray: '3 5', fill: false, interactive: false,
+        className: 'grundring'
+      }).addTo(karte);
+      /* Die Beschriftung steht am oberen Scheitel -- dort kreuzt der Ring
+         nichts, was man lesen muesste. */
+      L.marker([base.lat + (r / 111.32), base.lon], {
+        pane: 'grundnetz', interactive: false, keyboard: false,
+        icon: L.divIcon({ className: 'grundlabel', html: r + ' km',
+                          iconSize: [40, 16], iconAnchor: [20, 8] })
+      }).addTo(karte);
+    });
   }
 
   function mapNote(txt) {
@@ -5362,6 +5524,7 @@
         /* Der Zeltplatz als fester Bezugspunkt -- ohne ihn weiss man nicht,
            von wo die Entfernungen in der Liste gelten. */
         if (base) {
+          grundnetz(base);
           bezugNadel(base.lat, base.lon, 'zelt', 'Zeltplatz').addTo(karte);
         }
 
@@ -5410,7 +5573,18 @@
         var ecken = mitGeo.map(function (p) { return [p.geo.lat, p.geo.lon]; });
         if (S.here) ecken.push([S.here.lat, S.here.lon]);
         else if (base) ecken.push([base.lat, base.lon]);
-        karte.fitBounds(window.L.latLngBounds(ecken).pad(0.15), { maxZoom: 16 });
+        /* Das Ergebnis-Sheet deckt den unteren Rand ab. Ohne diesen Abstand
+           laege ein Teil der Nadeln dahinter -- sichtbar gerechnet,
+           unsichtbar gezeichnet. */
+        var unten = 0;
+        if (!$('mapsheet').hidden) {
+          var r = $('mapsheet').getBoundingClientRect();
+          var m = $('map').getBoundingClientRect();
+          unten = Math.max(0, Math.round(m.bottom - r.top));
+        }
+        karte.fitBounds(window.L.latLngBounds(ecken).pad(0.15), {
+          maxZoom: 16, paddingBottomRight: [0, unten]
+        });
       }
       /* Nach fitBounds, nicht davor: gebuendelt wird nach Pixelabstand, und
          der haengt am Zoom. Vorher gezeichnet waere die Buendelung die des
