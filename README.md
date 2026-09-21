@@ -55,7 +55,7 @@ schreibt die Fassung dazu, für die es gilt.
 | **Liste** | Eine Zeile je Ort statt einer Karte: Haarlinie statt Kasten, kein Schatten, Notiz einzeilig gekürzt, Tags nur im Detail, Luftlinie nur im Detail. **Alle Zeilen sind 97 px hoch** — vorher waren es je nach Datenlage 97, 100 oder 123, und das Auge fand beim Scrollen kein Raster. Die Bewertung steht rechtsbündig auf der Namenszeile und wird damit zu einer Spalte, die man scannen kann; die Zahl der Bewertungen sitzt in einer eigenen, fest breiten Spalte, damit „(1.478)" die Note nicht weiter nach links schiebt als „(806)". Sie bleibt dabei — „4,9" aus 71 Stimmen ist nicht dasselbe wie „4,9" aus 1087. Die Faktenreihe hat feste Slots in fester Reihenfolge (Weg, Dauer, Hund, Öffnung); nur die Öffnung darf kürzen, weil sie als einzige Freitext ist. Die farbige Kante links bleibt das Kategoriesignal. Auf 402×754 sind 6 Zeilen sichtbar statt 4, beim Scrollen 8. Steht „Mit Jum" an, trägt seit v34 **jede** Zeile ihre Hundmarke — „Jum ok", „Hund offen" oder „ohne Jum". Bis dahin entfiel sie, weil sie für alle galt; seit der Schalter nichts mehr ausblendet, gilt sie das nicht mehr. Ist ein Ort einem Reisetag zugeordnet, steht sein Tag im Öffnungs-Slot. |
 | **Detailansicht (neu)** | Bottom Sheet, oben drei Kacheln — Weg, Aufenthalt, Öffnung: die drei Fragen, die man vor Ort stellt. Die Öffnungs-Kachel zeigt nur ein ausgeschriebenes „bis 22:30" oder „ab 9:30" (22 der 54 Angaben); wo die Zeiten mehrdeutig sind („Mi–Sa 12:30–14 und 19:30–22"), bleibt sie leer und der volle Wortlaut steht darunter — eine Kachel „bis 14:00" über einem Restaurant, das abends bis 22 Uhr offen hat, wäre falsch. Darunter die Hundregel als eigene Fläche, seit v34 mit **vier** Zuständen und einer Frage darunter: grün „Jum darf mit", grau-durchgestrichen „Ohne Jum", ockerfarben-gestrichelt „Nicht geklärt — vorher fragen" (58 Orte, die häufigste Antwort) und grün mit zweitem Ring „von euch bestätigt". Bei offener Regel steht darunter „Wart ihr da?" mit zwei Knöpfen und, wo eine Nummer hinterlegt ist, „Anrufen" — siehe „Die Hundregel". Ebenfalls seit v34: ein **Tag-Wähler** für jeden Ort, nicht mehr nur für gemerkte. Eine Primäraktion („Route in Karten") statt vierer gleich breiter Pillen, darunter Merken, Gesehen und Anrufen als Icon-Reihe. Die Tags am Ende sind antippbar und setzen den Filter — der Weg von „das gefällt mir" zu „mehr davon". Die Systemzurück-Geste schließt das Sheet, statt die App zu verlassen. |
 | **Detailansicht (Rest)** | Bottom Sheet: Bewertung, Öffnungsinfo, Entfernung zu Fuß und mit dem Rad, Adresse, Telefon als `tel:`-Link, Hundregelung, Anfahrt, Notiz, Google-Maps-Link. Schließt per Backdrop, ✕, `Esc` oder Wischen nach unten. Solange es offen ist, liegt der Rest der Seite still: `inert` plus `aria-hidden`, dazu ein Tab-Ring im Sheet als Rückfallebene für Engines ohne `inert`. Ohne das führt `aria-modal` nur in die Irre — der Tabulator lief vorher hinter dem Sheet weiter durch die Liste. |
-| **Info** | „Gut zu wissen" (die 17 Hinweise aus `merken`), „Offene Punkte" (die 18 aus `open_questions`, mit Telefonnummer als Link) und der Faktencheck (13 Korrekturen). |
+| **Wissen** | Seit v38 aus `data/wissen.json` statt aus drei Arrays in `places.json`: 48 Einträge in sieben Gruppen, **durchsuchbar**, mit dem Notruf **gepinnt** ganz oben. Jeder Eintrag trägt seine Art (Regel, „noch offen", „korrigiert") am Eintrag selbst, nicht nur in der Sektion darüber — wer ihn über die Suche findet, sieht die Sektion nicht. Ausführlich unter „Wissen" weiter unten. |
 | **Dark Mode** | Über `prefers-color-scheme`, mit manuellem Override. Der Knopf oben rechts schaltet automatisch → hell → dunkel. |
 | **Farbe und Schrift** | Fünf Kategoriefarben, je eine pro Kategorie (`praktisch` hat seit v8 ein eigenes, entsättigtes Stein statt des Seeblaus der Ausflüge). Gold heißt Merkliste, Verde heißt Jum, Ziegel heißt Achtung, Seeblau heißt „hier ist etwas an". Sechs Schriftgrößen als Tokens (`--t-display` bis `--t-micro`, unterste Stufe
 seit v23 12px statt 11px, die Tableiste eine Stufe darüber); Versalien gibt es nur noch an drei Stellen, alle in „Heute". Alle Textfarben ≥ 4,5:1 in hell und dunkel, im gerenderten DOM gemessen. |
@@ -228,10 +228,10 @@ dasteht, und sonst nichts. Bis v13 stand die Palazzina Storica mittwochs auf
 Platz 2 von 41 im Mittagsvorschlag, mit „Mittwochs geschlossen" in der
 eigenen Notiz.
 
-`merken[]` und `open_questions[]` dürfen Objekte (`{title, text}` bzw.
-`{topic, status, contact}`) und blanken Text gemischt enthalten. Bei blankem
-Text in `open_questions[]` wird eine enthaltene Telefonnummer automatisch
-anklickbar.
+`merken[]`, `open_questions[]` und `faktencheck[]` stehen seit `v38` nicht
+mehr in dieser Datei, sondern in `data/wissen.json` — siehe „Wissen" weiter
+unten. Sie durften dort Objekte und blanken Text gemischt enthalten; beim
+Umzug hat `scripts/make-wissen.mjs` beides auf eine Form gebracht.
 
 Nach einer Änderung an einer Datei **`CACHE` in `sw.js` hochzählen** und
 `VERSION` in `app.js` mitziehen — beide müssen zusammenpassen. Vergisst man
@@ -271,7 +271,10 @@ Kategorien, `dog` nur `true`/`false`/`null`, `moment` nur aus den vier
 Abschnitten, jeder Ruhetag in `hours` lesbar, kein `geo` weiter als 120 km vom
 Zeltplatz, Zahlenfelder als Zahlen, jeder
 Kategorie-Akzent mit passender `.acc-`Regel in `style.css`,
-jede Datei aus `SHELL` vorhanden und `CACHE` wie `FONTS` gleich `VERSION`. Am
+jede Datei aus `SHELL` vorhanden und `CACHE` wie `FONTS` gleich `VERSION`.
+Dazu `wissen.json`: eindeutige Kennungen, jeder Eintrag in einer bekannten
+Gruppe, keine Gruppe leer, genau eine gepinnte — und daß `places.json` das
+Wissen wirklich losgeworden ist. Am
 Ende stehen die Zahlen, die auch in dieser README vorkommen — abgeschrieben
 veralten sie, gerechnet nicht.
 
@@ -355,7 +358,7 @@ Dienst dazwischen — siehe unten.
 ## Prüfstand
 
 ```bash
-node scripts/browser/run.mjs     # 536 Prüfungen im Browser, startet den Server selbst
+node scripts/browser/run.mjs     # 574 Prüfungen im Browser, startet den Server selbst
 node scripts/test-logic.mjs      # Logik ohne Browser
 ```
 
@@ -816,6 +819,70 @@ Beim Abhaken wird **nur dieser Block** neu gebaut, nicht die ganze Ansicht —
 ein `render()` ließe die Seite springen, und der Fokus käme abhanden. Er wird
 danach auf dasselbe Kästchen zurückgesetzt.
 
+## Wissen
+
+**Bis `v37` standen 48 Einträge in drei Arrays *in* `places.json`** — einer
+Datei, die sonst nur Orte enthält: „Gut zu wissen" (17), „Offene Punkte" (18)
+und der Faktencheck (13). Drei Folgen:
+
+1. **Die Suche fand sie nie.** Sie geht über Orte, und das Wissen war keiner.
+   „Darf Jum in den Zug?" ließ sich nicht suchen, obwohl die Antwort in der
+   App steht.
+2. **Achtundvierzig Einträge ohne Gruppe und ohne Rangfolge.** Der **Notruf**
+   stand als neunter Eintrag zwischen „Badeschuhe" und „Coperto & Trinkgeld".
+3. Wer einen Ort ändert, faßte dieselbe Datei an wie jemand, der eine
+   Busabfahrt korrigiert.
+
+Seit `v38` liegt es in **`data/wissen.json`**. Die Umstellung hat
+`scripts/make-wissen.mjs` gemacht; das Skript bleibt als Beleg liegen und
+zeigt, nach welcher Regel jeder Eintrag in seine Gruppe gefallen ist.
+
+| Feld | Bedeutung |
+|---|---|
+| `id` | aus dem Titel abgeleitet, stabil — keine laufende Nummer, die sich beim Einfügen verschiebt |
+| `gruppe` | eine der Gruppen aus `gruppen[]`; eine unbekannte fällt in die letzte statt aus der Ansicht |
+| `art` | `regel`, `offen` oder `korrektur` |
+| `titel`, `text` | mindestens eines von beiden muß dastehen |
+| `tel` | wird als `tel:`-Link gesetzt |
+
+Die sieben Gruppen — **Notfall** (gepinnt), Mit Jum, Hin und zurück, Essen und
+bezahlen, Jahreszeit, Zeiten und Preise, Praktisches, Faktencheck — sind
+Kuratierung, keine Automatik. Ihre Reihenfolge in der Datei ist die
+Reihenfolge in der App.
+
+- **Gepinnt heißt wörtlich oben, immer** — auch während einer Suche. Eine
+  Nummer, die man im Ernstfall erst freisuchen muß, ist keine Notfallnummer.
+  Der Block steht **vor** dem Suchfeld.
+- **Die Art steht am Eintrag**, nicht nur in der Sektion darüber: wer ihn über
+  eine Suche findet, sieht die Sektion nicht.
+- **Die Suche baut nur die Ansicht darunter neu** und legt den Fokus samt
+  Schreibmarke zurück ins Feld — sonst verlöre man beim zweiten Buchstaben
+  die Eingabe.
+- **Das Wissen lädt nach den Orten** und blockiert den Start nicht. Fällt es
+  aus, sagt die Ansicht das und bietet einen zweiten Versuch; Orte und Plan
+  sind davon nicht betroffen.
+
+### Die Brücke von der Ortssuche ins Wissen
+
+Wer in „Entdecken" nach *zug* sucht, bekommt Orte — und erfuhr bis `v37`
+nichts davon, daß unter „Wissen" steht, wie Jum im Zug fährt. Seit `v38`
+steht über der Trefferliste eine Zeile: „3 Einträge im Wissen passen auch zu
+‚zug'" mit einem Tipp dorthin, **der den Begriff mitnimmt**. Ihn dort noch
+einmal einzutippen wäre genau der Bruch, den die Brücke schließen soll.
+
+Keine zweite Trefferliste daneben: man sucht hier Orte. Und die Zeile
+erscheint nur, wenn ein Begriff *und* Treffer im Wissen da sind — eine
+Leiste, die immer dasteht, ist Tapete.
+
+### Die eigene Notiz wird mitdurchsucht
+
+Bis `v37` ging die Ortssuche nur über den Katalog (`name`, `address`, `note`,
+`tags`). Wer „Tisch hinten links, Wassernapf kommt von selbst" notiert hatte,
+fand den Ort über *wassernapf* nicht — obwohl genau das der Satz ist, an den
+man sich erinnert. Seit `v38` zählt `pk.notes` mit; der normalisierte
+Suchtext wird beim Schreiben der Notiz aktualisiert, nicht bei jedem
+Tastendruck.
+
 ## Karte
 
 Seit `v21` gebaut. **Kein eigener Reiter**, sondern ein Umschalter in der
@@ -935,7 +1002,8 @@ style.css               Tokens, Light und Dark, Layout, @font-face
 app.js                  Laden, Zustand, Filter, Sortierung, Sheet, Merkliste
 sw.js                   Service Worker: App-Shell, Schriften, places.json
 manifest.webmanifest
-data/places.json        Alle Inhalte
+data/places.json        Die 101 Orte, Kategorien, meta
+data/wissen.json        Regeln, offene Punkte, Faktencheck (seit v38)
 fonts/                  Fraunces und Karla als woff2 (latin, latin-ext)
 icons/                  App-Icons und iOS-Startbilder
 scripts/test-logic.mjs  Prüfstand für die Freitext-Logik und die Daten (node)
@@ -945,6 +1013,7 @@ scripts/browser-abnahme.mjs  ältere Gesamtabnahme samt Bildschirmabzügen
 scripts/add-coords.mjs  einmaliges Geocoding für die Karte
 scripts/make-icons.py   Icon-Generator
 scripts/make-matrix.mjs Eichung der Wegerechnung (Umwegfaktor, Gegenprobe)
+scripts/make-wissen.mjs Die einmalige Umstellung auf wissen.json, als Beleg
 scripts/make-mockups.mjs     rendert die Entwürfe zum Relaunch-Konzept
 docs/uebergabe.md       Übergabe: Regeln des Hauses, Fallen, offene Punkte
 docs/app-relaunch-konzept.md Analyse, Produktkonzept und Umbauplan ab v34
@@ -959,7 +1028,7 @@ Kontrast richtig messen, was iOS anders macht) und was offen ist.
 
 ## Getestet
 
-536 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
+574 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
 Sortierung kombiniert, Merkliste über einen Reload, Detail-Sheet ohne
 Layout-Shift, Dark Mode samt Override und Systempräferenz, Touch-Ziele,
 Flugmodus-Test (offline laden, suchen, Merkliste), Fehlerzustand mit Retry und

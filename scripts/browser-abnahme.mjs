@@ -249,8 +249,11 @@ ok('Zählzeile nennt Jum', /mit Jum/.test(cnt));
 ok('Zählzeile nennt die Aufteilung', /\d+ sicher/.test(cnt));
 const jumN = await page.locator('.card').count();
 ok('Jum blendet nichts aus', jumN, nAll);
+/* Vier Klassen, nicht drei: "Jum ok" traegt .fact--dog (mit .fact--dogyou,
+   wenn IHR es geklaert habt), das belegte Nein .fact--nodog, die offene
+   Regel .fact--dogopen. */
 ok('… und jede Zeile traegt ihre Hundmarke',
-   await page.locator('.fact--dog, .fact--dogno, .fact--dogopen, .fact--dogyou').count(), jumN);
+   await page.locator('.fact--dog, .fact--nodog, .fact--dogopen').count(), jumN);
 await page.screenshot({ path: OUT + '/03-jum.png' });
 await page.locator('#jum-btn').click();
 await page.waitForTimeout(200);
@@ -280,20 +283,23 @@ console.log('\nTages-Sheet: Wege nur mit echten Koordinaten');
                               body: JSON.stringify(daten) });
       });
     }
-    await pg.goto(BASE + '/index.html', { waitUntil: 'load' });
-    await pg.waitForSelector('#app:not([hidden])');
-    await pg.locator('.tab[data-tab="gemerkt"]').click();
-    await pg.waitForTimeout(400);
-    /* Der Reisetag wird aus dem Raster gelesen, nicht eingetippt: ein festes
-       Datum faellt mit jedem Tag der Reise weiter in die Vergangenheit. */
-    const tag = await pg.evaluate(() => {
-      const z = document.querySelector('.uebs__d:not(.uebs__d--vorbei):not(.uebs__d--heute)');
-      return z ? z.getAttribute('data-dayopen') : '';
-    });
-    /* Beide auf denselben Reisetag: der Weg gilt Nachbarn EINES Tages --
+    /* Der Reisetag wird gerechnet, nicht eingetippt: ein festes Datum faellt
+       mit jedem Tag der Reise weiter in die Vergangenheit. Genommen wird der
+       naechste Tag, der weder vorbei noch heute ist. */
+    const tag = (() => {
+      const d = new Date(); d.setDate(d.getDate() + 1);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+        + '-' + String(d.getDate()).padStart(2, '0');
+    })();
+    /* Der Speicher wird VOR dem ersten Laden gesetzt, nicht danach mit einem
+       reload: nach dem ersten Laden steht der Service Worker und liefert
+       places.json aus seinem Cache -- die abgefangene Fassung ohne geo kaeme
+       nie an, und die Pruefung liefe gegen die echten Daten.
+
+       Beide auf denselben Reisetag: der Weg gilt Nachbarn EINES Tages --
        zwischen dem letzten Ort von Dienstag und dem ersten von Mittwoch
        liegt eine Nacht, keine Wanderung. */
-    await pg.evaluate(([list, t]) => {
+    await pg.addInitScript(([list, t]) => {
       try {
         localStorage.setItem('pk.saved', JSON.stringify(list));
         const d = {};
@@ -301,7 +307,7 @@ console.log('\nTages-Sheet: Wege nur mit echten Koordinaten');
         localStorage.setItem('pk.days', JSON.stringify(d));
       } catch (e) {}
     }, [ids, tag]);
-    await pg.reload({ waitUntil: 'load' });
+    await pg.goto(BASE + '/index.html', { waitUntil: 'load' });
     await pg.waitForSelector('#app:not([hidden])');
     await pg.locator('.tab[data-tab="gemerkt"]').click();
     await pg.waitForTimeout(400);

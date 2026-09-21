@@ -720,6 +720,71 @@ body.is-compact .bar__top {
 .panel__x { font-size: var(--t-body); color: var(--soft); }
 .panel__c { font-size: var(--t-body); margin-top: .45rem; }
 
+/* Die Bruecke von der Ortssuche ins Wissen. Ein Hinweis mit Zahl, keine
+   zweite Trefferliste: man sucht hier Orte. Seeblau, die Hausfarbe fuer
+   "hier ist etwas an". */
+.wissbr { margin: 0 0 .5rem; }
+.wissbr button {
+  display: flex; align-items: center; gap: .6rem; width: 100%;
+  min-height: 2.75rem; padding: .55rem .8rem;
+  text-align: left; cursor: pointer;
+  font-family: var(--font-body); font-size: var(--t-meta);
+  color: var(--lake-ink);
+  background: color-mix(in srgb, var(--lake) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--lake) 30%, transparent);
+  border-radius: var(--r-card);
+}
+.wissbr__t { min-width: 0; }
+.wissbr__go { margin-left: auto; flex: 0 0 auto; font-weight: 700;
+  text-decoration: underline; }
+
+/* --- Wissen (seit v38) --------------------------------------------------
+   Bis v37 standen hier drei lange Listen untereinander, achtundvierzig
+   Eintraege ohne Gruppe und ohne Rangfolge -- der Notruf als neunter
+   Eintrag zwischen "Badeschuhe" und "Coperto & Trinkgeld". */
+
+/* Gepinnt heisst woertlich: oben, immer, auch waehrend einer Suche. Eine
+   Nummer, die man im Ernstfall erst freisuchen muss, ist keine
+   Notfallnummer. Ziegel, die Achtungsfarbe des Hauses. */
+.wissen__pin .panel {
+  border-left: 3px solid var(--brick);
+  background: color-mix(in srgb, var(--brick) 7%, var(--card));
+}
+.wissen__pin .panel__x { color: var(--ink); font-size: var(--t-title);
+  font-variant-numeric: tabular-nums; }
+
+.wissen__suche { display: block; margin-bottom: .5rem; }
+.wissen__n {
+  display: flex; align-items: baseline; gap: .5rem;
+  font-size: var(--t-meta); color: var(--soft); font-variant-numeric: tabular-nums;
+}
+.wissen__x {
+  margin-left: auto; min-height: 2.75rem; padding: 0 .2rem;
+  font-family: var(--font-body); font-size: var(--t-meta); color: var(--lake-ink);
+  background: none; border: 0; text-decoration: underline; cursor: pointer;
+}
+.wissen__lade { font-size: var(--t-body); color: var(--soft); }
+
+/* Die Zahl je Gruppe. Dieselbe Marke wie am Vorrat -- eine Gruppe ist eine
+   Menge, und wie gross sie ist, gehoert in den Kopf. */
+.section__n {
+  margin-left: .45rem;
+  font-family: var(--font-body); font-size: var(--t-micro); font-weight: 700;
+  color: var(--card); background: var(--soft); border-radius: var(--r-pill);
+  min-width: 1.35rem; text-align: center; padding: .05rem .4rem;
+  vertical-align: middle;
+}
+
+/* Die Art steht am Eintrag, nicht nur in der Sektion darueber: wer ihn ueber
+   eine Suche findet, sieht die Sektion nicht. */
+.wissen__art {
+  font-size: var(--t-micro); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; margin-bottom: .3rem;
+}
+.wissen__art--offen { color: var(--gold-ink); }
+.wissen__art--korrektur { color: var(--verde-ink); }
+.panel--fix { border-left: 3px solid var(--verde); }
+
 .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
 .checks li {
   display: grid; grid-template-columns: 1.1rem 1fr; gap: .5rem;

@@ -86,7 +86,12 @@ ok('Datei hat 101 Orte', out.places.length===101, String(out.places.length));
 const mitGeo = out.places.filter(p=>p.geo).length;
 ok('Koordinaten sind drin', mitGeo===parseInt(nachStop), `${mitGeo} vs ${nachStop}`);
 ok('geo hat lat und lon', out.places.filter(p=>p.geo).every(p=>typeof p.geo.lat==='number'&&typeof p.geo.lon==='number'));
-ok('Rest der Datei unverändert', out.meta.stand==='2026-09-18' && out.merken.length===17);
+/* Seit v38 traegt places.json nur noch meta, categories und places -- das
+   Wissen liegt in data/wissen.json. Geprueft wird deshalb, dass die
+   Koordinatensuche NICHTS ausserhalb von places anfasst. */
+ok('Rest der Datei unverändert',
+   out.meta.stand==='2026-09-18' && Object.keys(out).join(',')==='meta,categories,places',
+   `${out.meta.stand} | ${Object.keys(out).join(',')}`);
 
 // Zurücksetzen
 page.on('dialog', d=>d.accept());

@@ -146,6 +146,12 @@
         <p id="count" role="status" aria-live="polite"></p>
       </div>
 
+      <!-- Die Bruecke zum Wissen. Sie erscheint nur, wenn ein Suchbegriff
+           auch dort Treffer hat: seit v38 liegt das Wissen in einer eigenen
+           Datei, und wer "hund zug" sucht, bekam bis dahin nur Orte -- die
+           Antwort stand im Wissen und blieb unsichtbar. render() fuellt sie. -->
+      <div class="wissbr" id="wissbr" hidden></div>
+
       <div class="today" id="today" hidden></div>
       <div class="list" id="list"></div>
       <!-- Leaflet wird erst beim ersten Oeffnen geladen, siehe ladeKarte(). -->

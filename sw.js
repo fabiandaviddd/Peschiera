@@ -9,7 +9,7 @@
    ========================================================================== */
 'use strict';
 
-var CACHE = 'peschiera-v37';
+var CACHE = 'peschiera-v38';
 var TIMEOUT = 2500;   // ms, danach greift der Cache
 
 /* Leaflet liegt im Repo, nicht auf einem fremden Server -- sonst waere die
@@ -25,6 +25,7 @@ var SHELL = [
   './app.js',
   './manifest.webmanifest',
   './data/places.json',
+  './data/wissen.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

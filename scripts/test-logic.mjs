@@ -23,6 +23,11 @@ const require = createRequire(import.meta.url);
 const pk = require(join(root, 'app.js'));
 const placesRaw = readFileSync(join(root, 'data', 'places.json'), 'utf8');
 const data = JSON.parse(placesRaw);
+/* Seit v38 liegt das Wissen in einer eigenen Datei. Bis v37 standen die drei
+   Listen IN places.json, und die Suche fand sie nie -- sie geht ueber Orte,
+   und das Wissen war keiner. */
+const wissenRaw = readFileSync(join(root, 'data', 'wissen.json'), 'utf8');
+const wissen = JSON.parse(wissenRaw);
 
 /* Ein doppelter Schluessel in einem Objekt ist fuer JSON.parse unsichtbar —
    der letzte gewinnt still. Genau das ist beim Zusammenfuehren zweier Zweige
@@ -270,6 +275,51 @@ ok('Lokal mit "indoor": false bleibt draußen',
    pk.indoorOf({ category: 'cafe', indoor: false, tags: ['aperitivo'] }), false);
 ok('Ausflug mit Tag "wasser" bleibt draußen',
    pk.indoorOf({ category: 'ausflug', tags: ['wasser'] }), false);
+
+/* ----------------------------------------------------------------- Wissen */
+group('wissen.json — Gruppen, Arten, Kennungen');
+
+ok('places.json trägt kein Wissen mehr',
+   ['merken', 'open_questions', 'faktencheck'].filter((k) => k in data), []);
+ok('wissen.json hat Gruppen', wissen.gruppen.length > 0, true);
+ok('… und Einträge', wissen.eintraege.length > 0, true);
+
+/* Kennungen sind Lesezeichen-fest: doppelte machten zwei Eintraege
+   ununterscheidbar. */
+ok('jede Kennung kommt genau einmal vor',
+   new Set(wissen.eintraege.map((e) => e.id)).size, wissen.eintraege.length);
+ok('keine Kennung ist leer', wissen.eintraege.filter((e) => !e.id).length, 0);
+
+/* Eine unbekannte Gruppe hiesse: der Eintrag steht in keiner Sektion und ist
+   unsichtbar. Die App faengt das ab, die Datei soll es gar nicht erst
+   enthalten. */
+{
+  const ids = new Set(wissen.gruppen.map((g) => g.id));
+  const fremd = wissen.eintraege.filter((e) => !ids.has(e.gruppe)).map((e) => e.id);
+  ok('jeder Eintrag liegt in einer bekannten Gruppe', fremd, []);
+  const leer = wissen.gruppen.filter((g) =>
+    !wissen.eintraege.some((e) => e.gruppe === g.id)).map((g) => g.id);
+  ok('keine Gruppe ist leer', leer, []);
+}
+
+ok('die Art ist immer eine der drei',
+   wissen.eintraege.filter((e) => ['regel', 'offen', 'korrektur'].indexOf(e.art) < 0), []);
+ok('jeder Eintrag hat Text oder Titel',
+   wissen.eintraege.filter((e) => !e.text && !e.titel), []);
+
+/* Genau eine gepinnte Gruppe, und sie ist nicht leer: "gepinnt" heisst oben,
+   immer -- zwei davon waeren keine Rangfolge mehr. */
+{
+  const pin = wissen.gruppen.filter((g) => g.pin === true);
+  ok('genau eine Gruppe ist gepinnt', pin.length, 1);
+  ok('… und sie heißt Notfall', pin[0].titel, 'Notfall');
+  ok('… und steht an erster Stelle', wissen.gruppen[0].id, pin[0].id);
+  ok('… und enthält die 112',
+     wissen.eintraege.some((e) => e.gruppe === pin[0].id && /112/.test(e.text)), true);
+}
+
+/* Die Umstellung darf nichts verloren haben: 17 + 18 + 13 aus v37. */
+ok('alle 48 Einträge sind mitgekommen', wissen.eintraege.length, 48);
 
 /* ----------------------------------------------------------------- Wege */
 /* Seit v37 rechnet die App Wege ZWISCHEN Orten. Geroutet wird nicht -- ein
@@ -977,8 +1027,10 @@ function stats() {
   line(`… zu Fuss rechenbar (bis ${pk.FUSS_MAX_KM} km)`,
     wegPaare.filter((d) => d <= pk.FUSS_MAX_KM).length);
   line('verschiedene Tags', new Set(P.flatMap((p) => p.tags)).size);
-  line('merken / offene Punkte / Faktencheck',
-       `${data.merken.length} / ${data.open_questions.length} / ${data.faktencheck.length}`);
+  line('Wissen: Einträge / Gruppen', `${wissen.eintraege.length} / ${wissen.gruppen.length}`);
+  line('… Regeln / offen / korrigiert',
+    ['regel', 'offen', 'korrektur']
+      .map((a) => wissen.eintraege.filter((e) => e.art === a).length).join(' / '));
 }
 
 /* ------------------------------------------------------------------ Ergebnis */

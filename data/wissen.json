@@ -1,0 +1,365 @@
+{
+  "meta": {
+    "stand": "2026-09-18",
+    "note": "Aus places.json herausgeloest (merken, open_questions, faktencheck). Erzeugt von scripts/make-wissen.mjs. Die Gruppen sind Kuratierung, die Kennungen leiten sich aus dem Titel ab und bleiben stabil."
+  },
+  "gruppen": [
+    {
+      "id": "notfall",
+      "titel": "Notfall",
+      "pin": true,
+      "lead": "Steht oben, immer, ohne Suchen."
+    },
+    {
+      "id": "hund",
+      "titel": "Mit Jum",
+      "lead": "Was für den Hund gilt — Regeln, Pflichten, Ausnahmen."
+    },
+    {
+      "id": "verkehr",
+      "titel": "Hin und zurück",
+      "lead": "Busse, Züge, Schiffe und die letzten Abfahrten."
+    },
+    {
+      "id": "essen",
+      "titel": "Essen und bezahlen",
+      "lead": "Was auf der Rechnung steht und was üblich ist."
+    },
+    {
+      "id": "saison",
+      "titel": "Jahreszeit",
+      "lead": "Was in diesen zwei Wochen läuft — und was nicht mehr."
+    },
+    {
+      "id": "zeiten",
+      "titel": "Zeiten und Preise",
+      "lead": "Noch nicht bestätigt — vor dem Hinfahren kurz prüfen."
+    },
+    {
+      "id": "praktisch",
+      "titel": "Praktisches",
+      "lead": "Wetter, Wasser, Ausrüstung."
+    },
+    {
+      "id": "korrektur",
+      "titel": "Faktencheck",
+      "lead": "Korrigiert gegenüber der ersten Recherche."
+    }
+  ],
+  "eintraege": [
+    {
+      "id": "jum-im-zug",
+      "art": "regel",
+      "gruppe": "hund",
+      "titel": "Jum im Zug",
+      "text": "In der Transportbox (max. 70×30×50 cm) fährt er kostenlos und ohne Ticket, ohne Maulkorbpflicht. An der Leine: halber Preis der 2. Klasse, dann Leine und Maulkorb Pflicht."
+    },
+    {
+      "id": "leine-1-5-m-maulkorb-dabei",
+      "art": "regel",
+      "gruppe": "hund",
+      "titel": "Leine 1,5 m, Maulkorb dabei",
+      "text": "Seit 2013 landesweit vorgeschrieben, Bußgeld bis 150 €. Der Maulkorb muss nur mitgeführt, nicht getragen werden."
+    },
+    {
+      "id": "eu-heimtierausweis",
+      "art": "regel",
+      "gruppe": "hund",
+      "titel": "EU-Heimtierausweis",
+      "text": "Chip und Tollwutimpfung müssen dokumentiert sein. Kontrolliert wird vor allem an der Grenze, im Zug nur auf Nachfrage."
+    },
+    {
+      "id": "mittags-schatten-fur-jum",
+      "art": "regel",
+      "gruppe": "hund",
+      "titel": "Mittags Schatten für Jum",
+      "text": "Ende September ⌀ 24 °C, teils bis 27 °C. Ab etwa 25 °C staut sich die Hitze in Bodennähe zwischen 12 und 16 Uhr. Lange Runden früh und spät. Jum passt jederzeit in die Hundetasche — Gehstrecken sind kein Planungskriterium, Hitze schon."
+    },
+    {
+      "id": "wetter-realistisch-einschatzen",
+      "art": "regel",
+      "gruppe": "praktisch",
+      "titel": "Wetter realistisch einschätzen",
+      "text": "September hat im Schnitt 6 Regentage. Abendgewitter sind eher ein Sommermuster und im September schwächer. Verlässlich ist die Vorhersage nur ~7 Tage im Voraus."
+    },
+    {
+      "id": "badeschuhe",
+      "art": "regel",
+      "gruppe": "praktisch",
+      "titel": "Badeschuhe",
+      "text": "Das Südufer ist durchgehend kiesig. Die Wassertemperatur fällt im Monatsverlauf von ~21 °C auf 16–18 °C."
+    },
+    {
+      "id": "kein-hund-am-pool",
+      "art": "regel",
+      "gruppe": "hund",
+      "titel": "Kein Hund am Pool",
+      "text": "Keine nationale Vorschrift, aber praktisch überall Hausordnung. Abwechselnd schwimmen."
+    },
+    {
+      "id": "coperto-trinkgeld",
+      "art": "regel",
+      "gruppe": "essen",
+      "titel": "Coperto & Trinkgeld",
+      "text": "Gedeck 1–3 € p. P. ist legal, wenn es auf der Karte steht. Trinkgeld freiwillig: aufrunden oder 5–10 % bar in die Hand."
+    },
+    {
+      "id": "notruf",
+      "art": "regel",
+      "gruppe": "notfall",
+      "titel": "Notruf",
+      "text": "112 — vermittelt an 113 Polizei, 115 Feuerwehr, 118 Rettung."
+    },
+    {
+      "id": "bus-164-letzte-ruckfahrt-nach-peschiera",
+      "art": "regel",
+      "gruppe": "verkehr",
+      "text": "Bus 164: letzte Rückfahrt nach Peschiera ab Garda 18:25, Bardolino 18:30, Lazise 18:40 (sonntags rund eine Stunde später). Seit 10.09. gilt der Winterfahrplan — vor dem ersten Ausflug am Bahnhof gegenprüfen."
+    },
+    {
+      "id": "desenzano-ist-das-einzige-auswartige-abe",
+      "art": "regel",
+      "gruppe": "verkehr",
+      "text": "Desenzano ist das einzige auswärtige Abendziel: letzter Zug zurück ca. 21:53. Alles andere ist Mittagsprogramm."
+    },
+    {
+      "id": "nach-malcesine-fahrt-die-linie-483-direk",
+      "art": "regel",
+      "gruppe": "verkehr",
+      "text": "Nach Malcesine fährt die Linie 483 direkt, stündlich ab Peschiera Centro um :14, ca. 2h15. Täglich bis 18.10."
+    },
+    {
+      "id": "auf-den-linienschiffen-fahren-hunde-unte",
+      "art": "regel",
+      "gruppe": "hund",
+      "text": "Auf den Linienschiffen fahren Hunde unter 50 cm gratis; Maulkorb mitführen, in der Tasche entfällt die Pflicht. Die geführten Bootstouren ab Peschiera und Sirmione nehmen dagegen keine Hunde mit."
+    },
+    {
+      "id": "die-bardolino-weinlese-hat-am-14-09-bego",
+      "art": "regel",
+      "gruppe": "saison",
+      "text": "Die Bardolino-Weinlese hat am 14.09. begonnen und läuft während des ganzen Aufenthalts. Wer landeinwärts radelt, sieht arbeitende Weinberge."
+    },
+    {
+      "id": "der-shuttlebus-auf-der-halbinsel-sirmion",
+      "art": "regel",
+      "gruppe": "verkehr",
+      "text": "Der ShuttleBus auf der Halbinsel Sirmione fährt nur noch bis einschliesslich 27.09. Danach alles zu Fuss."
+    },
+    {
+      "id": "caffe-italia-in-desenzano-ist-nach-42-ja",
+      "art": "regel",
+      "gruppe": "korrektur",
+      "text": "Caffè Italia in Desenzano ist nach 42 Jahren dauerhaft geschlossen (Juni 2025), steht aber noch in Guides und mit aktiver Website. Nicht hinlaufen."
+    },
+    {
+      "id": "die-olivenernte-beginnt-erst-mitte-oktob",
+      "art": "regel",
+      "gruppe": "saison",
+      "text": "Die Olivenernte beginnt erst Mitte Oktober — Mühlenbesichtigungen gibt es jetzt noch nicht."
+    },
+    {
+      "id": "ristorante-esplanade-desenzano",
+      "art": "offen",
+      "gruppe": "essen",
+      "titel": "Ristorante Esplanade, Desenzano",
+      "text": "Antwort auf die Fine-Dining-Anfrage vom 17.09. steht aus.",
+      "tel": "+39 030 9143361"
+    },
+    {
+      "id": "schiff-peschiera-sirmione",
+      "art": "offen",
+      "gruppe": "verkehr",
+      "titel": "Schiff Peschiera–Sirmione",
+      "text": "Konkrete Abfahrts- und letzte Rückfahrtzeiten im Sommerfahrplan 2026 nicht verifizierbar.",
+      "tel": "Navigazione Laghi 800 551 801 oder +39 030 914 9511, oder am Imbarcadero"
+    },
+    {
+      "id": "santuario-madonna-del-frassino",
+      "art": "offen",
+      "gruppe": "zeiten",
+      "titel": "Santuario Madonna del Frassino",
+      "text": "Öffnungszeiten nicht bestätigt."
+    },
+    {
+      "id": "bootstour-isola-del-garda",
+      "art": "offen",
+      "gruppe": "verkehr",
+      "titel": "Bootstour Isola del Garda",
+      "text": "Abfahrtsort und Buchung offen — fährt nicht ab Peschiera."
+    },
+    {
+      "id": "weingut-le-morette",
+      "art": "offen",
+      "gruppe": "hund",
+      "titel": "Weingut Le Morette",
+      "text": "Hund und Termin müssen vorher angefragt werden.",
+      "tel": "+39 045 755 2724"
+    },
+    {
+      "id": "monte-baldo-seilbahn",
+      "art": "offen",
+      "gruppe": "hund",
+      "titel": "Monte-Baldo-Seilbahn",
+      "text": "Hundepreis widersprüchlich angegeben (4,50–8 €). Für diesen Urlaub gestrichen."
+    },
+    {
+      "id": "arena-verona",
+      "art": "offen",
+      "gruppe": "hund",
+      "titel": "Arena Verona",
+      "text": "Hunderegelung unklar."
+    },
+    {
+      "id": "radverleih",
+      "art": "offen",
+      "gruppe": "hund",
+      "titel": "Radverleih",
+      "text": "Hundekorb überall nur auf Anfrage."
+    },
+    {
+      "id": "osteria-bakare-offen-oder-dauerhaft-gesc",
+      "art": "offen",
+      "gruppe": "essen",
+      "text": "Osteria Bakarè: offen oder dauerhaft geschlossen? +39 045 611 4830",
+      "tel": "+39 045 611 4830"
+    },
+    {
+      "id": "lenoteca-peschiera-gelten-die-laden-oder",
+      "art": "offen",
+      "gruppe": "essen",
+      "text": "Lenoteca Peschiera: gelten die Laden- oder die Abendzeiten? +39 045 223 3337",
+      "tel": "+39 045 223 3337"
+    },
+    {
+      "id": "offnungszeiten-der-beiden-pescherie-pesc",
+      "art": "offen",
+      "gruppe": "essen",
+      "text": "Öffnungszeiten der beiden Pescherie (Peschiera, Desenzano) und der Cantina Zeni"
+    },
+    {
+      "id": "parco-baia-delle-sirene-sind-hunde-erlau",
+      "art": "offen",
+      "gruppe": "hund",
+      "text": "Parco Baia delle Sirene: sind Hunde erlaubt? +39 045 725 6676 — entscheidet, ob Punta San Vigilio ein Jum-Tag wird",
+      "tel": "+39 045 725 6676"
+    },
+    {
+      "id": "castello-malcesine-offnungszeiten-2026-p",
+      "art": "offen",
+      "gruppe": "zeiten",
+      "text": "Castello Malcesine: Öffnungszeiten 2026 (publiziert sind nur die von 2025) +39 045 658 9911",
+      "tel": "+39 045 658 9911"
+    },
+    {
+      "id": "rievocazione-storica-25-27-oder-26-28-09",
+      "art": "offen",
+      "gruppe": "saison",
+      "text": "Rievocazione Storica: 25.–27. oder 26.–28.09.? Gemeinde +39 045 644 4700",
+      "tel": "+39 045 644 4700"
+    },
+    {
+      "id": "forte-ardietti-ponti-sul-mincio-offnungs",
+      "art": "offen",
+      "gruppe": "zeiten",
+      "text": "Forte Ardietti, Ponti sul Mincio: Öffnungszeiten und Eintritt"
+    },
+    {
+      "id": "fahrradmitnahme-in-bus-164-und-auf-den-n",
+      "art": "offen",
+      "gruppe": "verkehr",
+      "text": "Fahrradmitnahme in Bus 164 und auf den Navigarda-Schiffen (in Sirmione 2026 belegt eingeschränkt)"
+    },
+    {
+      "id": "torre-di-san-martino-eintritt-7-oder-10",
+      "art": "offen",
+      "gruppe": "zeiten",
+      "text": "Torre di San Martino: Eintritt 7 oder 10 €, Ruhetag in der Sommersaison +39 030 991 0370",
+      "tel": "+39 030 991 0370"
+    },
+    {
+      "id": "castello-torri-del-benaco-5-oder-6-tagli",
+      "art": "offen",
+      "gruppe": "zeiten",
+      "text": "Castello Torri del Benaco: 5 € oder 6 €, täglich oder montags geschlossen?"
+    },
+    {
+      "id": "osteria-bakare-ist-vorubergehend-geschlo",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "Osteria Bakarè ist vorübergehend geschlossen (Google, 17.09.) — raus."
+    },
+    {
+      "id": "gustosa-bar-risto-hat-auf-google-nur-3-7",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "Gustosa Bar Risto hat auf Google nur 3,7 ★ bei 1.337 Bewertungen, nicht 4,5 — raus."
+    },
+    {
+      "id": "la-cremerie-heisst-la-cremeria-und-ist-e",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "„La Cremerie\" heißt La Cremeria und ist eine Eisdiele, kein Frühstücksplatz."
+    },
+    {
+      "id": "inchiostro-liegt-in-der-via-don-lenotti",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "InChiostro liegt in der Via Don Lenotti 9, nicht Via Bell'Italia 41."
+    },
+    {
+      "id": "al-combattente-serviert-gardasee-fisch-n",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "al Combattente serviert Gardasee-Fisch, nicht Meeresfisch."
+    },
+    {
+      "id": "trattoria-san-marco-in-borghetto-ist-das",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "„Trattoria San Marco\" in Borghetto ist das große Grand Cafè San Marco (4,2 ★)."
+    },
+    {
+      "id": "l-orangerie-liegt-in-sirmione-nicht-in-p",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "L'Orangerie liegt in Sirmione, nicht in Peschiera. Trattoria Alessi in Desenzano existiert nicht."
+    },
+    {
+      "id": "parco-sigurta-lasst-definitiv-keine-hund",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "Parco Sigurtà lässt definitiv keine Hunde zu. Am Lago del Frassino gibt es keinen Rundweg."
+    },
+    {
+      "id": "die-festungsmauern-sind-uber-3-5-km-lang",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "Die Festungsmauern sind über 3,5 km lang, nicht 2.250 m."
+    },
+    {
+      "id": "borghetto-sind-14-4-km-mit-dem-rad-nicht",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "Borghetto sind 14,4 km mit dem Rad, nicht 7 — für hin und zurück rund 1,5 h Fahrzeit."
+    },
+    {
+      "id": "baden-geht-direkt-vor-dem-zelt-lido-ai-p",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "Baden geht direkt vor dem Zelt: Lido ai Pioppi liegt auf dem Campingplatzgelände, 150 m, Hunde erlaubt."
+    },
+    {
+      "id": "supermarkt-lombardini-via-milano-4-und-d",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "Supermarkt „Lombardini, Via Milano 4\" und der Radverleih „Gardabikeland\" existieren auf Maps nicht."
+    },
+    {
+      "id": "grotte-di-catullo-hunde-an-der-leine-im",
+      "art": "korrektur",
+      "gruppe": "korrektur",
+      "text": "Grotte di Catullo: Hunde an der Leine im Außengelände erlaubt, im Museum nur getragen (Direzione regionale Musei Lombardia, geprüft 17.09.2026)."
+    }
+  ]
+}

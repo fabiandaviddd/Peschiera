@@ -7,8 +7,15 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v37 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v38 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
+  /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
+     drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
+     places.json -- einer Datei, die sonst nur Orte enthaelt. Die Suche fand
+     sie deshalb nie: sie geht ueber Orte, und das Wissen war keiner.
+     "Darf Jum in den Zug?" liess sich nicht suchen, obwohl die Antwort in
+     der App steht. */
+  var WISSEN_URL = './data/wissen.json';
   var LS_SAVED = 'pk.saved';
   var LS_SEEN  = 'pk.seen';
   var LS_NOTES = 'pk.notes';
@@ -33,6 +40,10 @@
 
   var D = null;               // geladene Daten
   var catById = {};
+  /* Das Wissen aus data/wissen.json. undefined = laedt noch, null = nicht
+     erreichbar, sonst { meta, gruppen, eintraege }. Drei Zustaende, weil die
+     Ansicht fuer jeden etwas anderes sagen muss. */
+  var W;
 
   var S = {
     view: 'heute',
@@ -53,6 +64,11 @@
        gemerkt, und "erst merken, dann Tag waehlen" waeren zwei Schritte fuer
        einen Gedanken. Auch nur fuer die Dauer des Sheets. */
     daySuche: '',
+    /* Der Suchbegriff im Wissen. Eigener Zustand, nicht S.q: die Ortssuche
+       filtert eine Liste, diese hier eine andere Menge -- ein gemeinsames
+       Feld hiesse, dass ein Begriff aus "Entdecken" im Wissen weiterwirkt,
+       ohne dass man es sieht. */
+    wq: '',
     wet: false,             // vom Benutzer gesagt, nicht abgerufen
     pick: 0,                // welcher Vorschlag gerade dran ist
     mid: null,              // gewaehlter Tagesabschnitt; null = aus der Uhr
@@ -325,6 +341,26 @@
     return norm([p.name, p.address, p.note, (p.tags || []).join(' ')].join(' · '));
   }
 
+  /* Der Suchtext eines Ortes -- Katalog PLUS eure eigene Notiz.
+
+     Bis v37 ging die Suche nur ueber den Katalog. Wer "Tisch hinten links,
+     Wassernapf kommt von selbst" notiert hatte, fand den Ort ueber
+     "wassernapf" nicht -- obwohl genau das der Satz ist, an den man sich
+     erinnert. Eine eigene Notiz ist das, was man SELBST herausgefunden hat;
+     sie nicht zu durchsuchen war die schlechteste Stelle, sie wegzulassen.
+
+     p._h liegt fertig aus dem Laden vor, die Notiz kommt aus _hn und wird
+     nur beim Schreiben neu normalisiert -- nicht bei jedem Tastendruck. */
+  var noteHay = {};
+  function suchtext(p) {
+    var n = noteHay[p.id];
+    return n ? p._h + ' · ' + n : p._h;
+  }
+  function noteHayNeu() {
+    noteHay = {};
+    Object.keys(S.notes).forEach(function (id) { noteHay[id] = norm(S.notes[id]); });
+  }
+
   /* --------------------------------------------------------------- Symbole */
 
   var ICON = {
@@ -365,30 +401,32 @@
 
   /* ----------------------------------------------------------------- Laden */
 
-  function loadData(done, fail) {
+  function loadJson(url, done, fail) {
     /* 1. Versuch: fetch. Auf file:// blockieren Chrome und Safari das,
        deshalb 2. Versuch über XHR — das erlaubt Safari für lokale Dateien. */
     if (typeof fetch === 'function') {
-      fetch(DATA_URL, { cache: 'no-cache' }).then(function (r) {
+      fetch(url, { cache: 'no-cache' }).then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
-      }).then(done, function () { xhr(done, fail); });
+      }).then(done, function () { xhr(url, done, fail); });
     } else {
-      xhr(done, fail);
+      xhr(url, done, fail);
     }
   }
 
-  function xhr(done, fail) {
+  function loadData(done, fail) { loadJson(DATA_URL, done, fail); }
+
+  function xhr(url, done, fail) {
     try {
       var r = new XMLHttpRequest();
-      r.open('GET', DATA_URL, true);
+      r.open('GET', url, true);
       r.onload = function () {
         /* file:// liefert status 0 bei Erfolg */
         if (r.status === 0 || (r.status >= 200 && r.status < 300)) {
           try { done(JSON.parse(r.responseText)); }
-          catch (e) { fail('Die Datei data/places.json ist kein gültiges JSON.'); }
+          catch (e) { fail('Die Datei ' + url + ' ist kein gültiges JSON.'); }
         } else {
-          fail('data/places.json antwortete mit HTTP ' + r.status + '.');
+          fail(url + ' antwortete mit HTTP ' + r.status + '.');
         }
       };
       r.onerror = function () { fail(null); };
@@ -418,9 +456,6 @@
     D = raw;
     D.meta = D.meta || {};
     D.categories = Array.isArray(D.categories) ? D.categories : [];
-    D.merken = Array.isArray(D.merken) ? D.merken : [];
-    D.open_questions = Array.isArray(D.open_questions) ? D.open_questions : [];
-    D.faktencheck = Array.isArray(D.faktencheck) ? D.faktencheck : [];
 
     catById = {};
     D.categories.forEach(function (c) { catById[c.id] = c; });
@@ -472,6 +507,7 @@
     Object.keys(rohNotes).forEach(function (id) {
       if (ids[id] && String(rohNotes[id] || '').trim()) S.notes[id] = String(rohNotes[id]);
     });
+    noteHayNeu();
 
     S.theme = lsGet(LS_THEME, 'auto');
     if (['auto', 'light', 'dark'].indexOf(S.theme) < 0) S.theme = 'auto';
@@ -527,6 +563,56 @@
     updateOfflineNote();
     checkCacheVersion();
     showInbox();
+    ladeWissen();
+  }
+
+  /* Das Wissen kommt NACH den Orten und blockiert den Start nicht. Es ist
+     wichtig, aber nicht so wichtig wie die Frage, was heute ansteht -- und
+     eine App, die wegen einer zweiten Datei gar nicht startet, ist
+     schlechter als eine, der eine Ansicht fehlt. Faellt sie aus, sagt die
+     Ansicht das und bietet einen zweiten Versuch. */
+  function ladeWissen() {
+    W = undefined;                       /* laeuft noch */
+    loadJson(WISSEN_URL, function (roh) {
+      W = normWissen(roh);
+      if (S.view === 'info') render();
+    }, function () {
+      W = null;                          /* nicht erreichbar */
+      if (S.view === 'info') render();
+    });
+  }
+
+  /* Was aus der Datei kommt, wird hier auf das zurechtgeschnitten, womit die
+     Ansicht rechnet. Dieselbe Haltung wie bei places.json: lieber einen
+     Eintrag weglassen als mit undefined weiterrechnen. */
+  function normWissen(roh) {
+    if (!roh || !Array.isArray(roh.eintraege) || !Array.isArray(roh.gruppen)) return null;
+    var gruppen = roh.gruppen.filter(function (g) { return g && has(g.id) && has(g.titel); })
+      .map(function (g) {
+        return { id: String(g.id), titel: String(g.titel),
+                 lead: has(g.lead) ? String(g.lead) : '',
+                 pin: g.pin === true };
+      });
+    var kennt = {};
+    gruppen.forEach(function (g) { kennt[g.id] = true; });
+    var eintraege = roh.eintraege.filter(function (e) { return e && (has(e.text) || has(e.titel)); })
+      .map(function (e, i) {
+        return {
+          id: has(e.id) ? String(e.id) : 'w' + i,
+          /* Eine unbekannte Gruppe wuerde den Eintrag unsichtbar machen --
+             also faellt er in die letzte statt aus der Ansicht. */
+          gruppe: kennt[e.gruppe] ? String(e.gruppe)
+                : (gruppen.length ? gruppen[gruppen.length - 1].id : ''),
+          art: ['regel', 'offen', 'korrektur'].indexOf(e.art) >= 0 ? e.art : 'regel',
+          titel: has(e.titel) ? String(e.titel) : '',
+          text: has(e.text) ? String(e.text) : '',
+          tel: has(e.tel) ? String(e.tel) : ''
+        };
+      });
+    eintraege.forEach(function (e) {
+      e.such = norm([e.titel, e.text, e.tel].join(' · '));
+    });
+    return { meta: roh.meta || {}, gruppen: gruppen, eintraege: eintraege };
   }
 
   /* ----------------------------------------------------------------- Theme */
@@ -1102,7 +1188,8 @@
         for (var i = 0; i < S.tags.length; i++) if (p.tags.indexOf(S.tags[i]) >= 0) { hit = true; break; }
         if (!hit) return false;
       }
-      for (var t = 0; t < terms.length; t++) if (p._h.indexOf(terms[t]) < 0) return false;
+      var heu = suchtext(p);
+      for (var t = 0; t < terms.length; t++) if (heu.indexOf(terms[t]) < 0) return false;
       return true;
     });
 
@@ -1218,6 +1305,10 @@
        rund 60 px, und dort steht jetzt der Tagesplan. */
     $('search-wrap').hidden = bare || isPlan;
     $('meta-row').hidden = bare || isPlan;
+    /* Die Bruecke ins Wissen gehoert zur Ortssuche. In "Jetzt", "Reise" und
+       "Wissen" wird hier nicht gesucht -- dort waere sie ein Verweis ohne
+       Anlass. wissBruecke() fuellt sie unten, wenn es etwas zu sagen gibt. */
+    if (bare || isPlan) { $('wissbr').hidden = true; $('wissbr').innerHTML = ''; }
     renderShareBar();
     measureBarWennNoetig();
 
@@ -1276,6 +1367,7 @@
     var total = D.places.length;
 
     renderCount(items.length, total);
+    wissBruecke();
 
     if (!items.length) {
       $('list').hidden = true;
@@ -1304,6 +1396,35 @@
     }
     $('list').hidden = false;
     listeFuellen(items);
+  }
+
+  /* Die Bruecke von der Ortssuche ins Wissen.
+
+     Seit v38 liegt das Wissen in einer eigenen Datei und ist durchsuchbar --
+     aber in einer anderen Ansicht. Wer in "Entdecken" nach "zug" sucht,
+     bekommt Orte und erfaehrt nichts davon, dass unter "Wissen" steht, wie
+     Jum im Zug faehrt. Eine zweite Trefferliste daneben waere falsch: man
+     sucht hier Orte. Ein Hinweis mit Zahl und einem Tipp dorthin ist das
+     Richtige.
+
+     Sie erscheint nur mit Suchbegriff UND Treffern im Wissen -- eine Leiste,
+     die immer dasteht, ist Tapete. */
+  function wissBruecke() {
+    var leiste = $('wissbr');
+    var q = S.q.trim();
+    var teile = q ? norm(q).split(/\s+/).filter(Boolean) : [];
+    if (!teile.length || !W || !W.eintraege) { leiste.hidden = true; leiste.innerHTML = ''; return; }
+
+    var n = W.eintraege.filter(function (e) {
+      return teile.every(function (x) { return e.such.indexOf(x) >= 0; });
+    }).length;
+    if (!n) { leiste.hidden = true; leiste.innerHTML = ''; return; }
+
+    leiste.hidden = false;
+    leiste.innerHTML = '<button type="button" id="wissbr-go">'
+      + '<span class="wissbr__t">' + n + (n === 1 ? ' Eintrag' : ' Einträge')
+      + ' im Wissen passen auch zu „' + esc(q) + '“</span>'
+      + '<span class="wissbr__go">ansehen</span></button>';
   }
 
   /* ------------------------------------------------- Die Liste in Stuecken */
@@ -2329,74 +2450,7 @@
             + 'Das habt ihr unterwegs geklärt.</p>')
       + '</div></section>';
 
-    if (D.merken.length) {
-      h += '<section class="section"><h2 class="section__h">Gut zu wissen</h2>'
-        + '<p class="section__lead">Regeln und Faustregeln für unterwegs.</p>'
-        + D.merken.map(function (m) {
-            /* Die Liste enthält Objekte {title,text} und blanken Text
-               nebeneinander — beides muss sauber rauskommen. */
-            if (typeof m === 'string') {
-              return '<div class="panel"><p class="panel__x">' + esc(m) + '</p></div>';
-            }
-            if (!m) return '';
-            var title = has(m.title) ? String(m.title) : '';
-            var text = has(m.text) ? String(m.text) : '';
-            if (!title && !text) return '';
-            return '<div class="panel">'
-              + (title ? '<h3 class="panel__t">' + esc(title) + '</h3>' : '')
-              + (text ? '<p class="panel__x">' + esc(text) + '</p>' : '')
-              + '</div>';
-          }).join('')
-        + '</section>';
-    }
-
-    if (D.open_questions.length) {
-      h += '<section class="section"><h2 class="section__h">Offene Punkte</h2>'
-        + '<p class="section__lead">' + D.open_questions.length
-        + ' ungeklärte Fakten — bewusst sichtbar statt versteckt.</p>'
-        + D.open_questions.map(function (q) {
-            /* Auch hier stehen Objekte und blanker Text nebeneinander. Bei
-               reinem Text wird eine enthaltene Telefonnummer anklickbar. */
-            if (typeof q === 'string') {
-              var mt = /(\+?\d[\d\s/()-]{7,}\d)/.exec(q);
-              var body = esc(q);
-              if (mt) {
-                var num = telHref(mt[1]);
-                if (num) {
-                  body = esc(q.slice(0, mt.index))
-                    + '<a href="tel:' + esc(num) + '">' + esc(mt[1].trim()) + '</a>'
-                    + esc(q.slice(mt.index + mt[1].length));
-                }
-              }
-              return '<div class="panel panel--open"><p class="panel__x">' + body + '</p></div>';
-            }
-            if (!q) return '';
-            var tel = has(q.contact) ? telHref(q.contact) : null;
-            return '<div class="panel panel--open">'
-              + (has(q.topic) ? '<h3 class="panel__t">' + esc(q.topic) + '</h3>' : '')
-              + (has(q.status) ? '<p class="panel__x">' + esc(q.status) + '</p>' : '')
-              + (has(q.contact)
-                  ? '<p class="panel__c">' + (tel
-                      ? '<a href="tel:' + esc(tel) + '">' + esc(q.contact) + '</a>'
-                      : esc(q.contact)) + '</p>'
-                  : '')
-              + '</div>';
-          }).join('')
-        + '</section>';
-    }
-
-    if (D.faktencheck.length) {
-      h += '<section class="section"><h2 class="section__h">Faktencheck</h2>'
-        + '<p class="section__lead">Korrigiert gegenüber der ersten Recherche.</p>'
-        + '<ul class="checks">'
-        + D.faktencheck.map(function (f) {
-            var txt = typeof f === 'string' ? f
-                    : (f && has(f.text) ? String(f.text)
-                    : (f && has(f.claim) ? String(f.claim) : ''));
-            return txt ? '<li><span>' + esc(txt) + '</span></li>' : '';
-          }).join('')
-        + '</ul></section>';
-    }
+    h += wissenHtml();
 
     if (has(D.meta.base)) {
       h += '<section class="section"><h2 class="section__h">Basis</h2>'
@@ -2406,6 +2460,111 @@
     }
 
     return h;
+  }
+
+  /* --- Das Wissen ------------------------------------------------------
+
+     Bis v37 standen hier drei lange Listen untereinander: "Gut zu wissen"
+     (17), "Offene Punkte" (18) und der Faktencheck (13). Achtundvierzig
+     Eintraege ohne Gruppe und ohne Rangfolge -- der NOTRUF stand als
+     neunter Eintrag zwischen "Badeschuhe" und "Coperto & Trinkgeld".
+     Gesucht werden konnte darin gar nicht.
+
+     Seit v38: eine Suche ueber alle Eintraege, Gruppen mit Kopf, und der
+     Notfall gepinnt. Gepinnt heisst hier woertlich: er steht oben, immer,
+     auch waehrend einer Suche -- man sucht ihn nicht, wenn man ihn
+     braucht. */
+  function wissenHtml() {
+    if (W === undefined) {
+      return '<section class="section"><p class="wissen__lade">Wissen wird geladen …</p></section>';
+    }
+    if (W === null) {
+      return '<section class="section">'
+        + '<div class="panel panel--open"><h3 class="panel__t">Wissen nicht geladen</h3>'
+        + '<p class="panel__x">data/wissen.json war nicht erreichbar. Die Orte '
+        + 'und dein Plan sind davon nicht betroffen.</p>'
+        + '<p class="panel__c"><button type="button" class="btn" id="wissen-retry">'
+        + 'Erneut versuchen</button></p></div></section>';
+    }
+
+    var q = S.wq.trim();
+    var teile = q ? norm(q).split(/\s+/).filter(Boolean) : [];
+    var treffer = teile.length
+      ? W.eintraege.filter(function (e) {
+          return teile.every(function (t) { return e.such.indexOf(t) >= 0; });
+        })
+      : W.eintraege;
+
+    /* Der gepinnte Notfall. Er steht VOR dem Suchfeld: eine Nummer, die man
+       im Ernstfall erst freisuchen muss, ist keine Notfallnummer. */
+    var h = '';
+    var pinIds = {};
+    W.gruppen.filter(function (g) { return g.pin; }).forEach(function (g) {
+      var drin = W.eintraege.filter(function (e) { return e.gruppe === g.id; });
+      if (!drin.length) return;
+      pinIds[g.id] = true;
+      h += '<section class="section wissen__pin">'
+        + '<h2 class="section__h">' + esc(g.titel) + '</h2>'
+        + drin.map(eintragHtml).join('') + '</section>';
+    });
+
+    h += '<section class="section">'
+      + '<label class="wissen__suche">'
+      + '<span class="sr-only">Wissen durchsuchen</span>'
+      + '<input type="search" id="wq" class="tagsuche__i"'
+      + ' autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="search"'
+      + ' placeholder="' + W.eintraege.length + ' Einträge durchsuchen"'
+      + ' value="' + esc(S.wq) + '"></label>'
+      + (teile.length
+          ? '<p class="wissen__n">' + treffer.length
+            + (treffer.length === 1 ? ' Treffer' : ' Treffer') + ' für „' + esc(q) + '“'
+            + '<button type="button" class="wissen__x" id="wq-clear">zurücksetzen</button></p>'
+          : '')
+      + '</section>';
+
+    if (teile.length && !treffer.length) {
+      h += '<section class="section"><div class="panel"><p class="panel__x">'
+        + 'Nichts gefunden. Gesucht wird über Titel, Text und Telefonnummer '
+        + 'aller ' + W.eintraege.length + ' Einträge.</p></div></section>';
+      return h;
+    }
+
+    W.gruppen.forEach(function (g) {
+      /* Der gepinnte Teil steht schon oben -- waehrend einer Suche aber
+         zusaetzlich hier, damit ein Treffer darin nicht doppelt zaehlt und
+         nicht fehlt. */
+      if (pinIds[g.id] && !teile.length) return;
+      var drin = treffer.filter(function (e) { return e.gruppe === g.id; });
+      if (!drin.length) return;
+      h += '<section class="section"><h2 class="section__h">' + esc(g.titel)
+        + '<span class="section__n">' + drin.length + '</span></h2>'
+        + (g.lead && !teile.length
+            ? '<p class="section__lead">' + esc(g.lead) + '</p>' : '')
+        + drin.map(eintragHtml).join('')
+        + '</section>';
+    });
+    return h;
+  }
+
+  /* Ein Eintrag. Die Art steckt nicht im Text, sondern im Feld: eine offene
+     Frage traegt Ocker und das Wort, eine Korrektur den Haken. Bis v37
+     unterschied nur die Sektion, in der der Eintrag stand -- wer ihn ueber
+     eine Suche fand, sah die Sektion nicht. */
+  function eintragHtml(e) {
+    var tel = e.tel ? telHref(e.tel) : null;
+    return '<div class="panel panel--w' + (e.art === 'offen' ? ' panel--open' : '')
+      + (e.art === 'korrektur' ? ' panel--fix' : '') + '">'
+      + (e.titel ? '<h3 class="panel__t">' + esc(e.titel) + '</h3>' : '')
+      + (e.art !== 'regel'
+          ? '<p class="wissen__art wissen__art--' + e.art + '">'
+            + (e.art === 'offen' ? 'noch offen' : 'korrigiert') + '</p>' : '')
+      + (e.text ? '<p class="panel__x">' + esc(e.text) + '</p>' : '')
+      + (e.tel
+          ? '<p class="panel__c">' + (tel
+              ? '<a href="tel:' + esc(tel) + '">' + esc(e.tel) + '</a>'
+              : esc(e.tel)) + '</p>'
+          : '')
+      + '</div>';
   }
 
   /* ----------------------------------------------------------------- Sheet */
@@ -2798,6 +2957,7 @@
     var t = String(text == null ? '' : text).trim().slice(0, 140);
     if (t) S.notes[id] = t; else delete S.notes[id];
     lsSet(LS_NOTES, S.notes);
+    if (t) noteHay[id] = norm(t); else delete noteHay[id];
   }
 
   /* Der Weg in den Plan, an jedem Ort.
@@ -3189,6 +3349,7 @@
       S.saved = incoming.m.slice();
       S.seen = incoming.g.slice();
       S.notes = JSON.parse(JSON.stringify(fremd));
+      noteHayNeu();
       S.days = JSON.parse(JSON.stringify(fremdeTage));
       S.dog = JSON.parse(JSON.stringify(fremdeHunde));
     } else {
@@ -3197,6 +3358,7 @@
       /* Beim Zusammenfuehren gewinnt die eigene Notiz: sie steht fuer etwas,
          das man selbst vor Ort erfahren hat. */
       Object.keys(fremd).forEach(function (id) { if (!S.notes[id]) S.notes[id] = fremd[id]; });
+      noteHayNeu();
       /* Auch hier gewinnt die eigene Planung: ein fremder Tag fuellt nur
          Luecken. */
       Object.keys(fremdeTage).forEach(function (id) { if (!S.days[id]) S.days[id] = fremdeTage[id]; });
@@ -3247,6 +3409,7 @@
     S.saved = rueck.saved.slice();
     S.seen = rueck.seen.slice();
     S.notes = JSON.parse(JSON.stringify(rueck.notes || {}));
+    noteHayNeu();
     S.days = JSON.parse(JSON.stringify(rueck.days || {}));
     lsSet(LS_SAVED, S.saved);
     lsSet(LS_SEEN, S.seen);
@@ -4094,7 +4257,7 @@
       var teile = norm(q).split(/\s+/).filter(Boolean);
       liste = D.places.filter(function (p) {
         if (planTagVon(p.id, bez.gueltig) === iso) return false;   /* steht schon da */
-        var heu = haystack(p);
+        var heu = suchtext(p);
         return teile.every(function (x) { return heu.indexOf(x) >= 0; });
       });
       kopf = 'Gefunden';
@@ -4761,6 +4924,48 @@
         var treffer = $('tagtreffer');
         if (treffer) treffer.innerHTML = tagTrefferHtml(S.dayOpen);
       }
+    });
+
+    /* Die Suche im Wissen. Sie baut die ganze Ansicht neu -- anders als im
+       Tages-Sheet, wo der Fokus im Feld bleiben muss. Hier steht das Feld
+       in der Liste, und ein render() wuerde es mitsamt Fokus ersetzen. Also
+       nur den Teil darunter tauschen und den Fokus zuruecklegen. */
+    $('info').addEventListener('input', function (e) {
+      if (!e.target || e.target.id !== 'wq') return;
+      S.wq = e.target.value;
+      var pos = e.target.selectionStart;
+      $('info').innerHTML = infoHtml();
+      var wieder = $('wq');
+      if (wieder) {
+        try {
+          wieder.focus({ preventScroll: true });
+          wieder.setSelectionRange(pos, pos);
+        } catch (err) { /* egal */ }
+      }
+    });
+
+    $('info').addEventListener('click', function (e) {
+      if (e.target.closest('#wq-clear')) {
+        S.wq = '';
+        $('info').innerHTML = infoHtml();
+        var f = $('wq');
+        if (f) { try { f.focus({ preventScroll: true }); } catch (err) { /* egal */ } }
+        return;
+      }
+      if (e.target.closest('#wissen-retry')) {
+        ladeWissen();
+        $('info').innerHTML = infoHtml();
+      }
+    });
+
+    /* Von der Ortssuche ins Wissen -- mit demselben Begriff. Ihn dort noch
+       einmal eintippen zu muessen waere genau der Bruch, den die Bruecke
+       schliessen soll. */
+    $('wissbr').addEventListener('click', function (e) {
+      if (!e.target.closest('#wissbr-go')) return;
+      S.wq = S.q;
+      setView('info');
+      window.scrollTo(0, 0);
     });
 
     $('empty-reset').addEventListener('click', resetFilters);
