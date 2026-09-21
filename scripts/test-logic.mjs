@@ -210,6 +210,55 @@ ok('"18.–20.10." ist ein anderer Monat', pk.runsToday({ badge: '18.–20.10.' 
 ok('Badge ohne Datum', pk.runsToday({ badge: 'Der Abend' }, sep19), false);
 ok('kein Badge', pk.runsToday({}, sep19), false);
 
+/* -------------------------------------------------- Termin: die dritte Lage */
+group('terminStand — laeuft, kommt, vorbei');
+
+/* runsToday sagte bis v44 nur ja oder nein, und sein Nein hiess dasselbe
+   fuer einen Ort ohne Termin wie fuer eine Veranstaltung in vier Tagen.
+   Daran lag es, dass die Rievocazione (25.–27.09.) am 21.09. unter "Jetzt"
+   stand und die Festa di Castelnuovo (18.–20.09.) auch noch, als sie
+   vorbei war. */
+const stand = (badge, d) => pk.terminStand({ badge }, new Date(2026, 8, d));
+ok('vor dem Termin', stand('25.–27.09.', 21), 'kommt');
+ok('am ersten Tag', stand('25.–27.09.', 25), 'laeuft');
+ok('am letzten Tag', stand('25.–27.09.', 27), 'laeuft');
+ok('danach', stand('25.–27.09.', 28), 'vorbei');
+ok('Einzeltermin davor', stand('Di 22.09.', 21), 'kommt');
+ok('Einzeltermin danach', stand('Di 22.09.', 23), 'vorbei');
+ok('kein Termin bleibt null', stand('Fine Dining', 21), null);
+ok('ohne Badge bleibt null', pk.terminStand({}, sep19), null);
+
+/* null darf nie zu "laeuft heute nicht" werden -- sonst faellt jeder Ort
+   ohne Datum aus den Vorschlaegen. */
+ok('terminAm ohne Termin ist null', pk.terminAm({ badge: 'Rohfisch' }, '2026-09-21'), null);
+ok('terminAm am falschen Tag', pk.terminAm({ badge: '25.–27.09.' }, '2026-09-21'), false);
+ok('terminAm am richtigen Tag', pk.terminAm({ badge: '25.–27.09.' }, '2026-09-26'), true);
+
+/* Die drei Auskuenfte muessen zu runsToday und daysUntil passen -- sie
+   lesen denselben Ausdruck, und drei Leser driften schneller als zwei. */
+const dreiEinig = [18, 20, 21, 22, 25, 26, 27, 28].every((d) => {
+  const n = new Date(2026, 8, d);
+  const t = { badge: '25.–27.09.' };
+  const st = pk.terminStand(t, n);
+  return pk.runsToday(t, n) === (st === 'laeuft')
+      && (pk.daysUntil(t, n) === null) === (st === 'vorbei');
+});
+truthy('terminStand, runsToday und daysUntil sind sich einig', dreiEinig);
+
+/* Und an den Daten selbst: an jedem Reisetag darf kein Termin als laufend
+   gelten, dessen Spanne den Tag nicht enthaelt. */
+const terminOrte = data.places.filter((p) => pk.terminStand(p, new Date(2026, 8, 19)) !== null);
+const falschLaufend = [];
+for (const p of terminOrte) {
+  for (let d = 14; d <= 28; d++) {
+    const iso = `2026-09-${String(d).padStart(2, '0')}`;
+    const st = pk.terminStand(p, new Date(2026, 8, d));
+    if ((st === 'laeuft') !== (pk.terminAm(p, iso) === true)) falschLaufend.push(`${p.id} ${iso}`);
+  }
+}
+ok('terminAm und terminStand stimmen an allen 15 Reisetagen überein', falschLaufend, []);
+console.log('    ' + 'Orte mit Termin'.padEnd(38) + terminOrte.map((p) => p.id).join(' · '));
+
 /* ------------------------------------------------------------------ Reisetag */
 group('tripDay — Tag n von m aus dem Untertitel');
 

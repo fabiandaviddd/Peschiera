@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v44 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v45 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -344,8 +344,14 @@
   function badgeHtml(p) {
     var k = badgeKind(p);
     if (!k || k === 'dog') return '';
-    return '<span class="card__badge card__badge--' + k + '">'
-      + ICON[BADGE_MARK[k]] + esc(p.badge) + '</span>';
+    /* Ein Termin ist keine feste Eigenschaft: "18.–20.09." ist am 19. eine
+       Einladung und am 21. eine Auskunft ueber die Vergangenheit. Bis v44
+       sah beides gleich aus. In der Liste wird gesucht, also bleibt der
+       Ort stehen -- aber er sagt jetzt, woran man ist. */
+    var vorbei = k === 'termin' && terminStand(p, new Date()) === 'vorbei';
+    return '<span class="card__badge card__badge--' + k
+      + (vorbei ? ' card__badge--vorbei' : '') + '">'
+      + ICON[BADGE_MARK[k]] + esc(p.badge) + (vorbei ? ' · vorbei' : '') + '</span>';
   }
 
   function accentClass(catId) {
@@ -2148,10 +2154,32 @@
   }
 
   function runsToday(p, now) {
+    return terminStand(p, now) === 'laeuft';
+  }
+
+  /* Drei Auskuenfte statt einer. runsToday beantwortete bis v44 nur die
+     erste, und sein "nein" hiess danach dasselbe fuer einen Ort ohne Termin
+     wie fuer eine Veranstaltung, die erst in vier Tagen anfaengt. Genau
+     daran lag es, dass die Rievocazione (25.-27.09.) am 21.09. unter
+     "Jetzt" stand, und die Festa di Castelnuovo (18.-20.09.) auch noch,
+     als sie schon vorbei war.
+
+     null heisst "kein Termin" -- ein Ort ohne Datum ist immer dran und darf
+     nie zu "laeuft heute nicht" umgedeutet werden. */
+  function terminStand(p, now) {
     var sp = badgeSpanne(p, now);
-    if (!sp) return false;
+    if (!sp) return null;
     var heute = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return heute >= sp.von && heute <= sp.bis;
+    if (heute > sp.bis) return 'vorbei';
+    if (heute < sp.von) return 'kommt';
+    return 'laeuft';
+  }
+
+  /* Laeuft der Termin an DIESEM Tag? Fuer die Planung, nicht fuer jetzt:
+     true heisst ja, false heisst nein, null heisst "kein Termin". */
+  function terminAm(p, iso) {
+    var st = terminStand(p, new Date(iso + 'T12:00:00'));
+    return st === null ? null : st === 'laeuft';
   }
 
   /* Wie viele Tage bis der Termin anfaengt. 0 = laeuft heute, null = kein
@@ -2162,11 +2190,11 @@
      Rievocazione beschreibt sich selbst als das ergiebigste Fotomotiv der
      Woche; die braucht einen Vormittag Vorlauf. */
   function daysUntil(p, now) {
+    var st = terminStand(p, now);
+    if (st === null || st === 'vorbei') return null;
+    if (st === 'laeuft') return 0;
     var sp = badgeSpanne(p, now);
-    if (!sp) return null;
     var heute = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (heute > sp.bis) return null;                 // vorbei
-    if (heute >= sp.von) return 0;                   // laeuft
     return Math.round((sp.von - heute) / 86400000);
   }
 
@@ -2212,11 +2240,23 @@
   /* Wie viele Orte des Abschnitts der Schalter gerade herausnimmt. Seit v34
      ist das nur noch das belegte "ohne Jum" -- vier Orte im ganzen Bestand. */
   var jumNeinHeute = 0;
+  /* Wie viele Termine der Abschnitt kennt, die heute nicht stattfinden.
+     Der Leerzustand sagt es -- still schrumpfen tut hier nichts. */
+  var terminNichtHeute = 0;
 
   function todayList(mid, mins, until, now, mitGesehenen) {
     jumNeinHeute = 0;
+    terminNichtHeute = 0;
     var out = D.places.filter(function (p) {
       if (momentsOf(p).indexOf(mid) < 0) return false;
+      /* Ein Termin, der heute nicht laeuft, ist kein Vorschlag fuer jetzt.
+         Anders als beim Ruhetag genuegt hier die Sortierung nicht: ein
+         geschlossenes Lokal koennte morgen dasselbe Lokal sein, eine
+         Veranstaltung am 25. ist am 21. schlicht nicht da. Wer sie sucht,
+         findet sie in der Liste und im Vorlauf ("In 3 Tagen") -- hier wird
+         vorgeschlagen, was jetzt geht. */
+      var stand = terminStand(p, now);
+      if (stand === 'kommt' || stand === 'vorbei') { terminNichtHeute++; return false; }
       /* Nur das belegte Nein faellt heraus -- vier Orte. Ungeklaertes bleibt
          und sinkt weiter unten in der Sortierung; bis v33 flog es mit heraus
          und machte ganze Abschnitte leer. */
@@ -2710,20 +2750,23 @@
     } else {
       /* Lieber zugeben, dass nichts Passendes dasteht, als etwas Schwaches
          vorschlagen. Der Weg in die Liste steht direkt darunter. */
+      /* Was herausgenommen wurde, wird genannt -- beides, damit niemand
+         einen leeren Abschnitt fuer einen leeren Bestand haelt. */
+      var raus = (S.jum && jumNeinHeute ? ' Mit Jum fällt ' + (jumNeinHeute === 1
+            ? 'ein Ort' : jumNeinHeute + ' Orte') + ' mit ausdrücklichem „ohne Jum“ heraus.' : '')
+        + (terminNichtHeute ? ' ' + (terminNichtHeute === 1
+            ? 'Ein Termin findet' : terminNichtHeute + ' Termine finden')
+            + ' heute nicht statt.' : '');
       body = todayGesehen
         ? '<div class="today__none"><h3>Alles schon gesehen</h3><p>'
           + 'Für diesen Tagesabschnitt ' + (todayGesehen === 1
               ? 'ist der eine hinterlegte Ort'
               : 'sind alle ' + todayGesehen + ' hinterlegten Orte')
-          + ' als gesehen markiert.'
-          + (S.jum && jumNeinHeute ? ' Mit Jum fällt ' + (jumNeinHeute === 1
-              ? 'ein Ort' : jumNeinHeute + ' Orte') + ' mit ausdrücklichem „ohne Jum“ heraus.' : '')
+          + ' als gesehen markiert.' + raus
           + '</p><button type="button" class="btn" id="today-seen">'
           + 'Trotzdem zeigen</button></div>'
         : '<div class="today__none"><h3>Hier steht nichts</h3><p>'
-          + 'Für diesen Tagesabschnitt ist nichts hinterlegt.'
-          + (S.jum && jumNeinHeute ? ' Mit Jum fällt ' + (jumNeinHeute === 1
-              ? 'ein Ort' : jumNeinHeute + ' Orte') + ' mit ausdrücklichem „ohne Jum“ heraus.' : '') + '</p></div>';
+          + 'Für diesen Tagesabschnitt ist nichts hinterlegt.' + raus + '</p></div>';
     }
 
     return head + weather + body + aheadHtml(m.id, ref, schonDa)
@@ -3378,6 +3421,21 @@
       + o + '</select></span></div>';
   }
 
+  /* Der Termin in Klartext, gemessen an heute. Ein Ort ohne Datum bekommt
+     hier nichts -- die Zeile entsteht nur, wo ein Termin steht. */
+  function terminSatzHtml(p) {
+    var now = new Date();
+    var st = terminStand(p, now);
+    if (!st) return '';
+    var d = daysUntil(p, now);
+    var txt = st === 'vorbei' ? 'Der Termin ist vorbei.'
+      : st === 'laeuft' ? 'Läuft heute.'
+      : d === 1 ? 'Läuft erst morgen.'
+      : 'Läuft erst in ' + d + ' Tagen.';
+    return '<p class="sheet__termin sheet__termin--' + st + '">'
+      + ICON.dot + '<span>' + esc(p.badge) + ' — ' + txt + '</span></p>';
+  }
+
   function sheetHtml(p) {
     var on = S.saved.indexOf(p.id) >= 0;
     var wasSeen = S.seen.indexOf(p.id) >= 0;
@@ -3397,6 +3455,7 @@
             + (has(p.reviews) ? '<span class="sheet__rate-n">· ' + nf0.format(p.reviews)
                 + ' Bewertungen</span>' : '') + '</p>'
           : '')
+      + terminSatzHtml(p)
       + tilesHtml(p)
       + dogHtml(p)
       + notizHtml(p)
@@ -4680,6 +4739,10 @@
               + '<span class="tagsheet__name"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
               + '<span class="tagsheet__m">' + esc(catLabel(p.category))
               + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
+              /* Ein Termin auf dem falschen Tag ist der teuerste Planfehler
+                 der App: man faehrt hin und steht vor nichts. */
+              + (terminAm(p, iso) === false
+                  ? ' · <span class="tagsheet__zu">läuft an dem Tag nicht</span>' : '')
               + (S.jum ? dogKurz(p) : '') + '</span></span>'
               /* Zwei Knoepfe statt einer Wischgeste: bei einer Handvoll
                  Stationen treffsicherer, und ohne echtes iOS pruefbar.
@@ -4793,6 +4856,8 @@
             + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
             + (closedToday(p, new Date(iso + 'T12:00:00'))
                 ? ' · <span class="tagsheet__zu">an dem Tag zu</span>' : '')
+            + (terminAm(p, iso) === false
+                ? ' · <span class="tagsheet__zu">läuft an dem Tag nicht</span>' : '')
             /* Was die Suche neu hereinholt, ist noch nicht gemerkt. Das
                gehoert dazugesagt: der Knopf legt es in einem Schritt auf den
                Tag UND in die Merkliste. */
@@ -6212,7 +6277,8 @@
       hoursWindow: hoursWindow, closedOn: closedOn, closedToday: closedToday,
       airKmPoint: airKmPoint,
       momentsOf: momentsOf, momentNow: momentNow,
-      runsToday: runsToday, daysUntil: daysUntil, tripDay: tripDay, unverified: unverified,
+      runsToday: runsToday, daysUntil: daysUntil, terminStand: terminStand,
+      terminAm: terminAm, tripDay: tripDay, unverified: unverified,
       closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,
       dur: dur, km: km, norm: norm, haystack: haystack,
       typeSkala: typeSkala, TYPE_MIN: TYPE_MIN, TYPE_MAX: TYPE_MAX,

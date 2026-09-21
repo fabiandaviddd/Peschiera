@@ -90,9 +90,14 @@ ok('geo hat lat und lon', out.places.filter(p=>p.geo).every(p=>typeof p.geo.lat=
 /* Seit v38 traegt places.json nur noch meta, categories und places -- das
    Wissen liegt in data/wissen.json. Geprueft wird deshalb, dass die
    Koordinatensuche NICHTS ausserhalb von places anfasst. */
+/* Gegen den Ausgangszustand, nicht gegen ein eingetipptes Datum: hier stand
+   bis v45 '2026-09-18' fest. Beim ersten Mal, dass jemand meta.stand
+   hochsetzte -- die Koordinatenkorrektur am 21.09. --, meldete die Zusage
+   einen Fehler, den es nicht gab. Eine Pruefung, die bei jeder gepflegten
+   Datenaenderung umfaellt, prueft den Arbeitsstand, nicht die Seite. */
 ok('Rest der Datei unverändert',
-   out.meta.stand==='2026-09-18' && Object.keys(out).join(',')==='meta,categories,places',
-   `${out.meta.stand} | ${Object.keys(out).join(',')}`);
+   out.meta.stand===DATEN.meta.stand && Object.keys(out).join(',')==='meta,categories,places',
+   `${out.meta.stand} (erwartet ${DATEN.meta.stand}) | ${Object.keys(out).join(',')}`);
 
 // Zurücksetzen
 page.on('dialog', d=>d.accept());

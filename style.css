@@ -579,6 +579,13 @@ body.is-compact .bar__top {
    Ungeprueft und Einschraenkung schraenken ein, also sind sie offen. */
 .card__badge--termin { color: var(--brick-ink); }
 .card__badge--unverified { color: var(--brick-ink); border-style: dashed; }
+/* Ein Termin, der vorbei ist, behaelt seine Marke und verliert seinen
+   Anspruch: gedaempft und gestrichelt wie alles, was nicht mehr gilt.
+   Weggelassen wird er nicht -- in der Liste wird gesucht, und "gab es"
+   ist eine Auskunft. */
+.card__badge--termin.card__badge--vorbei {
+  color: var(--soft); border-color: var(--line); border-style: dashed;
+}
 /* Tageszeit ist Zusammenhang, keine Empfehlung — sie tritt zurueck. */
 .card__badge--moment { color: var(--soft); border-color: var(--line); }
 .card__badge--limit { color: var(--soft); border-style: dashed; }
@@ -927,6 +934,20 @@ body.is-compact .bar__top {
   font-variant-numeric: tabular-nums; margin-bottom: .9rem; }
 .sheet__rate svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
 .sheet__rate-n { font-weight: 400; color: var(--soft); }
+
+/* Der Termin im Klartext. Er steht ueber den Kacheln, weil er die Frage
+   davor beantwortet: ob es den Ort an diesem Tag ueberhaupt gibt. */
+.sheet__termin {
+  display: flex; align-items: flex-start; gap: .4rem;
+  font-size: var(--t-meta); font-weight: 500; color: var(--soft);
+  border: 1px dashed var(--rand); border-radius: var(--r-card);
+  padding: .5rem .65rem; margin-bottom: .9rem;
+}
+.sheet__termin svg { width: 13px; height: 13px; flex: 0 0 auto;
+  margin-top: .18rem; fill: currentColor; stroke: none; }
+.sheet__termin--laeuft {
+  color: var(--verde-ink); border-style: solid; border-color: currentColor;
+}
 
 /* Weg, Dauer und Oeffnung als Kacheln. Bis v10 standen sie als Zeilen in
    einer Definitionsliste mit 6,2rem breiter Label-Spalte — das Gewicht lag

@@ -583,7 +583,7 @@ Dienst dazwischen — siehe unten.
 ## Prüfstand
 
 ```bash
-node scripts/browser/run.mjs     # 727 Prüfungen im Browser, startet den Server selbst
+node scripts/browser/run.mjs     # 744 Prüfungen im Browser, startet den Server selbst
 node scripts/test-logic.mjs      # Logik ohne Browser
 ```
 
@@ -1364,6 +1364,7 @@ scripts/browser/*.mjs   eine Datei je Thema (plan, hund, karte, close, ios …)
 scripts/browser/startfrei.mjs  Helfer: räumt die Startkarten aus dem Weg
 scripts/browser-abnahme.mjs  ältere Gesamtabnahme samt Bildschirmabzügen
 scripts/add-coords.mjs  einmaliges Geocoding für die Karte
+scripts/check-coords.mjs  hält jede Koordinate gegen den Namen in OpenStreetMap
 scripts/make-icons.py   Icon-Generator
 scripts/make-matrix.mjs Eichung der Wegerechnung (Umwegfaktor, Gegenprobe)
 scripts/make-wissen.mjs Die einmalige Umstellung auf wissen.json, als Beleg
@@ -1380,9 +1381,77 @@ Wer hier neu anfängt, liest **`docs/uebergabe.md`** zuerst. Dort stehen die
 Konventionen, die Fallen (parallele Zweige, doppelte JSON-Schlüssel,
 Kontrast richtig messen, was iOS anders macht) und was offen ist.
 
+## Was heute nicht stattfindet, wird heute nicht vorgeschlagen
+
+Gemeldet aus der Benutzung: *„Rievocazione Storica Peschiera ist für heute
+angezeigt, ist aber erst später in der Woche."* Das stimmte, und der Grund
+war eine Lücke, die vier Orte betraf.
+
+Die App kannte den Termin: `badgeSpanne()` liest „25.–27.09." seit `v21` aus
+dem Badge, `runsToday()` sortiert einen laufenden Termin nach oben, und
+`daysUntil()` blendet drei Tage vorher die Zeile „In 3 Tagen" ein. Nur
+**herausgenommen** wurde nie etwas. `runsToday()` sagte ja oder nein, und
+sein Nein hieß dasselbe für einen Ort ohne Datum wie für eine Veranstaltung
+in vier Tagen. So stand am 21.09. die Rievocazione (25.–27.09.) im Stapel —
+und die Festa dell'Uva (18.–20.09.) stand noch darin, als sie vorbei war.
+
+Seit `v45` gibt `terminStand()` **drei** Auskünfte: `laeuft`, `kommt`,
+`vorbei` — und `null` für jeden Ort ohne Datum. Das `null` ist die wichtige
+Hälfte: Es darf nie zu „läuft heute nicht" umgedeutet werden, sonst fiele
+der ganze Bestand aus den Vorschlägen.
+
+Daraus folgen vier Dinge:
+
+- **„Jetzt" schlägt nur vor, was heute geht.** Anders als beim Ruhetag
+  genügt Hochsortieren hier nicht: Ein geschlossenes Lokal ist morgen
+  dasselbe Lokal, eine Veranstaltung am 25. ist am 21. schlicht nicht da.
+  Wird dadurch ein Abschnitt leer, sagt der Leerzustand, wie viele Termine
+  herausgefallen sind — still schrumpfen tut hier nichts.
+- **Im Ort steht der Klartext.** „25.–27.09. — Läuft erst in 4 Tagen.",
+  „Läuft heute.", „Der Termin ist vorbei."
+- **In der Liste bleibt der Ort stehen** — dort wird gesucht, und „gab es"
+  ist eine Auskunft. Sein Badge sagt es aber: gedämpft, gestrichelt, mit
+  einem angehängten „· vorbei".
+- **Der Tagesplan warnt.** Die Rievocazione auf den Dienstag zu legen und am
+  Dienstag vor der leeren Festung zu stehen, ist der teuerste Planfehler,
+  den diese App zulässt. Im Tages-Sheet steht jetzt „läuft an dem Tag
+  nicht" — bei der Suche wie bei dem, was schon drin liegt.
+
+`scripts/browser/termin.mjs` prüft das mit **gestellter Uhr**
+(`page.clock`). Ohne sie wäre jede dieser Zusagen am 28.09. still falsch —
+eine Prüfung, die nur bis nächste Woche gilt, ist keine. Die Termine liest
+die Prüfung aus `places.json`, nicht aus einer Liste in sich selbst.
+
+## Koordinaten: der Name muss stimmen, nicht nur die Straße
+
+Zweite Meldung aus der Benutzung: *„Spiaggia Lido ai Poppi ist komplett
+falsch in der Karte."* Auch das stimmte — der Strand lag 570 m neben dem
+Zeltplatz, auf dessen Gelände er liegt.
+
+Die beiden Regeln der Koordinatenprüfung (`docs/koordinaten-pruefliste.md`)
+fangen den groben Fehler: Lazise statt Peschiera, Luftlinie länger als die
+Straße. Den häufigeren fangen sie nicht. Nominatim liefert auf
+*Lungolago Giuseppe Garibaldi 17* die **Straße** statt der Hausnummer, und
+die Straße ist einen halben Kilometer lang. Der Punkt liegt dann im
+richtigen Ort, in der richtigen Straße — und trotzdem falsch.
+
+`node scripts/check-coords.mjs` fragt deshalb nach dem **Namen** und lässt
+Straßen, Gemeinden, Grenzen, Flächennutzung und Bahnanlagen als Bestätigung
+nicht gelten. Bei allen 101 Orten ausgeführt, fand das fünf falsche Punkte:
+Lido ai Pioppi (auf der Straße), Torre di San Martino (im Dorf statt auf dem
+Turm), S'Aligusta (auf der Straße), Parco Sigurtà (1,1 km neben dem Park)
+und Lago del Frassino (auf einem Hotel am Ufer). Alle fünf stehen jetzt auf
+dem benannten Objekt; die Tabelle mit Quelle und Verschiebung steht in der
+Prüfliste, ebenso die zwei Fälle, die **offen bleiben** statt geraten zu
+werden.
+
+Das Skript braucht Netz und läuft deshalb nicht im Prüfstand mit — wie
+`add-coords.mjs` ist es Handarbeit, fällig immer dann, wenn eine Adresse
+sich ändert.
+
 ## Getestet
 
-727 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
+744 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
 Sortierung kombiniert, Merkliste über einen Reload, Detail-Sheet ohne
 Layout-Shift, Dark Mode samt Override und Systempräferenz, Touch-Ziele,
 Flugmodus-Test (offline laden, suchen, Merkliste), Fehlerzustand mit Retry und

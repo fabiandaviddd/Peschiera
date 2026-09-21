@@ -7,8 +7,8 @@
       "lat": 45.448194,
       "lon": 10.697694
     },
-    "note": "Alle Entfernungen ab dem Zeltplatz. distance_km und walk_min sind am 19.09.2026 fuer die 48 Orte mit Gehzeit neu gerechnet — Fusswegrouting ab meta.base_geo (dem Stellplatz). Die alten Werte stammten von Google Maps ab der Einfahrt und lagen im Median 0,38 km zu niedrig. Bewertungen und Öffnungsstatus: Google Maps, Stand 17.09.2026. Fahrpläne und Preise: Trenitalia, Navigazione Laghi, ATV und offizielle Seiten. Ergänzung 18.09.2026: alle Orte haben jetzt time_min (Minuten, empfohlene Aufenthaltsdauer ohne Anfahrt) und time_label (Textfassung). Die am 18.09. ergänzten Orte tragen geschätzte Geh- und Fahrzeiten; Preise und Öffnungszeiten stehen nur dort, wo sie belegt waren, sonst 'ungeprüft'.",
-    "stand": "2026-09-18",
+    "note": "Alle Entfernungen ab dem Zeltplatz. distance_km und walk_min sind am 19.09.2026 fuer die 48 Orte mit Gehzeit neu gerechnet — Fusswegrouting ab meta.base_geo (dem Stellplatz). Die alten Werte stammten von Google Maps ab der Einfahrt und lagen im Median 0,38 km zu niedrig. Bewertungen und Öffnungsstatus: Google Maps, Stand 17.09.2026. Fahrpläne und Preise: Trenitalia, Navigazione Laghi, ATV und offizielle Seiten. Ergänzung 18.09.2026: alle Orte haben jetzt time_min (Minuten, empfohlene Aufenthaltsdauer ohne Anfahrt) und time_label (Textfassung). Die am 18.09. ergänzten Orte tragen geschätzte Geh- und Fahrzeiten; Preise und Öffnungszeiten stehen nur dort, wo sie belegt waren, sonst 'ungeprüft'. Korrektur 21.09.2026: fünf Koordinaten lagen auf einer Straße, in einem Dorf oder auf einem Nachbargebäude statt auf dem Ort selbst — Lido ai Pioppi (570 m neben dem Zeltplatz, auf dem der Strand liegt), Torre di San Martino (im Dorf statt auf dem Turm), S'Aligusta (auf der Via Bell'Italia ohne Hausnummer), Parco Sigurtà (1,1 km neben dem Park) und Lago del Frassino (auf einem Hotel am Ufer). Alle fünf stehen jetzt auf dem benannten Objekt aus OpenStreetMap; nachzuprüfen mit scripts/check-coords.mjs. Bei Lido ai Pioppi sind distance_km und walk_min mitgewandert (0,8 km / 10 Min → 0,3 km / 4 Min); sie sind dort als einzige gerechnet (Luftlinie × 1,50 bei 4,5 km/h) und nicht geroutet.",
+    "stand": "2026-09-21",
     "fields": {
       "time_min": "Empfohlene Aufenthaltsdauer in Minuten, ohne An- und Abreise. Für Tagesplanung und Sortierung.",
       "time_label": "Menschenlesbare Fassung, oft mit kurzer und ausführlicher Variante."
@@ -890,8 +890,8 @@
         "vögel"
       ],
       "geo": {
-        "lat": 45.435601,
-        "lon": 10.661229
+        "lat": 45.436723,
+        "lon": 10.665325
       },
       "time_min": 75,
       "moment": [
@@ -1261,8 +1261,8 @@
         "rad"
       ],
       "geo": {
-        "lat": 45.354518,
-        "lon": 10.74239
+        "lat": 45.357904,
+        "lon": 10.734014
       },
       "time_min": 240,
       "moment": [
@@ -1282,8 +1282,8 @@
       "rating": 4.2,
       "reviews": 806,
       "hours": "öffnet 9:30",
-      "walk_min": 10,
-      "distance_km": 0.8,
+      "walk_min": 4,
+      "distance_km": 0.3,
       "bike_min": null,
       "dog": true,
       "tags": [
@@ -1292,8 +1292,8 @@
         "hund"
       ],
       "geo": {
-        "lat": 45.443321,
-        "lon": 10.695487
+        "lat": 45.447855,
+        "lon": 10.694929
       },
       "time_min": 180,
       "moment": [
@@ -1698,8 +1698,8 @@
         "sardisch"
       ],
       "geo": {
-        "lat": 45.441677,
-        "lon": 10.675898
+        "lat": 45.444785,
+        "lon": 10.672062
       },
       "time_min": 120,
       "moment": [
@@ -2487,8 +2487,8 @@
         "foto"
       ],
       "geo": {
-        "lat": 45.438661,
-        "lon": 10.597953
+        "lat": 45.425218,
+        "lon": 10.602496
       },
       "time_min": 120,
       "moment": [
