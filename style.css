@@ -497,16 +497,22 @@ body.is-compact .bar__top {
   align-items: start;
   /* Eine Hoehe fuer alle 101 Zeilen. Bis v9 gab es drei (97/100/122 px), je
      nachdem ob die Faktenreihe umbrach — kein Raster, an dem das Auge beim
-     Scrollen einrastet. Jede der vier Zeilen ist jetzt einzeilig gedeckelt,
-     die Hoehe ergibt sich daraus und wird hier festgehalten. */
-  height: 6.05rem;
-  padding: .52rem 3.1rem .58rem .85rem;
+     Scrollen einrastet. Jede Zeile ist einzeilig gedeckelt, die Hoehe
+     ergibt sich daraus und wird hier festgehalten.
+
+     Seit v42 sind es DREI Zeilen statt vier: Kategorie und Adresse (oder
+     Badge) teilen sich eine. 4,9rem statt 6,05rem, also rund 78 statt 97 px
+     -- und sieben statt fuenfeinhalb sichtbare Zeilen auf 402x754. Rechts
+     steht kein Knopfpaar mehr, sondern ein Chip; der Innenabstand dort
+     richtet sich nach ihm. */
+  height: 4.9rem;
+  padding: .45rem 5.6rem .5rem .85rem;
   background: var(--card);
   border-bottom: 1px solid var(--line);
   border-left: 3px solid var(--accent, var(--line));
 }
 
-/* Deckt die ganze Karte ab, damit jeder Tap öffnet. Liegt unter dem Stern. */
+/* Deckt die ganze Karte ab, damit jeder Tap öffnet. Liegt unter dem Chip. */
 .card__open {
   position: absolute; inset: 0; z-index: 0;
   cursor: pointer; background: none; padding: 0;
@@ -533,6 +539,19 @@ body.is-compact .bar__top {
 .card__rating .fact__n { margin-left: .28rem; text-align: right; }
 .card__meta { display: flex; flex-wrap: nowrap; align-items: center; gap: .25rem .45rem;
   overflow: hidden; }
+/* Die Adresse steht seit v42 neben der Kategorie, wenn es keinen Badge gibt:
+   beides sagt "was fuer einer ist das", und die Adresse stand vorher nur im
+   Sheet. Sie darf kuerzen -- der Name ist die Spitze der Zeile. */
+.card__adr, .card__meta .card__mine, .card__meta .card__note {
+  flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-size: var(--t-meta); color: var(--soft);
+}
+/* Die eigene Notiz steht in derselben Zeile wie die Kategorie, traegt aber
+   ihr Zeichen: sie ist das Einzige hier, was von einem selbst kommt. */
+.card__meta .card__mine { display: inline-flex; align-items: center; gap: .25rem;
+  color: var(--gold-ink); }
+.card__meta .card__mine svg { width: 13px; height: 13px; flex: 0 0 auto;
+  fill: none; stroke: currentColor; stroke-width: 1.8; }
 .card__meta > * { flex: 0 0 auto; }
 /* Der Badge ist der einzige Freitext hier und darf als einziger kuerzen. */
 .card__badge { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
@@ -628,8 +647,39 @@ body.is-compact .bar__top {
 
 /* Merken-Stern und Gesehen-Haken */
 .card__marks {
-  position: absolute; top: .3rem; right: .3rem; z-index: 1;
-  display: grid; align-content: start;
+  position: absolute; top: 0; right: .55rem; bottom: 0; z-index: 1;
+  display: grid; align-content: center;
+}
+
+/* --- Der Tag-Chip in der Listenzeile ------------------------------------
+   Bis v41 standen hier zwei runde Knoepfe: Stern und Haken. Der Weg von
+   "das will ich" zu "am Mittwoch" ging trotzdem ueber den Reiterwechsel.
+   Jetzt ein Chip, und er ist der ganze Weg. */
+.daychip { position: relative; display: inline-grid; }
+.daychip select {
+  appearance: none; -webkit-appearance: none;
+  min-height: 2.1rem; min-width: 4.4rem;
+  padding: .25rem .55rem;
+  font-family: var(--font-body); font-size: var(--t-meta); font-weight: 600;
+  text-align: center;
+  color: var(--soft); background: none;
+  border: 1px dashed var(--rand); border-radius: var(--r-pill);
+  cursor: pointer;
+}
+/* Gemerkt, aber ohne Tag: gefuellt statt gestrichelt, Gold -- die Hausfarbe
+   fuer Gemerktes. Mit Tag: Seeblau, "hier ist etwas an". */
+.daychip--vorrat select {
+  border-style: solid; color: var(--gold-ink); border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+}
+.daychip--tag select {
+  border-style: solid; color: var(--lake-ink); border-color: var(--lake);
+  background: color-mix(in srgb, var(--lake) 12%, transparent);
+}
+/* Die Trefferflaeche bleibt bei 44 px, auch wenn der Chip flacher aussieht:
+   ein unsichtbarer Rand um das Bedienelement, wie ihn iOS selbst benutzt. */
+.daychip::after {
+  content: ''; position: absolute; inset: -11px -6px;
 }
 
 .star, .seen {

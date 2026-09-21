@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v41 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v42 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -1844,6 +1844,45 @@
     return f.length ? '<div class="facts">' + f.join('') + '</div>' : '';
   }
 
+  /* "Piazza Ferdinando di Savoia, Peschiera del Garda" ist in einer Zeile,
+     die sich eine Kategorie teilt, nicht unterzubringen -- und der Ort
+     dahinter steht ohnehin in der Zaehlzeile ("ab dem Zeltplatz"). Also nur
+     bis zum ersten Komma. */
+  function kurzAdresse(a) {
+    return String(a == null ? '' : a).split(',')[0].trim();
+  }
+
+  /* Das zweite Merkmal in der Kategoriezeile. Vier Kandidaten, in dieser
+     Reihenfolge:
+
+     1. Die EIGENE Notiz. Sie ist das, was man selbst herausgefunden hat, und
+        schlaegt jeden Katalogtext.
+     2. Bei aktiver Suche: die Stelle, an der der Begriff steht. Eine Zeile,
+        die als Treffer dasteht, muss sagen WARUM -- sonst raet man, warum
+        ausgerechnet die. ausschnitt() faengt dafuer vor der Fundstelle an.
+     3. Der Badge. Er ist Kuratierung ("Bei Sonne zuerst"), keine Taxonomie.
+     4. Die Adresse. Sie sagt, wo man landet, und stand vorher nur im Sheet.
+
+     Genau EINER davon, nie zwei: die Zeile hat einen Platz. */
+  function zweitesMerkmal(p) {
+    if (S.notes[p.id]) {
+      return '<span class="card__mine">' + ICON.note + markiere(ausschnitt(S.notes[p.id]))
+        + '</span>';
+    }
+    var terms = norm(S.q).split(/\s+/).filter(Boolean);
+    if (terms.length && has(p.note)) {
+      var heu = norm(p.note);
+      if (terms.some(function (t) { return heu.indexOf(t) >= 0; })) {
+        return '<span class="card__note">' + markiere(ausschnitt(p.note)) + '</span>';
+      }
+    }
+    var b = badgeHtml(p);
+    if (b) return b;
+    return has(p.address)
+      ? '<span class="card__adr" lang="it">' + esc(kurzAdresse(p.address)) + '</span>'
+      : '';
+  }
+
   /* Die Zahl der Bewertungen steht in einer eigenen, fest breiten Spalte —
      sonst schoebe "(1.478)" die Wertung weiter nach links als "(806)" und
      die Spalte, die man scannen koennen soll, waere krumm. Sie wird auch
@@ -1856,8 +1895,51 @@
       + '</span>';
   }
 
+  /* --- Der Tag-Chip in der Listenzeile ---------------------------------
+
+     Bis v41 trug jede Zeile zwei runde Knoepfe rechts: Stern (merken) und
+     Haken (gesehen). Der Weg von "das will ich" zu "am Mittwoch" ging
+     trotzdem ueber den Reiterwechsel -- merken, nach "Reise", Waehler
+     suchen, Tag setzen. Vier Schritte fuer einen Gedanken, und der Stern
+     sagte unterwegs nur "irgendwann".
+
+     Seit v42 steht dort EIN Chip, und er ist der ganze Weg: "+ Tag", wenn
+     der Ort noch nirgends steht; "Vorrat", wenn er gemerkt, aber undatiert
+     ist; sonst der Tag selbst ("So 20."). Ein natives select -- auf dem
+     Zielgeraet oeffnet iOS sein Waehlrad, vertraut und treffsicher, und
+     ohne eine Zeile eigenen Menue-Codes.
+
+     Der Haken faellt damit aus der Zeile. "Gesehen" ist seit v35 der
+     Abschluss eines Tages und steht dort, wo er hingehoert: als Kaestchen
+     im Tagesplan und als Knopf im Ort selbst. In der Liste SUCHT man --
+     dort ist "erledigt" eine Auskunft (die gedaempfte Zeile sagt sie), kein
+     Bedienelement. */
+  function tagChipHtml(p) {
+    var gemerkt = S.saved.indexOf(p.id) >= 0;
+    var tag = gemerkt ? planTagVon(p.id, tagKennungen()) : '';
+    var heute = isoTag(new Date());
+
+    var o = '';
+    if (!gemerkt) o += '<option value="" selected>+ Tag</option>';
+    o += '<option value="vorrat"' + (gemerkt && !tag ? ' selected' : '') + '>Vorrat</option>';
+    tripTage().forEach(function (t) {
+      /* Ein vergangener Tag laesst sich nicht mehr verplanen -- er bleibt
+         waehlbar, solange er der aktuelle Wert ist. */
+      var vorbei = t.iso < heute;
+      o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '')
+        + (vorbei && tag !== t.iso ? ' disabled' : '') + '>'
+        + esc(t.kurz.replace(/\.\d\d\.$/, '.')) + '</option>';
+    });
+    if (gemerkt) o += '<option value="weg">Entfernen</option>';
+
+    var zu = gemerkt ? (tag ? ' daychip--tag' : ' daychip--vorrat') : '';
+    return '<span class="daychip' + zu + '">'
+      + '<select data-daychip="' + esc(p.id) + '"'
+      + ' aria-label="' + esc(p.name) + ': Reisetag wählen oder merken">'
+      + o + '</select></span>';
+  }
+
   function cardHtml(p) {
-    var on = S.saved.indexOf(p.id) >= 0;
     var wasSeen = S.seen.indexOf(p.id) >= 0;
     /* Der Name ist eine echte Überschrift (nicht im Knopf verschachtelt, das
        wäre ungültig). Geöffnet wird über einen Knopf, der die Karte überdeckt. */
@@ -1866,29 +1948,20 @@
       + '<h3 class="card__name"' + langAttr(p.name) + '>' + esc(p.name) + '</h3>'
       + ratingHtml(p)
       + '</div>'
+      /* Kategorie und ein zweites Merkmal teilen sich seit v42 eine Zeile --
+         daher 78 px statt 97 und sieben statt fuenfeinhalb sichtbaren
+         Zeilen auf 402x754. Die Beschreibung ist damit aus der Zeile heraus;
+         sie steht weiter im Ort. */
       + '<p class="card__meta">'
       + '<span class="card__cat">' + esc(catLabel(p.category)) + '</span>'
-      + badgeHtml(p)
+      + zweitesMerkmal(p)
       + (wasSeen ? '<span class="card__seen">' + ICON.check + 'Gesehen</span>' : '')
       + '</p>'
-      /* Die Notiz ist einzeilig gekuerzt. Damit die Markierung trotzdem im
-         Bild steht, faengt der Text bei aktiver Suche vor der Fundstelle an
-         -- siehe ausschnitt(). Im Sheet steht weiterhin der volle Satz. */
-      /* Die eigene Notiz steht VOR der Beschreibung: sie ist das, was man
-         selbst herausgefunden hat, und schlaegt damit den Katalogtext. */
-      + (S.notes[p.id] ? '<p class="card__mine">' + ICON.note + esc(S.notes[p.id]) + '</p>' : '')
-      + (has(p.note) ? '<p class="card__note">' + markiere(ausschnitt(p.note)) + '</p>' : '')
       + factsHtml(p)
       + '<button type="button" class="card__open" data-open="' + esc(p.id) + '"'
       + ' aria-label="' + esc(p.name) + ' — Details"></button>'
-      + '<span class="card__marks">'
-      + '<button type="button" class="star" data-save="' + esc(p.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
-      + '<span class="sr-only">' + (on ? 'Aus der Merkliste entfernen' : 'Merken') + '</span>'
-      + ICON.star + '</button>'
-      + '<button type="button" class="seen" data-seen="' + esc(p.id) + '" aria-pressed="' + (wasSeen ? 'true' : 'false') + '">'
-      + '<span class="sr-only">' + (wasSeen ? 'Als noch nicht gesehen markieren' : 'Als gesehen markieren') + '</span>'
-      + ICON.checkRound + '</button>'
-      + '</span>'
+      /* Ein Chip statt zweier runder Knoepfe. Siehe tagChipHtml(). */
+      + '<span class="card__marks">' + tagChipHtml(p) + '</span>'
       + '</article>';
   }
 
@@ -3385,8 +3458,14 @@
     }
 
     /* Karte direkt nachziehen statt die ganze Liste neu zu bauen — sonst
-       springt die Ansicht und der Fokus geht verloren. */
-    var mark = document.querySelector('.card [data-seen="' + id.replace(/"/g, '\\"') + '"]');
+       springt die Ansicht und der Fokus geht verloren.
+
+       Gesucht wird ueber den Oeffnen-Knopf, nicht mehr ueber den Haken: seit
+       v42 traegt die Listenzeile keinen Haken mehr, und "gesehen" wird im
+       Ort oder im Tagesplan gesetzt. Die Zeile muss trotzdem nachziehen --
+       sonst stuende sie bis zum naechsten Neuzeichnen ungedaempft da,
+       waehrend die Zaehlzeile darueber schon "1 gesehen" sagt. */
+    var mark = document.querySelector('.card [data-open="' + id.replace(/"/g, '\\"') + '"]');
     var art = mark ? mark.closest('.card') : null;
     if (art) {
       art.classList.toggle('card--seen', now);
@@ -3853,6 +3932,39 @@
     render();
   }
 
+  /* Der Chip in der Listenzeile ist drei Bedienelemente in einem: merken,
+     einen Tag geben, wieder herausnehmen. Welche Wirkung gilt, steht im
+     Wert der gewaehlten Option. */
+  function setChip(id, wert) {
+    if (wert === 'weg') {
+      /* Aus der Reise nehmen heisst: aus der Merkliste UND ohne Tag. Der
+         Tag bleibt gespeichert -- ein Fehltipp kostet keine Planung, und
+         wer den Ort wieder merkt, bekommt ihn zurueck (siehe setDay). */
+      if (S.saved.indexOf(id) >= 0) toggleSave(id);
+      render();
+      fokusChip(id);
+      return;
+    }
+    if (S.saved.indexOf(id) < 0) {
+      S.saved.push(id);
+      lsSet(LS_SAVED, S.saved);
+      stempel(id, 's');
+      syncTabs();
+    }
+    /* "Vorrat" heisst gemerkt ohne Tag -- derselbe Weg wie "Tag offen" im
+       Ortssheet. */
+    setDay(id, wert === 'vorrat' ? '' : wert);
+    fokusChip(id);
+  }
+
+  /* Nach dem Neuzeichnen liegt der Fokus im Nichts. Fuer Tastatur und
+     Vorleser gehoert er zurueck auf denselben Chip. */
+  function fokusChip(id) {
+    var wieder = $('list').querySelector(
+      'select[data-daychip="' + id.replace(/"/g, '\\"') + '"]');
+    if (wieder) { try { wieder.focus({ preventScroll: true }); } catch (e) { /* egal */ } }
+  }
+
   function setDay(id, iso) {
     if (iso) S.days[id] = iso; else delete S.days[id];
     lsSet(LS_DAYS, S.days);
@@ -3887,8 +3999,10 @@
     }
     render();
     /* Der Neuaufbau wirft den Fokus weg; fuer Tastaturnutzer gehoert er
-       zurueck auf den Waehler desselben Orts. */
-    var wieder = $('list').querySelector('select[data-day="' + id.replace(/"/g, '\\"') + '"]');
+       zurueck auf den Waehler desselben Orts -- im Vorrat ist das der
+       Tageswaehler, in der Ortsliste der Chip. */
+    var wieder = $('list').querySelector('select[data-day="' + id.replace(/"/g, '\\"') + '"]')
+      || $('list').querySelector('select[data-daychip="' + id.replace(/"/g, '\\"') + '"]');
     if (wieder) { try { wieder.focus({ preventScroll: true }); } catch (e) { /* egal */ } }
   }
 
@@ -5194,7 +5308,9 @@
 
     $('list').addEventListener('change', function (e) {
       var day = e.target.closest('select[data-day]');
-      if (day) setDay(day.getAttribute('data-day'), day.value);
+      if (day) { setDay(day.getAttribute('data-day'), day.value); return; }
+      var chip = e.target.closest('select[data-daychip]');
+      if (chip) setChip(chip.getAttribute('data-daychip'), chip.value);
     });
 
     $('list').addEventListener('click', function (e) {

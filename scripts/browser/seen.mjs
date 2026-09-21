@@ -45,9 +45,23 @@ const cards = () => page.$$('#list .card');
 ok('Chip "Noch nicht gesehen" im Filter',
    (await imFilter(page, ()=>chipMit(page,'Noch nicht gesehen'))).da);
 
-// Auf der Karte als gesehen markieren
+/* Seit v42 traegt die Listenzeile KEINEN Haken mehr. Der Weg von "das will
+   ich" zu "am Mittwoch" ging bis dahin ueber vier Schritte, und die Zeile
+   war 97 px hoch, weil rechts zwei runde Knoepfe standen. Jetzt steht dort
+   ein Chip, der merkt UND den Tag gibt; "gesehen" ist der Abschluss eines
+   Tages und steht dort, wo er hingehoert: im Tagesplan und im Ort selbst.
+
+   In der Liste SUCHT man -- dort ist "erledigt" eine Auskunft (die
+   gedaempfte Zeile sagt sie), kein Bedienelement. */
 const first = page.locator('#list .card').first();
-await first.locator('.seen').click(); await page.waitForTimeout(120);
+ok('die Listenzeile traegt keinen Haken mehr', (await first.locator('.seen').count()) === 0);
+ok('… und keinen Stern', (await first.locator('.star').count()) === 0);
+ok('… sondern einen Tag-Chip', (await first.locator('.daychip select').count()) === 1);
+
+// Als gesehen markiert wird im Ort
+await page.locator('#list .card__open').first().click(); await page.waitForTimeout(450);
+await page.click('#sheet-body [data-seen]'); await page.waitForTimeout(200);
+await page.keyboard.press('Escape'); await page.waitForTimeout(450);
 ok('Karte als gesehen markiert', await first.evaluate(e=>e.classList.contains('card--seen')));
 ok('Marke "gesehen" sichtbar', await first.locator('.card__seen').count() === 1);
 ok('Zähler zeigt "1 gesehen"', (await page.textContent('#count')).includes('1 gesehen'),
@@ -56,11 +70,13 @@ ok('Zähler zeigt "1 gesehen"', (await page.textContent('#count')).includes('1 g
 ok('localStorage pk.seen gesetzt', (await page.evaluate(()=>JSON.parse(localStorage.getItem('pk.seen')))).length===1);
 
 // Gesehen ist unabhängig vom Merken
-ok('Stern unberührt', await first.locator('.star').getAttribute('aria-pressed') === 'false');
-await first.locator('.star').click(); await page.waitForTimeout(100);
+ok('der Chip steht noch auf "+ Tag"',
+   (await first.locator('.daychip select').inputValue()) === '',
+   await first.locator('.daychip select').inputValue());
+await first.locator('.daychip select').selectOption('vorrat'); await page.waitForTimeout(350);
 ok('Beides gleichzeitig möglich',
-   await first.locator('.star').getAttribute('aria-pressed')==='true' &&
-   await first.locator('.seen').getAttribute('aria-pressed')==='true');
+   (await page.evaluate(()=>JSON.parse(localStorage.getItem('pk.saved')||'[]'))).length===1 &&
+   (await page.evaluate(()=>JSON.parse(localStorage.getItem('pk.seen')||'[]'))).length===1);
 
 // Filter
 await imFilter(page, ()=>chipKlick(page,'Noch nicht gesehen'));
@@ -92,12 +108,20 @@ await page.reload({waitUntil:'networkidle'}); await page.waitForSelector('#app:n
 ok('Gesehen übersteht Reload', await page.locator('#list .card').first().evaluate(e=>e.classList.contains('card--seen'))
    && (await page.textContent('#count')).includes('1 gesehen'));
 
-// Tippen auf den Haken darf das Sheet nicht öffnen
-await page.locator('#list .card').nth(1).locator('.seen').click(); await page.waitForTimeout(300);
-ok('Haken öffnet kein Sheet', await page.$eval('#sheet', e=>e.hidden));
-ok('Touch-Ziele der Marken ≥44px', await page.evaluate(()=>
-  [...document.querySelectorAll('.star,.seen')].every(e=>{
-    const r=e.getBoundingClientRect(); return r.width>=44 && r.height>=44; })));
+// Tippen auf den Chip darf das Sheet nicht öffnen
+await page.locator('#list .card').nth(1).locator('.daychip select')
+  .selectOption('vorrat'); await page.waitForTimeout(350);
+ok('der Chip öffnet kein Sheet', await page.$eval('#sheet', e=>e.hidden));
+/* Der Chip sieht flacher aus als 44 px -- seine Trefferflaeche ist es nicht.
+   Der unsichtbare Rand darum ist dieselbe Loesung, die iOS selbst benutzt. */
+ok('Trefferfläche des Chips ≥44px', await page.evaluate(()=>{
+  const c=document.querySelector('.daychip');
+  const s=getComputedStyle(c,'::after');
+  const r=c.getBoundingClientRect();
+  const hoch = r.height - parseFloat(s.top) - parseFloat(s.bottom);
+  const breit = r.width - parseFloat(s.left) - parseFloat(s.right);
+  return hoch>=44 && breit>=44;
+}));
 ok('Keine JS-Fehler', errs.length===0, errs.join(' | '));
 
 if (SHOT) await page.screenshot({ path: SHOT + '/seen.png' });

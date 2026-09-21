@@ -40,10 +40,21 @@ ok('Hinweis "Noch nichts markiert"', (await A.textContent('#sharebar-t')).includ
 
 // Fabi markiert etwas
 await A.click('[data-tab="orte"]'); await A.waitForTimeout(150);
-await A.locator('#list .card', {has: A.locator('.card__name',{hasText:'Barcaccia'})}).first().locator('.star').click();
-await A.locator('#list .card', {has: A.locator('.card__name',{hasText:'Lido ai Pioppi'})}).first().locator('.star').click();
-await A.locator('#list .card', {has: A.locator('.card__name',{hasText:'Festung Peschiera'})}).first().locator('.seen').click();
-await A.waitForTimeout(150);
+/* Seit v42 merkt der Tag-Chip in der Zeile; einen Haken gibt es dort nicht
+   mehr -- "gesehen" steht im Ort und im Tagesplan. */
+await A.locator('#list .card', {has: A.locator('.card__name',{hasText:'Barcaccia'})})
+  .first().locator('.daychip select').selectOption('vorrat');
+await A.waitForTimeout(350);
+await A.locator('#list .card', {has: A.locator('.card__name',{hasText:'Lido ai Pioppi'})})
+  .first().locator('.daychip select').selectOption('vorrat');
+await A.waitForTimeout(350);
+await A.locator('#list .card', {has: A.locator('.card__name',{hasText:'Festung Peschiera'})})
+  .first().locator('.card__open').click();
+await A.waitForTimeout(450);
+await A.click('#sheet-body [data-seen]');
+await A.waitForTimeout(200);
+await A.keyboard.press('Escape');
+await A.waitForTimeout(450);
 await A.click('[data-tab="gemerkt"]'); await A.waitForTimeout(150);
 /* Seit v33 nennt die Leiste beide Haelften: verplant und Vorrat. Hier ist
    nichts verplant, also liegen beide gemerkten im Vorrat. */
@@ -70,8 +81,9 @@ const errsB=[]; B.on('pageerror',e=>errsB.push(e.message));
 // Sonja hat schon eigene Markierungen
 await B.goto(URL,{waitUntil:'networkidle'}); await B.waitForSelector('#app:not([hidden])');
   await zuOrten(B);
-await B.locator('#list .card', {has: B.locator('.card__name',{hasText:'Braccobaldo'})}).first().locator('.star').click();
-await B.waitForTimeout(120);
+await B.locator('#list .card', {has: B.locator('.card__name',{hasText:'Braccobaldo'})})
+  .first().locator('.daychip select').selectOption('vorrat');
+await B.waitForTimeout(350);
 ok('Sonja hat 1 eigenen Eintrag', (await B.evaluate(()=>JSON.parse(localStorage.getItem('pk.saved')))).length===1);
 
 // Sie öffnet Fabis Link

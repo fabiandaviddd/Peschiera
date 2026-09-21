@@ -120,9 +120,19 @@ ok('auch die letzte Karte steht wirklich im Dokument', letzter.length > 0);
 
 /* --- 6. Der Suchtreffer muss im Bild stehen ------------------------------- */
 /* Die Beschreibung ist eine Zeile hoch und hinten abgeschnitten -- das haelt
-   jede Karte auf exakt 97 px. Der Preis war, dass man bei "hund" 12 von 16
-   Treffern nicht ansah, warum sie Treffer sind. Seit v24 faengt die Zeile bei
-   aktiver Suche vor der Fundstelle an. */
+   jede Karte auf exakt einer Hoehe. Der Preis war, dass man bei "hund" 12 von
+   16 Treffern nicht ansah, warum sie Treffer sind. Seit v24 faengt die Zeile
+   bei aktiver Suche vor der Fundstelle an.
+
+   Seit v42 steht die Beschreibung NICHT mehr staendig in der Zeile: die
+   Zeile hat drei Zeilen statt vier (78 px statt 97), und der zweite Platz
+   gehoert der eigenen Notiz, dem Badge oder der Adresse. Bei aktiver Suche
+   uebernimmt ihn die Fundstelle -- eine Zeile, die als Treffer dasteht, muss
+   sagen warum. */
+const hoeheOhneSuche = await p.evaluate(() =>
+  Math.round(document.querySelector('#list .card').getBoundingClientRect().height));
+ok('die Zeile ist flacher als die 97 px bis v41', hoeheOhneSuche < 97, true);
+
 const treffer = await p.evaluate(async () => {
   const q = document.getElementById('q');
   q.value = 'hund'; q.dispatchEvent(new Event('input', { bubbles: true }));
@@ -145,7 +155,11 @@ const treffer = await p.evaluate(async () => {
 ok('Suche liefert Treffer', treffer.n > 0);
 ok('jede Markierung in der Beschreibung steht im Bild', treffer.ohneGrund, 0);
 ok('es gibt ueberhaupt markierte Beschreibungen', treffer.mitMark > 0);
-ok('die Karten bleiben dabei 97 px hoch', treffer.hoehen, [97]);
+/* Eine Hoehe fuer alle: das Auge rastet beim Scrollen an einem Raster ein.
+   Die Zahl steht hier nicht fest, sondern wird gegen die Zeile ohne Suche
+   gehalten -- sonst prueft die Suite den Entwurf und nicht die Regel. */
+ok('die Karten behalten dabei ihre Hoehe', treffer.hoehen.length, 1);
+ok('… und zwar dieselbe wie ohne Suche', treffer.hoehen[0], hoeheOhneSuche);
 
 const form = await p.evaluate(() => {
   const k = [...document.querySelectorAll('#list .card')];

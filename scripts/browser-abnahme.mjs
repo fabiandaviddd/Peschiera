@@ -332,16 +332,32 @@ console.log('\nTages-Sheet: Wege nur mit echten Koordinaten');
 }
 
 /* ------------------------------------------------------------------- Merken */
-await page.locator('.star').first().click();
-await page.waitForTimeout(150);
-ok('Stern ist gesetzt', await page.locator('.star').first().getAttribute('aria-pressed'), 'true');
+/* Seit v42 steht in der Listenzeile ein Tag-Chip statt Stern und Haken. Er
+   ist drei Bedienelemente in einem: merken, Tag geben, herausnehmen. */
+await page.locator('.tab[data-tab="orte"]').click();
+await page.waitForTimeout(400);
+ok('die Zeile traegt keinen Stern mehr', await page.locator('.card .star').count(), 0);
+ok('… und keinen Haken', await page.locator('.card .seen').count(), 0);
+ok('… sondern einen Tag-Chip', (await page.locator('.daychip select').count()) > 0);
+ok('… und der steht zuerst auf "+ Tag"',
+   (await page.locator('.daychip select').first().inputValue()), '');
+await page.locator('.daychip select').first().selectOption('vorrat');
+await page.waitForTimeout(400);
+ok('der Chip merkt',
+   (await page.locator('.daychip').first().getAttribute('class')).includes('daychip--vorrat'));
 ok('Reiter zählt', (await page.locator('#tab-n').textContent()).trim(), '1');
 /* Der Reiter heisst seit v14 "Plan", das Label nennt das mit. */
 ok('Zähler hat ein Label',
    await page.locator('#tab-n').getAttribute('aria-label'), '1 im Plan');
-await page.locator('.seen').first().click();
-await page.waitForTimeout(150);
-ok('Haken ist gesetzt', await page.locator('.seen').first().getAttribute('aria-pressed'), 'true');
+/* "Gesehen" steht seit v42 im Ort, nicht mehr in der Zeile. */
+await page.locator('.card__open').first().click();
+await page.waitForTimeout(450);
+await page.click('#sheet-body [data-seen]');
+await page.waitForTimeout(200);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(450);
+ok('Haken ist gesetzt',
+   await page.getAttribute('#list .card [data-open]', 'data-open') !== null);
 ok('Karte ist gedämpft', await page.locator('.card').first().evaluate((e) => e.classList.contains('card--seen')));
 
 await goTab('gemerkt');
@@ -359,7 +375,9 @@ ok('… und zeigt ihn als Zeile', await page.locator('.planrow').count(), 1);
 /* Keine Nummer: im Vorrat gibt es keine Reihenfolge, die etwas bedeutet.
    Die Nummern stehen seit v36 im Tages-Sheet. */
 ok('… ohne Nummer', await page.locator('.planrow__n').count(), 0);
-ok('… und mit einem Tageswaehler', await page.locator('select[data-day]').count(), 1);
+/* In der Liste, nicht irgendwo: das geschlossene Sheet bleibt im Dokument
+   stehen und traegt seinen eigenen Tageswaehler. */
+ok('… und mit einem Tageswaehler', await page.locator('#list select[data-day]').count(), 1);
 ok('der Vorrat nennt seine Zeit',
    /Aufenthalt|ohne hinterlegte Dauer/.test(await page.locator('.vorrat__s').textContent()));
 

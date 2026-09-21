@@ -157,9 +157,12 @@ ok('Fokus zurück auf der Karte', await page.evaluate(()=>
 // --- Merken und Entmerken im Sheet: der Zustand folgt, nichts bleibt gesperrt.
 // Lief bis v13 ueber die Merkliste; die heisst jetzt "Plan" und stellt ihre
 // Eintraege anders dar. Geprueft wird derselbe Code-Pfad von der Liste aus.
-await page.evaluate(()=>document.querySelector('#list .card [data-save]').click());
-await page.waitForTimeout(150);
+/* Seit v42 traegt die Listenzeile keinen Stern mehr, sondern einen Chip:
+   merken, Tag geben und wieder herausnehmen in einem Bedienelement. */
+await page.locator('#list .card .daychip select').first().selectOption('vorrat');
+await page.waitForTimeout(350);
 const gemerkt1 = await page.evaluate(()=>JSON.parse(localStorage.getItem('pk.saved')||'[]').length);
+ok('der Chip merkt', gemerkt1 === 1, String(gemerkt1));
 await page.evaluate(()=>document.querySelector('#list .card [data-open]').click());
 await page.waitForTimeout(450);
 ok('Sheet über der gemerkten Karte offen', !(await page.$eval('#sheet', e=>e.hidden)));
