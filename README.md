@@ -48,7 +48,7 @@ schreibt die Fassung dazu, für die es gilt.
 | **Eigene Notiz** | Ein einzeiliges Feld im Detail, direkt unter der Hundzeile — dort, wo die häufigste offene Frage steht: bei 58 von 101 Orten ist die Hunderegel ungeklärt, und wer vor Ort gefragt hat, konnte die Antwort bis v22 nirgends hinschreiben. Speichert beim Verlassen des Feldes **und** beim Schließen des Sheets, auch über die Zurück-Geste; ein Speichern-Knopf wäre ein zweiter Schritt für etwas, das man im Vorbeigehen tippt. In der Listenzeile steht die Notiz **vor** der Beschreibung — sie ist das, was man selbst herausgefunden hat. Liegt nur im Gerät (`pk.notes`), nie in `places.json`: Notizen sind persönlich. Wird aus einer Notiz eine Tatsache, führt der Weg über die offenen Punkte. Der Teilen-Link trägt sie mit, aber nur die vorhandenen; beim Zusammenführen gewinnt die eigene. |
 | **Termine mit Vorlauf** | Vier Orte tragen ein Datum im Badge. „Läuft heute" ist beim Wochenmarkt am Dienstag zu spät — wer morgens davon liest, packt keine Kühltasche mehr. Seit v22 steht über dem Tagesvorschlag eine Zeile je Termin, der in den nächsten **drei** Tagen anfängt: „Morgen · Wochenmarkt Desenzano · Di 22.09.", antippbar. Drei Tage, nicht sieben: bei fünfzehn Reisetagen und vier Terminen stünde die Zeile sonst an neun Tagen da und würde zur Tapete. |
 | **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch nicht gesehen" blendet sie aus. **In „Heute" verschwinden sie seit v20 ganz** — bis dahin standen sie nur hinten, was bei fünfzehn Reisetagen heißt, dass der Stapel sich mit Orten füllt, an denen man schon war, und „1 / 37" eine Auswahl verspricht, die es nicht mehr gibt. In der Liste bleiben sie sichtbar: dort sucht man, in „Heute" bekommt man vorgeschlagen. Wird ein Abschnitt dadurch leer, sagt der Leerzustand das und bietet „Trotzdem zeigen" — für diesen Abschnitt, bis zum nächsten Wechsel. Der Chip hieß bis v7 „Noch offen" und wurde neben Fakten wie „öffnet 9:30" als Öffnungszeit gelesen. Eigener Speicher, unabhängig vom Merken. |
-| **Teilen** | Im Reiter „Reise": ein Link, der Merkliste und Gesehenes enthält. Empfänger kann zusammenführen, ersetzen oder verwerfen. **„Meine ersetzen" ist seit v19 umkehrbar**: der Knopf nennt vorher, was er kostet („Meine 12 ersetzen"), ist als einziger ziegelrot abgesetzt und steht zuletzt; danach steht zehn Sekunden lang „Rückgängig" im selben Kasten. Die Kopie liegt in einer Variablen, nicht im Speicher — nach dem Neuladen ist das Angebot ohnehin vorbei. Öffnet man in der Zeit einen Ort, endet es: hinter einem Sheet wäre der Knopf sichtbar, aber nicht antippbar. |
+| **Teilen** | Im Reiter „Reise": ein Link mit Merkliste, Gesehenem, Notizen, Tagen, geklärten Hundregeln und (seit v40) Zeitstempeln. **Seit v40 sagt die App vor dem Teilen, was drinsteht** — ein Sheet listet es Zeile für Zeile auf, Notizen mit ihrem Namen. Der Empfänger kann **zusammenführen oder verwerfen**; „Meine ersetzen" ist mit v40 fortgefallen, weil die Zusammenführung jetzt **Feld für Feld nach Datum** entscheidet. Siehe „Listen zwischen zwei Geräten abgleichen". |
 | **Suchtreffer** | Ein Treffer über die Notiz zeigt seit v19, *warum* der Ort dasteht: die Fundstelle ist im Notiztext hervorgehoben, in Liste und Detail, jeder Begriff einzeln. Die Markierung trägt nur einen Untergrund und erbt die Textfarbe — die Browservorgabe schwarz auf gelb fiele im dunklen Schema auf 2,1:1. In der Liste ist die Notiz einzeilig gekürzt; liegt die Fundstelle dahinter, sieht man sie erst im Detail. |
 | **Ansicht in der Adresse** | `?v=heute` und `?v=gemerkt` öffnen die App direkt in einer Ansicht (die Kennungen sind älter als die Reiternamen „Jetzt" und „Reise" und bleiben, damit Lesezeichen weiter gelten) — als Lesezeichen oder geteilter Link, ohne Installation. Geprüft gegen die Reiterkennungen, damit ein Tippfehler keine leere App erzeugt. Ein Teilen-Link mit Merkliste überstimmt den Parameter: eine geschickte Liste ist dringender. |
 | **Die Reiter heißen nach ihrer Frage** | Seit v35: **Jetzt** (was ist gerade dran?), **Entdecken** (was gibt es überhaupt?), **Reise** (was steht in fünfzehn Tagen an?), **Wissen** (was muss ich wissen?). „Heute" und „Plan" beantworteten beide die erste Frage und stritten sich darum; „Orte" beschrieb die Datei, nicht die Handlung. Die **Kennungen bleiben** `heute`, `orte`, `gemerkt`, `info` — an ihnen hängen `?v=`-Lesezeichen und der Speicher. Bis v26 hieß der vierte „Info" mit i-Kringel — das versprach ein Impressum. Er trägt Hunderegeln, Notruf, Trinkgeld, Bus-Zeiten und die offenen Punkte; ein Reitername muss sagen, was man bekommt. Die Kennung bleibt `info`, `?v=info` funktioniert als Lesezeichen weiter. Der Fuß zeigt seit v27 `meta.hinweis` (einen Satz für den Nutzer) statt `meta.note` (die Provenienz-Doku der Daten mit Feldnamen — die stand wörtlich in der App). |
@@ -324,10 +324,26 @@ getestet wird. Diese Punkte sind gezielt behandelt:
 | `-webkit-overflow-scrolling: touch` hebt den Container auf eine eigene Ebene und macht darüberliegende Knöpfe untippbar | Entfernt (seit iOS 13 ohnehin wirkungslos); das ✕ liegt zusätzlich mit eigenem `z-index` darüber |
 | Runde Knöpfe verschenken die Ecken ihrer Trefferfläche | Das ✕ ist ein abgerundetes Quadrat, alle 44×44 px treffen |
 
-Nicht behandelbar von hier aus: Safari räumt bei Websites, die längere Zeit
-nicht benutzt werden, den Offline-Speicher und `localStorage` weg. Bei
-täglicher Nutzung im Urlaub kein Thema; nach Wochen Pause kann die Merkliste
-weg sein.
+Safari räumt bei Websites, die längere Zeit nicht benutzt werden, den
+Offline-Speicher und `localStorage` weg. Bei täglicher Nutzung im Urlaub kein
+Thema; nach Wochen Pause kann die Merkliste weg sein. **Seit `v40` gibt es
+dagegen einen Weg**, der ohne Server auskommt: im Teilen-Sheet schreibt „In
+die Adresse" die ganze Liste als `#liste=…` in die Adresszeile. Ein
+Lesezeichen darauf überlebt jede Räumung — es ist kein Speicher, sondern
+Text. Beim Öffnen stellt „Zusammenführen" alles wieder her; ist nichts
+geräumt worden, erkennt die App die Liste als die eigene und sagt gar nichts.
+
+Zwei Feinheiten, die das erst benutzbar machen:
+
+- **`replaceState`, nicht `location.hash`.** Ein gesetzter Hash löst
+  `hashchange` aus, und das ruft `showInbox()` — man bekäme seine eigene
+  Liste als fremde angeboten.
+- **Die Adresse wird nach dem Schließen des Sheets noch einmal geschrieben.**
+  Das Sheet legt beim Öffnen einen Historieneintrag an (daran hängt die
+  Zurück-Geste) und nimmt ihn beim Schließen mit `history.back()` zurück —
+  samt der eben geschriebenen Adresse. `history.back()` wirkt asynchron, das
+  Nachschreiben gehört deshalb hinter den Schließvorgang, nicht in ein
+  `setTimeout(0)` davor.
 
 ## Listen zwischen zwei Geräten abgleichen
 
@@ -336,16 +352,68 @@ Der Abgleich läuft deshalb über den Link selbst: im Reiter „Reise" auf
 **Teilen**, dann per iMessage, AirDrop oder sonstwie verschicken. Wo die
 Teilen-Funktion des Systems fehlt, landet der Link in der Zwischenablage.
 
-Der Link trägt Merkliste, Gesehenes, Notizen, Tageszuordnung und seit v34 die
-vor Ort geklärten Hundregeln als `#liste=<base64url>` mit, rund 120 Zeichen bei
-einer Handvoll Orte. Nichts verlässt das Gerät, außer über diesen Link.
+Der Link trägt Merkliste, Gesehenes, Notizen, Tageszuordnung, die vor Ort
+geklärten Hundregeln (seit v34) und die Zeitstempel (seit v40) als
+`#liste=<base64url>` mit, rund 120 Zeichen bei einer Handvoll Orte. Nichts
+verlässt das Gerät, außer über diesen Link.
 
-Beim Öffnen fragt die Gegenseite nach:
+### Vor dem Teilen sagen, was drinsteht
 
-- **Zusammenführen** — eigene Markierungen bleiben, fremde kommen dazu; bei
-  den Hundregeln gewinnt dagegen die **jüngere** Angabe (siehe „Die Hundregel")
-- **Meine ersetzen** — übernimmt die fremde Liste vollständig
-- **Verwerfen** — ändert nichts
+Der Link enthält **persönliche Beobachtungen** — die eigenen Notizen sind das
+Persönlichste, was diese App kennt. Er geht über iMessage oder AirDrop an
+jemanden. Seit `v40` fragt der Teilen-Knopf deshalb erst:
+
+> **Das steht im Link**
+> · 12 gemerkte Orte · 3 gesehene Orte · 8 Tageszuordnungen · **2 eigene
+> Notizen** · 1 geklärte Hundregel
+>
+> Der Link enthält keinen Namen, keinen Standort und kein Konto — nur diese
+> Markierungen.
+
+Dieselbe Aufstellung steht beim Empfänger im Posteingang. **Eine Funktion,
+zwei Richtungen**: zwei Aufstellungen desselben Inhalts wären zwei
+Gelegenheiten, ungleich zu werden.
+
+### Zusammenführen: Feld für Feld, nach Datum
+
+Bis `v39` war das eine **globale** Entscheidung. „Zusammenführen" hieß „meine
+gewinnen, fremde füllen Lücken" — hatte der andere eine Notiz berichtigt,
+blieb die eigene, veraltete stehen. Wollte man seine, kostete es mit „Meine
+ersetzen" fünfzehn Tage eigener Markierungen (zehn Sekunden umkehrbar).
+
+Seit `v40` trägt **jedes Feld ein Datum** (`pk.stamps`, minutengenau), und
+beim Zusammenführen gewinnt das jüngere Feld — nicht das jüngere Telefon.
+
+| Fall | Was gilt |
+|---|---|
+| beide Seiten datiert | das **jüngere** Feld |
+| nur eine Seite datiert | das **eigene** bleibt |
+| eigene Seite hat nichts | das fremde füllt die Lücke |
+
+- **Minutengenau, nicht sekundengenau.** Zwei Telefone stellen ihre Uhr nicht
+  gemeinsam; ein Feld, das in derselben Minute auf beiden geändert wird, ist
+  ohnehin ein Fall für „egal welches".
+- **Ein Stand von vor `v40` läßt sich nicht datieren** — und wird deshalb nicht
+  überschrieben. Das wäre dieselbe stille Enteignung, die „Meine ersetzen" so
+  gefährlich gemacht hat. Sobald beide Seiten einmal geschrieben haben, ist
+  die Frage erledigt.
+- **Das übernommene Datum wandert mit.** Sonst gewänne beim nächsten Abgleich
+  wieder dasselbe.
+- **Zusammenführen nimmt nie etwas weg.** Es gibt keine Grabsteine im Link:
+  ein fehlender Eintrag heißt „davon weiß ich nichts", nicht „das ist
+  gelöscht".
+- **Die Hundregel** trägt ihr Datum seit `v34` in `.at`. Steht kein Stempel
+  daneben (ein Link von damals), gilt weiterhin `.at` — es sind Beobachtungen
+  über einen Ort, und wer zuletzt davorstand, weiß es besser.
+- **Danach sagt die App, was passiert ist** („3 neu · 1 aktualisiert · 7
+  behalten") und springt in die Reise, wo das Ergebnis liegt. Ein
+  Zusammenführen, das nichts meldet, fühlt sich an, als wäre nichts passiert
+  — und genau deshalb hat man früher zur Sicherheit „Meine ersetzen" gedrückt.
+
+**„Meine ersetzen" ist mit `v40` fortgefallen**, samt seinem „Rückgängig".
+Nach der Feld-Zusammenführung braucht ihn niemand mehr, und ein destruktiver
+Knopf, den niemand braucht, ist nur noch eine Falle. Was bleibt:
+**Zusammenführen** und **Verwerfen**.
 
 Danach wird der Anker aus der Adresse entfernt, ein Neuladen fragt also nicht
 erneut. Orte, die es in `places.json` nicht (mehr) gibt, werden übersprungen
@@ -358,7 +426,7 @@ Dienst dazwischen — siehe unten.
 ## Prüfstand
 
 ```bash
-node scripts/browser/run.mjs     # 599 Prüfungen im Browser, startet den Server selbst
+node scripts/browser/run.mjs     # 623 Prüfungen im Browser, startet den Server selbst
 node scripts/test-logic.mjs      # Logik ohne Browser
 ```
 
@@ -1108,7 +1176,7 @@ Kontrast richtig messen, was iOS anders macht) und was offen ist.
 
 ## Getestet
 
-599 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
+623 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
 Sortierung kombiniert, Merkliste über einen Reload, Detail-Sheet ohne
 Layout-Shift, Dark Mode samt Override und Systempräferenz, Touch-Ziele,
 Flugmodus-Test (offline laden, suchen, Merkliste), Fehlerzustand mit Retry und

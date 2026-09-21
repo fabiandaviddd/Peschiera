@@ -460,18 +460,29 @@ const link = await page.evaluate(() => {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return location.origin + location.pathname + '#liste=' + s;
 });
-const p2 = await ctx.newPage();
+/* Ein EIGENER Kontext: seit v40 erkennt die App eine Liste, die genau so
+   schon dasteht, als die eigene und sagt gar nichts. Im selben Kontext
+   teilte sich die zweite Seite den localStorage mit der ersten -- und
+   bekaeme zu Recht keinen Posteingang. */
+const ctxEmpfang = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE' });
+const p2 = await ctxEmpfang.newPage();
 await p2.goto(link, { waitUntil: 'load' });
 await p2.waitForSelector('#app:not([hidden])');
 await p2.waitForTimeout(400);
 ok('Empfangs-Kasten erscheint', await p2.locator('#inbox').isVisible());
 ok('Text nennt die Anzahl', /geschickt/.test(await p2.locator('#inbox-x').textContent()));
+/* Seit v40 steht Zeile fuer Zeile da, was drinsteckt -- bis v39 nannte ein
+   Satz nur die gemerkten und gesehenen Orte, waehrend Notizen, Tage und
+   Hundregeln ungenannt mitfuhren. */
+ok('der Kasten stellt auf, was drinsteckt',
+   /gemerkte[rn]? Ort/.test(await p2.locator('#inbox-was').textContent()));
+ok('"Meine ersetzen" gibt es nicht mehr', await p2.locator('#inbox-replace').count(), 0);
 await p2.screenshot({ path: OUT + '/08-inbox.png' });
 await p2.locator('#inbox-merge').click();
-await p2.waitForTimeout(300);
+await p2.waitForTimeout(400);
 ok('Zusammenführen schließt den Kasten', await p2.locator('#inbox').isHidden());
 ok('Anker ist aus der Adresse weg', (await p2.url()).includes('#liste='), false);
-await p2.close();
+await ctxEmpfang.close();
 
 /* ------------------------------------------------------------------- Offline */
 console.log('\nOffline (Flugmodus)');

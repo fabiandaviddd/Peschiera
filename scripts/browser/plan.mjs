@@ -291,7 +291,9 @@ const link = await p.evaluate(() => {
   await q.goto(alt, { waitUntil: 'networkidle' });
   await q.waitForSelector('#app:not([hidden])');
   await q.waitForSelector('#inbox:not([hidden])');
-  await q.locator('#inbox-replace').click();
+  /* "Meine ersetzen" gibt es seit v40 nicht mehr. Hier ist der Empfaenger
+     ohnehin leer -- Zusammenfuehren uebernimmt dann alles. */
+  await q.locator('#inbox-merge').click();
   await q.waitForTimeout(500);
   await zumPlan(q);
   ok('alter Link ohne Tage: keine Tageskarte',

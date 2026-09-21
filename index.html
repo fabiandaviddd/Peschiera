@@ -125,15 +125,17 @@
       <div class="inbox" id="inbox" hidden role="region" aria-labelledby="inbox-t">
         <h2 class="inbox__t" id="inbox-t">Liste erhalten</h2>
         <p class="inbox__x" id="inbox-x"></p>
-        <!-- Reihenfolge ist Absicht: der empfohlene Weg zuerst, der folgenlose
-             danach, der destruktive zuletzt und optisch abgesetzt. Vorher
-             standen "Meine ersetzen" und "Verwerfen" gleich aus, obwohl einer
-             vierzehn Tage Markierungen kostet und der andere nichts. -->
+        <!-- Was in der Liste steckt, Zeile fuer Zeile. Bis v39 stand hier
+             ein Satz mit zwei Zahlen; Notizen, Tage und Hundregeln fuhren
+             ungenannt mit. -->
+        <ul class="inbox__was" id="inbox-was"></ul>
+        <!-- Zwei Knoepfe seit v40: der empfohlene Weg zuerst, der folgenlose
+             danach. "Meine ersetzen" ist fortgefallen -- die Zusammenfuehrung
+             entscheidet jetzt Feld fuer Feld nach Datum, und damit gibt es
+             nichts mehr, wofuer man einen destruktiven Knopf braeuchte. -->
         <div class="inbox__acts">
           <button type="button" class="btn btn--primary btn--wide" id="inbox-merge">Zusammenführen</button>
           <button type="button" class="btn btn--wide" id="inbox-cancel">Verwerfen</button>
-          <button type="button" class="btn btn--wide btn--danger" id="inbox-replace">Meine ersetzen</button>
-          <button type="button" class="btn btn--wide btn--primary" id="inbox-undo" hidden>Rückgängig</button>
         </div>
       </div>
 

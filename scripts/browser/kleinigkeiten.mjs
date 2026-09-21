@@ -88,7 +88,10 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   });
   await a.goto(`${BASE}/index.html?v=gemerkt`, { waitUntil: 'networkidle' });
   await a.waitForSelector('#app:not([hidden])');
-  await a.click('#share-btn'); await a.waitForTimeout(400);
+  await a.click('#share-btn'); await a.waitForTimeout(600);
+  /* Seit v40 fragt der Knopf erst, was drinsteht -- geteilt wird im Sheet. */
+  ok('Teilen fragt erst, statt gleich zu teilen', await a.locator('#sheet').isVisible());
+  await a.click('#share-go'); await a.waitForTimeout(700);
   const link = await a.evaluate(() => navigator.clipboard.readText());
   await A.close();
   ok('Teilen-Link erzeugt', link.includes('#liste='));
@@ -100,21 +103,23 @@ const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, h
   });
   await b.goto(`${BASE}/index.html` + hash, { waitUntil: 'networkidle' });
   await b.waitForSelector('#inbox:not([hidden])');
-  ok('destruktiver Knopf nennt seine Kosten',
-     (await b.textContent('#inbox-replace')).trim(), 'Meine 3 ersetzen');
-  ok('destruktiver Knopf ist abgesetzt',
-     (await b.getAttribute('#inbox-replace', 'class')).includes('btn--danger'));
-  ok('Rueckgaengig ist vorher verborgen', await b.locator('#inbox-undo').isHidden());
+  /* Der destruktive Knopf ist mit v40 fortgefallen. Er ueberschrieb S.saved
+     und S.seen in einem Zug -- fuenfzehn Tage Markierungen, zehn Sekunden
+     umkehrbar. Er war noetig, solange das Zusammenfuehren nur "meine
+     gewinnen" konnte. Seit die Zusammenfuehrung feldweise nach Datum
+     entscheidet, gibt es nichts mehr, wofuer man ihn braeuchte. */
+  ok('"Meine ersetzen" gibt es nicht mehr', await b.locator('#inbox-replace').count(), 0);
+  ok('… und "Rueckgaengig" auch nicht', await b.locator('#inbox-undo').count(), 0);
+  ok('zwei Knoepfe bleiben', await b.locator('.inbox__acts .btn:not([hidden])').count(), 2);
+  /* Was drinsteht, steht jetzt Zeile fuer Zeile da -- bis v39 nannte ein Satz
+     nur die gemerkten und gesehenen Orte. */
+  ok('der Kasten sagt, was drinsteckt',
+     /2 gemerkte Orte/.test(await b.textContent('#inbox-was')));
 
-  await b.click('#inbox-replace'); await b.waitForTimeout(400);
-  const ersetzt = await b.evaluate(() => JSON.parse(localStorage.getItem('pk.saved')));
-  ok('Ersetzen hat gewirkt', ersetzt.length, 2);
-  ok('Rueckgaengig steht jetzt da', await b.locator('#inbox-undo').isVisible());
-
-  await b.click('#inbox-undo'); await b.waitForTimeout(400);
-  const zurueck = await b.evaluate(() => JSON.parse(localStorage.getItem('pk.saved')));
-  ok('Rueckgaengig stellt die eigene Liste wieder her',
-     zurueck.join(','), 'momus,scavi,duomo');
+  await b.click('#inbox-merge'); await b.waitForTimeout(500);
+  const zusammen = await b.evaluate(() => JSON.parse(localStorage.getItem('pk.saved')));
+  /* Drei eigene plus zwei fremde: Zusammenfuehren nimmt niemandem etwas weg. */
+  ok('Zusammenfuehren behaelt eigenes und fremdes', zusammen.length, 5);
   ok('der Kasten ist danach weg', await b.locator('#inbox').isHidden());
   await B.close();
 }

@@ -81,7 +81,9 @@ const oeffne = async (p, id) => {
   });
   await a.goto(`${BASE}/index.html?v=gemerkt`, { waitUntil: 'networkidle' });
   await a.waitForSelector('#app:not([hidden])');
-  await a.click('#share-btn'); await a.waitForTimeout(400);
+  await a.click('#share-btn'); await a.waitForTimeout(600);
+  /* Seit v40 fragt der Knopf erst, was drinsteht -- geteilt wird im Sheet. */
+  await a.click('#share-go'); await a.waitForTimeout(700);
   const link = await a.evaluate(() => navigator.clipboard.readText());
   await A.close();
 
@@ -93,7 +95,11 @@ const oeffne = async (p, id) => {
   await b.waitForSelector('#inbox:not([hidden])');
   await b.click('#inbox-merge'); await b.waitForTimeout(500);
   const nach = await b.evaluate(() => JSON.parse(localStorage.getItem('pk.notes') || '{}'));
-  ok('Zusammenfuehren laesst die eigene Notiz stehen', nach.bip, 'meine eigene');
+  /* Die eigene Notiz ist hier undatiert (von Hand in den Speicher gelegt,
+     ohne pk.stamps). Ein Stand ohne Datum wird seit v40 nicht
+     ueberschrieben -- sonst waere das dieselbe stille Enteignung, die
+     "Meine ersetzen" so gefaehrlich gemacht hat. */
+  ok('Zusammenfuehren laesst die undatierte eigene Notiz stehen', nach.bip, 'meine eigene');
 
   const C = await mach(); const cc = await C.newPage();
   await cc.goto(`${BASE}/index.html` + link.slice(link.indexOf('#')), { waitUntil: 'networkidle' });

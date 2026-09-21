@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v39 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v40 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -32,6 +32,19 @@
      Nur was ABWEICHT steht drin -- der Vorschlag kommt aus dem groessten
      Sprung der Kette und braucht keinen Eintrag. */
   var LS_MODE  = 'pk.mode';
+  /* Wann welches Feld zuletzt geaendert wurde: { ortId: { s, g, n, d, h } }
+     -- gemerkt, gesehen, Notiz, Tag, Hundregel, jeweils als ISO-Minute.
+
+     Bis v39 war das Zusammenfuehren zweier Telefone eine GLOBALE
+     Entscheidung: "meine oder deine". Wer beides wollte, bekam "meine
+     gewinnen, fremde fuellen Luecken" -- und wenn der andere eine Notiz
+     berichtigt hatte, blieb die eigene, veraltete stehen. Dafuer gab es
+     "Meine ersetzen", den destruktivsten Knopf der App: fuenfzehn Tage
+     Markierungen weg, zehn Sekunden umkehrbar.
+
+     Mit Zeitstempeln je Feld entfaellt die Frage. Beim Zusammenfuehren
+     gewinnt das JUENGERE Feld -- nicht das juengere Telefon. */
+  var LS_STAMPS = 'pk.stamps';
   var SS_WET   = 'pk.wet';    // Wetter gilt fuer diesen Besuch, nicht fuer immer
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
   var SHORT_MAX = 60;         // Schwelle für den Filter "Unter 1 h"
@@ -106,6 +119,8 @@
     dog: {},                // { id: { v: bool, at: iso } }
     /* Der gewaehlte Fortbewegungsmodus je Reisetag. Siehe LS_MODE. */
     mode: {},               // { 'JJJJ-MM-TT': 'fuss'|'rad'|'auto' }
+    /* Die Zeitstempel je Ort und Feld. Siehe LS_STAMPS. */
+    stamps: {},             // { id: { s, g, n, d, h } }
     theme: 'auto',
     openId: null
   };
@@ -497,6 +512,18 @@
       }
     });
 
+    var rohStamps = lsGet(LS_STAMPS, {}) || {};
+    S.stamps = {};
+    Object.keys(rohStamps).forEach(function (id) {
+      var e = rohStamps[id];
+      if (!ids[id] || !e || typeof e !== 'object') return;
+      var aus = {};
+      ['s', 'g', 'n', 'd', 'h'].forEach(function (k) {
+        if (typeof e[k] === 'string' && e[k]) aus[k] = e[k].slice(0, 16);
+      });
+      if (Object.keys(aus).length) S.stamps[id] = aus;
+    });
+
     var rohMode = lsGet(LS_MODE, {}) || {};
     S.mode = {};
     Object.keys(rohMode).forEach(function (iso) {
@@ -735,6 +762,10 @@
     if (wert === null) delete S.dog[id];
     else S.dog[id] = { v: !!wert, at: new Date().toISOString().slice(0, 16) };
     lsSet(LS_DOG, S.dog);
+    /* Die Hundregel traegt ihr Datum schon in .at -- der Stempel steht
+       trotzdem daneben, damit das Zusammenfuehren EINE Regel hat und nicht
+       fuer ein Feld eine eigene. */
+    stempel(id, 'h');
   }
 
   function toggleJum() {
@@ -2693,11 +2724,6 @@
   }
 
   function showSheet(html, cls) {
-    /* setInert() legt #app still, und #inbox liegt darin. Ein offenes
-       Rueckgaengig-Angebot waere hinter dem Sheet sichtbar, aber nicht mehr
-       antippbar -- ein toter Knopf ist schlimmer als keiner. */
-    if (rueck) { endeRueckgaengig(); $('inbox').hidden = true; }
-
     var sheet = $('sheet');
     /* Schliesst gerade eins und wird sofort das naechste geoeffnet, darf der
        noch laufende Timer das neue nicht mitnehmen. */
@@ -2774,6 +2800,15 @@
       sheet.hidden = true;
       $('scrim').hidden = true;
       unlockBody();
+      /* Siehe inDieAdresse(): popSheetState() ruft history.back(), und das
+         nimmt die eben geschriebene Adresse mit. history.back() wirkt
+         asynchron -- deshalb hier, nach dem Schliessvorgang, und nicht in
+         einem setTimeout(0), das noch davor liefe. */
+      if (adresseMerken) {
+        var nochmal = adresseMerken;
+        adresseMerken = '';
+        schreibAdresse(nochmal);
+      }
     }, 260);
 
     var id = S.openId;
@@ -2978,11 +3013,45 @@
       + '</div>';
   }
 
+  /* Einen Zeitstempel setzen. Minutengenau: sekundengenau waere eine
+     Scheingenauigkeit -- zwei Telefone stellen ihre Uhr nicht gemeinsam, und
+     ein Feld, das im selben Moment auf beiden geaendert wird, ist ohnehin
+     ein Fall fuer "egal welches". */
+  function stempel(id, feld) {
+    if (!id || !feld) return;
+    var e = S.stamps[id] || (S.stamps[id] = {});
+    e[feld] = new Date().toISOString().slice(0, 16);
+    lsSet(LS_STAMPS, S.stamps);
+  }
+
+  function stempelVon(quelle, id, feld) {
+    var e = quelle && quelle[id];
+    return (e && typeof e[feld] === 'string') ? e[feld] : '';
+  }
+
+  /* Die Regel fuer ein einzelnes Feld.
+
+     Zwei bekannte Stempel: der juengere gewinnt. Ein bekannter gegen einen
+     unbekannten: der EIGENE gewinnt -- nicht der bekannte. Ein Stand von vor
+     v40 laesst sich nicht datieren, und ihn deshalb zu ueberschreiben waere
+     dieselbe stille Enteignung, die "Meine ersetzen" so gefaehrlich gemacht
+     hat. Sobald beide Seiten einmal geschrieben haben, ist die Frage
+     erledigt.
+
+     Gibt es eigen gar nichts, gewinnt fremd immer: eine Luecke fuellen
+     nimmt niemandem etwas weg. */
+  function fremdGewinnt(eigenDa, eigenStamp, fremdStamp) {
+    if (!eigenDa) return true;
+    if (!eigenStamp || !fremdStamp) return false;
+    return fremdStamp > eigenStamp;
+  }
+
   function setzeNotiz(id, text) {
     var t = String(text == null ? '' : text).trim().slice(0, 140);
     if (t) S.notes[id] = t; else delete S.notes[id];
     lsSet(LS_NOTES, S.notes);
     if (t) noteHay[id] = norm(t); else delete noteHay[id];
+    stempel(id, 'n');
   }
 
   /* Der Weg in den Plan, an jedem Ort.
@@ -3098,6 +3167,7 @@
   function toggleSeen(id) {
     toggleIn(S.seen, id);
     lsSet(LS_SEEN, S.seen);
+    stempel(id, 'g');
 
     var now = S.seen.indexOf(id) >= 0;
     var btns = document.querySelectorAll('[data-seen="' + id.replace(/"/g, '\\"') + '"]');
@@ -3163,6 +3233,7 @@
   function toggleSave(id) {
     toggleIn(S.saved, id);
     lsSet(LS_SAVED, S.saved);
+    stempel(id, 's');
     syncTabs();
     renderShareBar();
 
@@ -3272,6 +3343,20 @@
       });
       payload.h = hh;
     }
+    /* Die Zeitstempel fahren mit -- nur fuer Orte, die im Link ueberhaupt
+       vorkommen. Ohne sie waere die feldweise Zusammenfuehrung auf der
+       anderen Seite blind und fiele auf die alte Regel zurueck.
+       v bleibt 1: eine aeltere Fassung ignoriert t einfach. */
+    var relevant = {};
+    S.saved.forEach(function (id) { relevant[id] = true; });
+    S.seen.forEach(function (id) { relevant[id] = true; });
+    Object.keys(S.notes).forEach(function (id) { relevant[id] = true; });
+    Object.keys(S.dog).forEach(function (id) { relevant[id] = true; });
+    var t = {};
+    Object.keys(S.stamps).forEach(function (id) {
+      if (relevant[id] && Object.keys(S.stamps[id]).length) t[id] = S.stamps[id];
+    });
+    if (Object.keys(t).length) payload.t = t;
     var base = location.origin + location.pathname;
     return base + '#liste=' + b64url(JSON.stringify(payload));
   }
@@ -3305,7 +3390,18 @@
           hunde[id] = { v: e[0] === 1, at: typeof e[1] === 'string' ? e[1].slice(0, 16) : '' };
         }
       });
+      var stempelchen = {};
+      Object.keys(data.t || {}).forEach(function (id) {
+        var e = data.t[id];
+        if (!known[id] || !e || typeof e !== 'object') return;
+        var aus = {};
+        ['s', 'g', 'n', 'd', 'h'].forEach(function (k) {
+          if (typeof e[k] === 'string' && e[k]) aus[k] = e[k].slice(0, 16);
+        });
+        if (Object.keys(aus).length) stempelchen[id] = aus;
+      });
       return { m: keep(data.m), g: keep(data.g), n: notizen, d: tage, h: hunde,
+               t: stempelchen,
                dropped: ((data.m || []).length + (data.g || []).length)
                         - (keep(data.m).length + keep(data.g).length) };
     } catch (e) { return null; }
@@ -3317,138 +3413,182 @@
   }
 
   var incoming = null;
-  /* "Meine ersetzen" ueberschrieb S.saved und S.seen sofort und ohne Rueckweg.
-     Wer vierzehn Tage markiert hat und eine Reihe zu tief tippt, verlor alles.
-     Eine Kopie plus ein Angebot auf Zeit genuegt -- kein neuer Zustand im
-     Speicher, denn nach dem Neuladen ist das Angebot ohnehin vorbei.
-     10 Sekunden: 2 wie bei flash() sind zu kurz, um in den Plan zu sehen, den
-     Verlust zu bemerken und zurueckzukommen; nach 30 liest man den Kasten als
-     neue Frage statt als Rueckweg. */
-  var rueck = null;
-  var rueckTimer = null;
-  var RUECK_MS = 10000;
+  /* "Meine ersetzen" und sein "Rueckgaengig" sind mit v40 fortgefallen.
 
-  function endeRueckgaengig() {
-    if (rueckTimer) { clearTimeout(rueckTimer); rueckTimer = null; }
-    rueck = null;
-    var k = $('inbox-undo');
-    if (k) k.hidden = true;
+     Der Knopf ueberschrieb S.saved und S.seen in einem Zug -- fuenfzehn Tage
+     Markierungen, zehn Sekunden umkehrbar. Er war noetig, solange das
+     Zusammenfuehren nur "meine gewinnen" konnte und man keine Wahl hatte,
+     wenn die fremde Fassung die richtige war.
+
+     Seit die Zusammenfuehrung feldweise nach Datum entscheidet, gibt es
+     nichts mehr, wofuer man ihn braeuchte -- und damit auch keinen Grund
+     mehr, einen destruktiven Knopf mit Rueckweg zu pflegen. Was bleibt:
+     "Zusammenfuehren" und "Verwerfen". */
+
+  /* Was in einer Liste steckt, in einer Zeile je Sorte. Dieselbe Funktion
+     fuer beide Richtungen: was man bekommt und was man verschickt. Zwei
+     Aufstellungen desselben Inhalts waeren zwei Gelegenheiten, ungleich zu
+     werden. */
+  function inhaltListe(n) {
+    var zeilen = [];
+    if (n.m) zeilen.push(n.m + (n.m === 1 ? ' gemerkter Ort' : ' gemerkte Orte'));
+    if (n.g) zeilen.push(n.g + (n.g === 1 ? ' gesehener Ort' : ' gesehene Orte'));
+    if (n.d) zeilen.push(n.d + (n.d === 1 ? ' Tageszuordnung' : ' Tageszuordnungen'));
+    /* Notizen stehen mit ihrem Namen da und nicht unter "Markierungen": sie
+       sind das Persoenlichste, was diese App kennt. */
+    if (n.n) zeilen.push('<b>' + n.n + (n.n === 1 ? ' eigene Notiz' : ' eigene Notizen') + '</b>');
+    if (n.h) zeilen.push(n.h + (n.h === 1 ? ' geklärte Hundregel' : ' geklärte Hundregeln'));
+    if (!zeilen.length) zeilen.push('nichts');
+    return zeilen.map(function (z) { return '<li>' + z + '</li>'; }).join('');
+  }
+
+  /* Ist alles, was in der Liste steht, schon genau so da? Dann gibt es
+     nichts zu melden. Der Fall ist nicht konstruiert: seit v40 kann man die
+     eigene Liste in die Adresse schreiben und als Lesezeichen sichern -- und
+     wer das Lesezeichen oeffnet, ohne dass Safari zwischendurch geraeumt hat,
+     bekaeme sonst seine eigene Liste als fremde angeboten. */
+  function nichtsNeues(inc) {
+    var alleDa = function (arr, mine) {
+      return arr.every(function (id) { return mine.indexOf(id) >= 0; });
+    };
+    if (!alleDa(inc.m, S.saved) || !alleDa(inc.g, S.seen)) return false;
+    var gleich = function (obj, mine) {
+      return Object.keys(obj || {}).every(function (id) { return mine[id] === obj[id]; });
+    };
+    if (!gleich(inc.n, S.notes) || !gleich(inc.d, S.days)) return false;
+    return Object.keys(inc.h || {}).every(function (id) {
+      var e = S.dog[id];
+      return e && e.v === inc.h[id].v && (e.at || '') === (inc.h[id].at || '');
+    });
   }
 
   function showInbox() {
     incoming = readIncoming();
     if (!incoming) return;
     if (!incoming.m.length && !incoming.g.length) { clearHash(); return; }
+    if (nichtsNeues(incoming)) { incoming = null; clearHash(); return; }
 
-    var parts = [];
-    if (incoming.m.length) parts.push(incoming.m.length + ' gemerkte');
-    if (incoming.g.length) parts.push(incoming.g.length + ' gesehene');
-    $('inbox-x').textContent = 'Jemand hat dir ' + parts.join(' und ') + ' '
-      + (incoming.m.length + incoming.g.length === 1 ? 'Ort' : 'Orte') + ' geschickt.'
+    $('inbox-x').textContent = 'Jemand hat dir seine Liste geschickt.'
       + (incoming.dropped ? ' ' + incoming.dropped + ' Einträge sind hier unbekannt und bleiben außen vor.' : '')
-      + ' Zusammenführen behält deine eigenen Markierungen.';
-    /* Ein neuer Link raeumt ein offenes Angebot ab -- sonst stuende
-       "Rueckgaengig" neben einer Liste, auf die es sich nicht mehr bezieht. */
-    endeRueckgaengig();
+      + ' Zusammenführen entscheidet Feld für Feld nach Datum — das Jüngere gilt.';
+    /* Was drinsteht, Zeile fuer Zeile. Bis v39 nannte der Satz nur die
+       gemerkten und gesehenen Orte; Notizen, Tage und Hundregeln fuhren
+       ungenannt mit -- und Notizen sind das Persoenlichste, was diese App
+       kennt. */
+    $('inbox-was').innerHTML = inhaltListe({
+      m: incoming.m.length, g: incoming.g.length,
+      n: Object.keys(incoming.n || {}).length,
+      d: Object.keys(incoming.d || {}).length,
+      h: Object.keys(incoming.h || {}).length
+    });
     $('inbox').hidden = false;
     $('inbox-merge').hidden = false;
     $('inbox-cancel').hidden = false;
-    $('inbox-replace').hidden = false;
-    /* Der destruktive Knopf nennt, was er kostet. */
-    var eigene = S.saved.length + S.seen.length + Object.keys(S.notes).length;
-    $('inbox-replace').textContent = eigene ? 'Meine ' + eigene + ' ersetzen' : 'Meine ersetzen';
     setView('orte');
     window.scrollTo(0, 0);
   }
 
-  function applyIncoming(mode) {
+  /* Zusammenfuehren, Feld fuer Feld.
+
+     Bis v39 war das eine GLOBALE Entscheidung: "meine gewinnen, fremde
+     fuellen Luecken" -- oder "Meine ersetzen", der destruktivste Knopf der
+     App. Hatte der andere eine Notiz berichtigt, blieb die eigene, veraltete
+     stehen; wollte man seine, kostete es fuenfzehn Tage eigener
+     Markierungen.
+
+     Seit v40 traegt jedes Feld ein Datum, und das juengere gewinnt. Fuer
+     einen Stand von vor v40 (kein Datum auf einer Seite) gilt weiter die
+     alte, vorsichtige Regel: die eigene Seite behaelt, fremde fuellen
+     Luecken. Etwas, das sich nicht datieren laesst, wird nicht
+     ueberschrieben.
+
+     Was Zusammenfuehren NICHT tut: etwas wegnehmen. Es gibt keine
+     Grabsteine im Link -- wer einen Ort entfernt, schickt kein "weg", und
+     ein fehlender Eintrag heisst "davon weiss ich nichts", nicht "das ist
+     geloescht". */
+  function applyIncoming() {
     if (!incoming) return;
     var fremd = incoming.n || {};
     var fremdeTage = incoming.d || {};
     var fremdeHunde = incoming.h || {};
-    if (mode === 'replace') {
-      rueck = { saved: S.saved.slice(), seen: S.seen.slice(),
-                notes: JSON.parse(JSON.stringify(S.notes)),
-                days: JSON.parse(JSON.stringify(S.days)),
-                dog: JSON.parse(JSON.stringify(S.dog)) };
-      S.saved = incoming.m.slice();
-      S.seen = incoming.g.slice();
-      S.notes = JSON.parse(JSON.stringify(fremd));
-      noteHayNeu();
-      S.days = JSON.parse(JSON.stringify(fremdeTage));
-      S.dog = JSON.parse(JSON.stringify(fremdeHunde));
-    } else {
-      incoming.m.forEach(function (id) { if (S.saved.indexOf(id) < 0) S.saved.push(id); });
-      incoming.g.forEach(function (id) { if (S.seen.indexOf(id) < 0) S.seen.push(id); });
-      /* Beim Zusammenfuehren gewinnt die eigene Notiz: sie steht fuer etwas,
-         das man selbst vor Ort erfahren hat. */
-      Object.keys(fremd).forEach(function (id) { if (!S.notes[id]) S.notes[id] = fremd[id]; });
-      noteHayNeu();
-      /* Auch hier gewinnt die eigene Planung: ein fremder Tag fuellt nur
-         Luecken. */
-      Object.keys(fremdeTage).forEach(function (id) { if (!S.days[id]) S.days[id] = fremdeTage[id]; });
-      /* Hundregeln sind die Ausnahme von "die eigene gewinnt": hier gewinnt
-         die JUENGERE. Es sind keine Markierungen an einer Liste, sondern
-         Beobachtungen ueber einen Ort -- und wer zuletzt davorstand, weiss
-         es besser. Ohne Datum verliert die fremde Angabe. */
-      Object.keys(fremdeHunde).forEach(function (id) {
-        var eigen = S.dog[id], fremdE = fremdeHunde[id];
-        if (!eigen) { S.dog[id] = fremdE; return; }
-        if ((fremdE.at || '') > (eigen.at || '')) S.dog[id] = fremdE;
-      });
+    var fremdeStempel = incoming.t || {};
+    var bericht = { neu: 0, ersetzt: 0, behalten: 0 };
+
+    function jueng(id, feld, eigenDa) {
+      var e = stempelVon(S.stamps, id, feld);
+      var f = stempelVon(fremdeStempel, id, feld);
+      var nimm = fremdGewinnt(eigenDa, e, f);
+      if (!eigenDa) bericht.neu++;
+      else if (nimm) bericht.ersetzt++;
+      else bericht.behalten++;
+      /* Wird uebernommen, wandert auch das Datum mit -- sonst gewaenne beim
+         naechsten Abgleich wieder dasselbe. */
+      if (nimm && f) {
+        var ziel = S.stamps[id] || (S.stamps[id] = {});
+        ziel[feld] = f;
+      }
+      return nimm;
     }
+
+    /* Gemerkt und Gesehen sind Mengen: ein fremder Eintrag kommt dazu,
+       genommen wird niemandem etwas. Der Stempel wandert trotzdem mit,
+       damit ein spaeteres Entfernen auf der anderen Seite datierbar ist. */
+    incoming.m.forEach(function (id) {
+      var da = S.saved.indexOf(id) >= 0;
+      jueng(id, 's', da);
+      if (!da) S.saved.push(id);
+    });
+    incoming.g.forEach(function (id) {
+      var da = S.seen.indexOf(id) >= 0;
+      jueng(id, 'g', da);
+      if (!da) S.seen.push(id);
+    });
+
+    Object.keys(fremd).forEach(function (id) {
+      if (jueng(id, 'n', !!S.notes[id])) S.notes[id] = fremd[id];
+    });
+    noteHayNeu();
+
+    Object.keys(fremdeTage).forEach(function (id) {
+      if (jueng(id, 'd', !!S.days[id])) S.days[id] = fremdeTage[id];
+    });
+
+    /* Die Hundregel traegt ihr Datum seit v34 in .at. Steht kein Stempel
+       daneben (ein Link von damals), gilt weiterhin .at -- es sind
+       Beobachtungen ueber einen Ort, und wer zuletzt davorstand, weiss es
+       besser. */
+    Object.keys(fremdeHunde).forEach(function (id) {
+      var eigen = S.dog[id], fremdE = fremdeHunde[id];
+      var e = stempelVon(S.stamps, id, 'h') || (eigen && eigen.at) || '';
+      var f = stempelVon(fremdeStempel, id, 'h') || fremdE.at || '';
+      if (fremdGewinnt(!!eigen, e, f)) {
+        S.dog[id] = fremdE;
+        if (f) { var z = S.stamps[id] || (S.stamps[id] = {}); z.h = f; }
+        if (eigen) bericht.ersetzt++; else bericht.neu++;
+      } else if (eigen) { bericht.behalten++; }
+    });
+
     lsSet(LS_SAVED, S.saved);
     lsSet(LS_SEEN, S.seen);
     lsSet(LS_NOTES, S.notes);
     lsSet(LS_DAYS, S.days);
     lsSet(LS_DOG, S.dog);
-    var zumRuecknehmen = rueck;
+    lsSet(LS_STAMPS, S.stamps);
     dismissInbox();
-    if (zumRuecknehmen) zeigeRueckgaengig(zumRuecknehmen);
-    syncTabs();
-    render();
-  }
-
-  /* Der Kasten bleibt stehen, aber nur noch mit diesem einen Knopf. Ein
-     eigener Streifen waere ein zweites Bedienmuster fuer dieselbe Sache. */
-  function zeigeRueckgaengig(stand) {
-    rueck = stand;
-    var weg = (stand.saved.length + stand.seen.length);
-    $('inbox-x').textContent = 'Deine ' + weg + ' eigenen Markierungen sind ersetzt.';
-    $('inbox-merge').hidden = true;
-    $('inbox-cancel').hidden = true;
-    $('inbox-replace').hidden = true;
-    $('inbox-undo').hidden = false;
-    $('inbox').hidden = false;
-    window.scrollTo(0, 0);
-    rueckTimer = setTimeout(function () {
-      rueckTimer = null;
-      rueck = null;
-      $('inbox-undo').hidden = true;
-      $('inbox').hidden = true;
-    }, RUECK_MS);
-  }
-
-  function nimmZurueck() {
-    if (!rueck) return;
-    S.saved = rueck.saved.slice();
-    S.seen = rueck.seen.slice();
-    S.notes = JSON.parse(JSON.stringify(rueck.notes || {}));
-    noteHayNeu();
-    S.days = JSON.parse(JSON.stringify(rueck.days || {}));
-    lsSet(LS_SAVED, S.saved);
-    lsSet(LS_SEEN, S.seen);
-    lsSet(LS_NOTES, S.notes);
-    lsSet(LS_DAYS, S.days);
-    endeRueckgaengig();
-    $('inbox').hidden = true;
-    syncTabs();
-    render();
+    /* Nach dem Zusammenfuehren in die Reise: dort liegt das Ergebnis. Der
+       Posteingang erscheint in "Entdecken" (die Liste ist der Ort, an dem man
+       eine fremde Liste einordnet) -- danach will man sehen, was daraus
+       geworden ist. */
+    setView('gemerkt');
+    /* Kurz sagen, was passiert ist. Ein Zusammenfuehren, das nichts meldet,
+       fuehlt sich an, als waere nichts passiert -- und genau deshalb hat man
+       frueher zur Sicherheit "Meine ersetzen" gedrueckt. */
+    flash(bericht.neu + ' neu · ' + bericht.ersetzt + ' aktualisiert · '
+      + bericht.behalten + ' behalten');
   }
 
   function dismissInbox() {
     incoming = null;
-    endeRueckgaengig();
     $('inbox').hidden = true;
     clearHash();
   }
@@ -3515,6 +3655,7 @@
   function setDay(id, iso) {
     if (iso) S.days[id] = iso; else delete S.days[id];
     lsSet(LS_DAYS, S.days);
+    stempel(id, 'd');
     /* Einen Tag zu waehlen heisst, den Ort einzuplanen -- und Verplantes ist
        im Haus eine Teilmenge des Gemerkten. Ohne diese Zeile gaebe es einen
        dritten Zustand ("verplant, aber nicht gemerkt"), und die Zahlen an der
@@ -3523,6 +3664,7 @@
     if (iso && S.saved.indexOf(id) < 0) {
       S.saved.push(id);
       lsSet(LS_SAVED, S.saved);
+      stempel(id, 's');
       syncTabs();
     }
     /* Kommt der Ruf aus einem offenen Sheet, wuerde render() die Liste
@@ -3834,8 +3976,10 @@
 
     S.days[id] = heute;
     lsSet(LS_DAYS, S.days);
+    stempel(id, 'd');
     if (S.saved.indexOf(id) < 0) S.saved.push(id);
     else S.saved.splice(S.saved.indexOf(id), 1), S.saved.push(id);
+    stempel(id, 's');
 
     /* Die Stelle in der Tagesgruppe auf die Position im globalen Array
        uebersetzen -- wie beim Verschieben mit den Pfeilen bleibt alles
@@ -3868,6 +4012,9 @@
       if (plaetze[i] !== undefined) S.saved[plaetze[i]] = p.id;
     });
     lsSet(LS_SAVED, S.saved);
+    /* Die Reihenfolge innerhalb eines Tages ist die Reihenfolge in pk.saved
+       -- also ist sie eine Aenderung an "gemerkt" und traegt ihr Datum. */
+    v.orte.forEach(function (p) { stempel(p.id, 's'); });
     return true;
   }
 
@@ -4579,7 +4726,93 @@
     btn.innerHTML = ICON.share + 'Teilen';
   }
 
+  /* Vor dem Teilen sagen, was drinsteht.
+
+     Der Link traegt seit v22 die eigenen Notizen mit, seit v34 die vor Ort
+     geklaerten Hundregeln und seit v40 die Zeitstempel. Das ist richtig so --
+     es ist das Wertvollste, was auf so einer Reise entsteht, und es soll
+     beide Telefone erreichen. Aber es sind persoenliche Beobachtungen, und
+     sie gehen ueber iMessage oder AirDrop an jemanden. Wer etwas verschickt,
+     soll vorher wissen, was.
+
+     Ein Sheet, kein Dialog: dieselbe Flaeche, mit der das Haus jede andere
+     Entscheidung stellt. Der bestaetigende Knopf steht zuerst, der
+     folgenlose danach -- wie im Posteingang. */
+  function shareSheetHtml() {
+    var gPlan = tagKennungen();
+    var tage = S.saved.filter(function (id) { return planTagVon(id, gPlan); }).length;
+    return '<p class="sheet__cat">Teilen</p>'
+      + '<h2 class="sheet__name" id="sheet-name">Das steht im Link</h2>'
+      + '<ul class="inbox__was">'
+      + inhaltListe({ m: S.saved.length, g: S.seen.length,
+                      n: Object.keys(S.notes).length, d: tage,
+                      h: Object.keys(S.dog).length })
+      + '</ul>'
+      + '<p class="sheet__hint">Der Link enthält keinen Namen, keinen Standort '
+      + 'und kein Konto — nur diese Markierungen. Er geht über den Weg, den du '
+      + 'gleich auswählst; wer ihn hat, kann ihn öffnen.</p>'
+      + '<div class="sheet__acts">'
+      + '<button type="button" class="btn btn--primary btn--wide" id="share-go">'
+      + 'Link teilen</button>'
+      /* Derselbe Link, anderer Zweck: an sich selbst. Safari raeumt bei
+         Seiten, die laenger nicht benutzt werden, den localStorage weg --
+         nach Wochen Pause kann die Merkliste weg sein. Ein Lesezeichen mit
+         der Liste IN der Adresse ueberlebt das, weil es kein Speicher ist,
+         sondern Text. */
+      + '<button type="button" class="btn btn--wide" id="share-mark">'
+      + 'In die Adresse schreiben</button>'
+      + '<button type="button" class="btn btn--wide" id="share-ab">Abbrechen</button>'
+      + '</div>';
+  }
+
   function doShare() {
+    S.openId = null;
+    S.dayOpen = null;
+    showSheet(shareSheetHtml(), 'sheet--teilen');
+  }
+
+  /* Die ganze Liste in die Adresse schreiben, damit man sie als Lesezeichen
+     sichern kann.
+
+     replaceState statt location.hash: ein gesetzter Hash loest hashchange
+     aus, und das ruft showInbox() -- man bekaeme seine eigene Liste als
+     fremde angeboten. Mit replaceState passiert nichts ausser der Adresse.
+
+     Beim naechsten Start liest showInbox() den Hash trotzdem. Das ist genau
+     der Rettungsfall und soll so sein: ist der Speicher geraeumt, stellt
+     "Zusammenfuehren" alles wieder her. Ist er es nicht, erkennt showInbox()
+     die Liste als die eigene und sagt gar nichts. */
+  var adresseMerken = '';
+
+  function schreibAdresse(hash) {
+    try { history.replaceState(null, '', hash); }
+    catch (e) { location.hash = hash.slice(1); }
+  }
+
+  function inDieAdresse() {
+    var url = shareLink();
+    /* Beim Oeffnen eines Sheets legt pushSheetState() einen Eintrag an, und
+       closeSheet() nimmt ihn mit history.back() wieder zurueck -- samt der
+       Adresse, die hier gerade geschrieben wurde. Also wird sie beim
+       Schliessen noch einmal gesetzt. Zweimal schreiben ist billiger als ein
+       Sheet ohne Historieneintrag: an dem haengt die Zurueck-Geste. */
+    adresseMerken = url.slice(url.indexOf('#'));
+    schreibAdresse(adresseMerken);
+    var k = $('share-mark');
+    if (k) {
+      k.textContent = 'Steht in der Adresse ✓';
+      k.disabled = true;
+    }
+    var hinweis = $('sheet-body').querySelector('.sheet__hint');
+    if (hinweis) {
+      hinweis.textContent = 'Deine ganze Liste steht jetzt in der Adresse. '
+        + 'Sichere sie als Lesezeichen — dann bleibt sie auch, wenn Safari den '
+        + 'Speicher räumt. Beim Öffnen des Lesezeichens stellt „Zusammenführen" '
+        + 'alles wieder her.';
+    }
+  }
+
+  function doShareWirklich() {
     var url = shareLink();
     var txt = 'Meine Liste aus Peschiera kompakt';
     var fallback = function () {
@@ -4821,6 +5054,23 @@
         return;
       }
 
+      /* Das Teilen-Sheet: erst zeigen, was drinsteht, dann teilen. */
+      if (e.target.closest('#share-go')) {
+        e.preventDefault();
+        closeSheet();
+        /* Erst nach dem Schliessen: navigator.share oeffnet ein eigenes
+           Systemblatt, und zwei uebereinander waeren eines zu viel. 300 ms,
+           der Schliessvorgang laeuft 260 ms nach. */
+        window.setTimeout(doShareWirklich, 300);
+        return;
+      }
+      if (e.target.closest('#share-ab')) { e.preventDefault(); closeSheet(); return; }
+      if (e.target.closest('#share-mark')) {
+        e.preventDefault();
+        inDieAdresse();
+        return;
+      }
+
       var ds = e.target.closest('[data-dogset]');
       if (ds) {
         e.preventDefault();
@@ -4843,6 +5093,7 @@
         var wen = setz.getAttribute('data-dayset');
         if (wohin) S.days[wen] = wohin; else delete S.days[wen];
         lsSet(LS_DAYS, S.days);
+        stempel(wen, 'd');
         /* Seit v37 holt die Suche im Sheet auch Orte herein, die noch gar
            nicht gemerkt sind. Einen Tag zu waehlen heisst, ihn einzuplanen --
            und was eingeplant ist, gehoert in die Merkliste. Sonst stuende
@@ -4850,6 +5101,7 @@
         if (wohin && S.saved.indexOf(wen) < 0) {
           S.saved.push(wen);
           lsSet(LS_SAVED, S.saved);
+          stempel(wen, 's');
         }
         render();
         syncTabs();
@@ -5133,10 +5385,8 @@
        passiert nichts, wenn die App beim Antippen des Links schon offen ist. */
     window.addEventListener('hashchange', showInbox);
 
-    $('inbox-merge').addEventListener('click', function () { applyIncoming('merge'); });
-    $('inbox-replace').addEventListener('click', function () { applyIncoming('replace'); });
+    $('inbox-merge').addEventListener('click', function () { applyIncoming(); });
     $('inbox-cancel').addEventListener('click', dismissInbox);
-    $('inbox-undo').addEventListener('click', nimmZurueck);
 
     window.addEventListener('online', updateOfflineNote);
     window.addEventListener('offline', updateOfflineNote);

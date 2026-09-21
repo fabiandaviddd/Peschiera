@@ -968,6 +968,26 @@ body.is-compact .bar__top {
   color: var(--accent-ink, var(--soft)); margin-bottom: .15rem; }
 
 .sheet__acts { display: grid; gap: .5rem; margin-bottom: 1.3rem; }
+/* Der erklaerende Satz unter einer Aufstellung -- im Teilen-Sheet sagt er,
+   was NICHT drinsteht. */
+.sheet__hint { font-size: var(--t-meta); color: var(--soft); margin: .2rem 0 1rem; }
+
+/* Was in einer Liste steckt, Zeile fuer Zeile -- im Posteingang und vor dem
+   Teilen dieselbe Aufstellung. Bis v39 stand dort ein Satz mit zwei Zahlen,
+   und Notizen, Tage und Hundregeln fuhren ungenannt mit. */
+.inbox__was {
+  list-style: none; margin: 0 0 .9rem; padding: 0;
+  display: grid; gap: .25rem;
+}
+.inbox__was li {
+  display: grid; grid-template-columns: .9rem 1fr; gap: .45rem;
+  font-size: var(--t-body); color: var(--soft);
+  font-variant-numeric: tabular-nums;
+}
+.inbox__was li::before { content: "·"; color: var(--soft); font-weight: 700; }
+/* Notizen stehen mit ihrem Namen da und nicht unter "Markierungen": sie sind
+   das Persoenlichste, was diese App kennt. */
+.inbox__was b { color: var(--ink); font-weight: 600; }
 
 /* Gruppenkoepfe im Filter-Sheet. Die Zeile darunter traegt, was ein Filter
    still ausblendet — dasselbe Versprechen, das die Zaehlzeile beim
