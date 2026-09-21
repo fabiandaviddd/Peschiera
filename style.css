@@ -69,6 +69,13 @@
   --ink:   #20201C;
   --soft:  #5E594C;
   --line:  #E2DBC8;
+  /* Der Rand eines BEDIENELEMENTS. --line ist eine Haarlinie und trennt
+     Zeilen -- das darf zurueckhaltend sein, WCAG nimmt rein Schmueckendes
+     ausdruecklich aus. Wo der Rand aber das Einzige ist, woran man erkennt,
+     dass dort etwas zum Antippen liegt, verlangt 1.4.11 mindestens 3:1.
+     --line schafft 1,21:1 auf --bg. Gemessen: 3,21:1 auf --bg, 3,59:1 auf
+     --card. scripts/browser/kontrast.mjs rechnet beides nach. */
+  --rand:  #8F856E;
   --lake:  #1E5F73;
   --gold:  #B8912A;
   --brick: #A3462F;
@@ -135,6 +142,9 @@
     --ink:   #EFEADD;
     --soft:  #A8A192;
     --line:  #2E2F25;
+    /* Siehe --rand im hellen Schema. Gemessen: 3,67:1 auf --bg, 3,36:1 auf
+       --card. */
+    --rand:  #6F715D;
     --lake:  #6FB3C7;
     --gold:  #E0BC5B;
     --brick: #E08C72;
@@ -165,6 +175,8 @@
   --ink:   #EFEADD;
   --soft:  #A8A192;
   --line:  #2E2F25;
+  /* Siehe --rand im hellen Schema. */
+  --rand:  #6F715D;
   --lake:  #6FB3C7;
   --gold:  #E0BC5B;
   --brick: #E08C72;
@@ -327,7 +339,7 @@ body.is-compact .bar__top {
 }
 .switch__box {
   width: 34px; height: 20px; flex: 0 0 auto;
-  border: 1px solid var(--line); border-radius: var(--r-pill);
+  border: 1px solid var(--rand); border-radius: var(--r-pill);
   background: var(--card);
   transition: background var(--t) var(--ease), border-color var(--t) var(--ease);
 }
@@ -344,7 +356,7 @@ body.is-compact .bar__top {
   flex: 0 0 auto;
   width: 44px; height: 44px; margin-top: -.1rem;
   display: grid; place-items: center;
-  border: 1px solid var(--line); border-radius: var(--r-pill);
+  border: 1px solid var(--rand); border-radius: var(--r-pill);
   background: var(--card); color: var(--soft);
   cursor: pointer;
   transition: color var(--t) var(--ease), border-color var(--t) var(--ease);
@@ -366,7 +378,7 @@ body.is-compact .bar__top {
   padding: 0 2.6rem;
   font-family: var(--font-body); font-size: 1rem;   /* ≥16px: kein iOS-Zoom */
   color: var(--ink); background: var(--card);
-  border: 1px solid var(--line); border-radius: var(--r-pill);
+  border: 1px solid var(--rand); border-radius: var(--r-pill);
   appearance: none; -webkit-appearance: none;
   transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
 }
@@ -392,7 +404,14 @@ body.is-compact .bar__top {
    88 px Kopfhoehe. Jetzt ein Knopf fuer alle Filter, daneben nur die, die
    gerade an sind, rechts die Sortierung. */
 .filterbar { padding-bottom: .4rem; }
-.filterbar__wrap { display: flex; align-items: center; gap: .4rem; }
+/* flex-wrap seit v41: bei grosser Systemschrift passen "Filter", "Karte" und
+   "Entfernung" nicht mehr nebeneinander auf 402 px. Ohne Umbruch lief der
+   Sortierknopf ueber den rechten Rand hinaus -- sichtbar abgeschnitten und
+   nur zur Haelfte tippbar. Mehr Text braucht mehr Platz; bei der Vorgabe
+   aendert sich nichts, es passt ja. Gefunden von scripts/browser/schrift.mjs
+   bei 24 px Wurzel. */
+.filterbar__wrap { display: flex; flex-wrap: wrap; align-items: center;
+  gap: .4rem; row-gap: .35rem; }
 
 /* Die aktiven Filter scrollen, Filter- und Sortierknopf bleiben stehen. */
 .filterbar__active {
@@ -427,7 +446,7 @@ body.is-compact .bar__top {
   min-height: 36px; padding: .3rem .72rem;
   font-size: var(--t-meta); font-weight: 500;
   color: var(--soft); background: var(--card);
-  border: 1px solid var(--line); border-radius: var(--r-pill);
+  border: 1px solid var(--rand); border-radius: var(--r-pill);
   cursor: pointer; white-space: nowrap;
   transition: color var(--t) var(--ease), background var(--t) var(--ease),
               border-color var(--t) var(--ease);
@@ -448,7 +467,7 @@ body.is-compact .bar__top {
   gap: .75rem; padding: .1rem 0 .6rem;
   font-size: var(--t-meta); color: var(--soft);
 }
-.sort { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-pill);
+.sort { display: inline-flex; border: 1px solid var(--rand); border-radius: var(--r-pill);
   background: var(--card); overflow: hidden; }
 .sort button {
   min-height: 36px; padding: .25rem .7rem;
@@ -664,7 +683,7 @@ body.is-compact .bar__top {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
   min-height: 44px; padding: 0 1.1rem;
   font-family: var(--font-body); font-size: var(--t-body); font-weight: 500;
-  border-radius: var(--r-pill); border: 1px solid var(--line);
+  border-radius: var(--r-pill); border: 1px solid var(--rand);
   background: var(--card); color: var(--ink);
   cursor: pointer; text-decoration: none;
   transition: background var(--t) var(--ease), border-color var(--t) var(--ease);
@@ -968,6 +987,16 @@ body.is-compact .bar__top {
   color: var(--accent-ink, var(--soft)); margin-bottom: .15rem; }
 
 .sheet__acts { display: grid; gap: .5rem; margin-bottom: 1.3rem; }
+
+/* Die drei Startkarten. Eine nach der anderen, nicht drei untereinander:
+   drei Absaetze ueberspringt man, drei Schritte liest man. */
+.start__x { font-size: var(--t-body); color: var(--soft); margin: .3rem 0 1.1rem; }
+.start__dots { display: flex; gap: .4rem; margin-bottom: 1rem; }
+.start__dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--line);
+}
+.start__dot--an { background: var(--lake); }
 /* Der erklaerende Satz unter einer Aufstellung -- im Teilen-Sheet sagt er,
    was NICHT drinsteht. */
 .sheet__hint { font-size: var(--t-meta); color: var(--soft); margin: .2rem 0 1rem; }
@@ -1140,6 +1169,10 @@ body.is-typing .tabs { transform: translateY(110%); }
 
 /* Ein Balken sagt in einem Blick, was "2 von 5" erst gelesen werden muss.
    3 px: er ist eine Auskunft am Rande, kein Bedienelement. */
+/* Die Spur ist Flaeche, die Fuellung traegt die Aussage: was zaehlt, ist die
+   Grenze zwischen gefuellt und leer. Geprueft wird deshalb die FUELLUNG
+   gegen die SPUR (kontrast.mjs) und nicht die Spur gegen die Karte -- eine
+   Spur, die bei 0 Prozent kaum zu sehen ist, verschweigt nichts. */
 .planheut__bar {
   height: 3px; margin: 0 .85rem .55rem; border-radius: 2px;
   background: var(--line); overflow: hidden;
@@ -1249,14 +1282,21 @@ body.is-typing .tabs { transform: translateY(110%); }
 
 /* Die Vier-Abschnitte-Leiste. Bis v13 zeigte "Heute" nur, was die Uhr sagte;
    den ganzen Tag sah man nicht und vorausblaettern ging gar nicht. */
+/* minmax(0, 1fr) statt 1fr: die Mindestbreite einer Rasterspalte ist sonst
+   die des Inhalts, und "Nachmittag" ist bei grosser Systemschrift breiter
+   als ein Viertel von 402 px. Die Leiste schob die Seite dann um 6 px nach
+   rechts -- gegen die Hausregel "kein horizontaler Scroll". Gefunden hat das
+   scripts/browser/schrift.mjs bei 24 px Wurzel. */
 .segbar {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: .3rem;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem;
   margin-top: .7rem;
 }
 .seg {
-  min-height: 40px; padding: .35rem .2rem;
+  min-height: 40px; padding: .35rem .2rem; min-width: 0;
+  /* Umbrechen ist erlaubt, herauslaufen nicht. */
+  overflow-wrap: anywhere; hyphens: auto;
   font-size: var(--t-meta); font-weight: 500; color: var(--soft);
-  background: var(--card); border: 1px solid var(--line);
+  background: var(--card); border: 1px solid var(--rand);
   border-radius: 10px; cursor: pointer;
   transition: color var(--t) var(--ease), background var(--t) var(--ease),
               border-color var(--t) var(--ease);
@@ -1360,7 +1400,7 @@ body.is-typing .tabs { transform: translateY(110%); }
    Einstieg statt zweier. */
 .tagk {
   display: block; width: 100%; text-align: left;
-  background: var(--card); border: 1px solid var(--line);
+  background: var(--card); border: 1px solid var(--rand);
   border-left: 3px solid var(--lake);
   border-radius: var(--r-card); box-shadow: var(--shadow);
   padding: .7rem .85rem .75rem; cursor: pointer;
@@ -1474,7 +1514,7 @@ body.is-typing .tabs { transform: translateY(110%); }
   min-height: 2.75rem; padding: .3rem 1.7rem .3rem .8rem;
   font-family: var(--font-body); font-size: var(--t-meta); font-weight: 500;
   color: var(--soft); background: var(--wash);
-  border: 1px solid var(--line); border-radius: var(--r-pill);
+  border: 1px solid var(--rand); border-radius: var(--r-pill);
   cursor: pointer;
 }
 /* Zugeordnet: Seeblau, die Hausfarbe fuer "hier ist etwas an". */
@@ -1530,7 +1570,7 @@ body.is-typing .tabs { transform: translateY(110%); }
   position: relative;
   min-height: 2.9rem; padding: .3rem .1rem;
   display: grid; justify-items: center; align-content: center; gap: 0;
-  border: 1px solid var(--line); border-radius: 10px;
+  border: 1px solid var(--rand); border-radius: 10px;
   background: var(--bg);
   font-family: var(--font-body); line-height: 1.15;
 }
@@ -1700,7 +1740,7 @@ body.is-typing .tabs { transform: translateY(110%); }
   min-height: 2.75rem; padding: .4rem .5rem;
   font-family: var(--font-body); font-size: var(--t-meta); font-weight: 500;
   color: var(--soft); background: none;
-  border: 1px solid var(--line); border-radius: var(--r-pill);
+  border: 1px solid var(--rand); border-radius: var(--r-pill);
   cursor: pointer;
   transition: color var(--t) var(--ease), background-color var(--t) var(--ease),
               border-color var(--t) var(--ease);
@@ -1743,7 +1783,7 @@ body.is-typing .tabs { transform: translateY(110%); }
   padding: .5rem .9rem;
   font-family: var(--font-body); font-size: var(--t-body);
   color: var(--ink); background: var(--wash);
-  border: 1px solid var(--line); border-radius: var(--r-pill);
+  border: 1px solid var(--rand); border-radius: var(--r-pill);
   -webkit-appearance: none; appearance: none;
 }
 .tagsuche__i::placeholder { color: var(--soft); }
@@ -2098,6 +2138,6 @@ body.is-map .map__note { display: none; }
   /* 1rem ist die Grenze, unter der iOS beim Fokus hineinzoomt. */
   font: inherit; font-size: 1rem; color: var(--ink);
   background: var(--card);
-  border: 1px solid var(--line); border-radius: var(--r-pill);
+  border: 1px solid var(--rand); border-radius: var(--r-pill);
 }
 .notiz__f:focus-visible { outline: 2px solid var(--lake); outline-offset: 1px; }

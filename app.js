@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v40 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v41 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -45,6 +45,9 @@
      Mit Zeitstempeln je Feld entfaellt die Frage. Beim Zusammenfuehren
      gewinnt das JUENGERE Feld -- nicht das juengere Telefon. */
   var LS_STAMPS = 'pk.stamps';
+  /* Ob die drei Startkarten schon gezeigt wurden. Ein einziger Wert, kein
+     Datum: sie kommen genau einmal. */
+  var LS_START = 'pk.start';
   var SS_WET   = 'pk.wet';    // Wetter gilt fuer diesen Besuch, nicht fuer immer
   var WALK_MAX = 25;          // Schwelle für den Filter "Zu Fuß"
   var SHORT_MAX = 60;         // Schwelle für den Filter "Unter 1 h"
@@ -356,6 +359,47 @@
   }
 
   /* Volltext laut Brief: Name, Adresse, Notiz und Tags. */
+  /* --- Sprache eines Ortsnamens ---------------------------------------
+
+     VoiceOver liest die ganze Seite in der Sprache, die im <html>-Element
+     steht -- hier Deutsch. "Osteria sugli Scavi" wird dann buchstabengetreu
+     deutsch ausgesprochen, und wer danach fragt, wird nicht verstanden. Ein
+     lang="it" am Namen genuegt: VoiceOver wechselt fuer diesen Abschnitt die
+     Stimme.
+
+     Die Daten sagen nicht, welche Sprache ein Name hat, und sie sollen es
+     auch nicht muessen -- 101 Eintraege von Hand zu markieren waere eine
+     Datenaufgabe fuer eine Frage, die der Text selbst beantwortet.
+
+     Die Regel ist deshalb umgekehrt gebaut: ein Name gilt als italienisch,
+     ES SEI DENN, ein deutsches oder englisches Wort steht darin. Das ist die
+     sichere Richtung -- wer nicht markiert wird, wird gelesen wie bisher.
+     Die Liste unten stammt aus den 101 Namen dieser Datei; sie ist
+     Kuratierung und kein Sprachmodell, und scripts/test-logic.mjs zaehlt,
+     wie viele Namen sie trifft. */
+  var NICHT_IT = new RegExp('\\b(' + [
+    /* deutsch */
+    'festung', 'uferweg', 'wochenmarkt', 'weingut', 'weinmuseum', 'weinberge',
+    'bahnhof', 'dom', 'mantua', 'bootsfahrt', 'bootstour', 'linienschiff',
+    'radrunde', 'radweg', 'schwefelquelle', 'nachmittags', 'dienstag',
+    'mittwoch', 'donnerstag', 'freitag', 'samstag', 'sonntag', 'montag',
+    'strand', 'see', 'berg', 'platz', 'markt', 'apotheke', 'supermarkt',
+    /* englisch */
+    'beach', 'bike', 'rental', 'cycling', 'market', 'coffee', 'bros',
+    'lounge', 'bar', 'food', 'wine', 'spirit', 'south'
+  ].join('|') + ')\\b', 'i');
+
+  /* Gibt ' lang="it"' oder '' zurueck -- fertig zum Einsetzen in ein Attribut. */
+  function langAttr(text) {
+    return sprachIt(text) ? ' lang="it"' : '';
+  }
+
+  function sprachIt(text) {
+    var t = String(text == null ? '' : text);
+    if (!t.trim()) return false;
+    return !NICHT_IT.test(t);
+  }
+
   function haystack(p) {
     return norm([p.name, p.address, p.note, (p.tags || []).join(' ')].join(' · '));
   }
@@ -590,11 +634,26 @@
     $('boot').hidden = true;
     $('app').hidden = false;
 
+    applyDynamicType();
+    /* Die Textgroesse laesst sich aendern, waehrend die App im Hintergrund
+       liegt. Safari zeichnet die Seite dann nicht von selbst neu -- also
+       beim Zurueckkommen noch einmal messen. */
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) applyDynamicType();
+    });
+
     registerSW();
     updateOfflineNote();
     checkCacheVersion();
     showInbox();
     ladeWissen();
+
+    /* Ganz zuletzt: die Karten sprechen ueber Orte, und die Zahlen darin
+       ("58 von 101") stimmen nur mit geladenen Daten. Nach showInbox(), weil
+       der Posteingang Vorrang hat -- wer eine geteilte Liste oeffnet, hat
+       eine dringendere Frage als drei Erklaerkarten. Er bekommt sie beim
+       naechsten Start. */
+    if ($('inbox').hidden && !lsGet(LS_START, 0)) zeigeStart(0);
   }
 
   /* Das Wissen kommt NACH den Orten und blockiert den Start nicht. Es ist
@@ -647,6 +706,141 @@
   }
 
   /* ----------------------------------------------------------------- Theme */
+
+  /* --- Dynamic Type ----------------------------------------------------
+
+     iOS laesst die Schriftgroesse systemweit einstellen (Einstellungen >
+     Anzeige & Helligkeit > Textgroesse, und in der Bedienungshilfe bis
+     deutlich groesser). Eine Webseite bekommt davon nichts mit -- ausser sie
+     fragt danach: die Schrift-Schluesselwoerter wie -apple-system-body
+     liefern in Safari genau die eingestellte Groesse.
+
+     Alle Groessen im Haus haengen an rem. Setzt man also die Wurzel auf die
+     Systemgroesse, waechst die ganze App mit, ohne dass eine einzige Regel
+     sich aendert.
+
+     Zwei Grenzen gehoeren dazu:
+
+     16 px nach unten, nicht weniger. Nicht aus Geschmack: iOS zoomt beim
+     Fokus in ein Eingabefeld, dessen Schrift kleiner als 16 px ist, und das
+     Suchfeld steht auf 1rem. Eine kleiner eingestellte Systemschrift wuerde
+     also jedes Tippen im Suchfeld zu einem Zoom machen.
+
+     24 px nach oben. Darueber bleibt bei 402 px Breite von einer Zeile mit
+     Name, Bewertung und vier Fakten nichts Lesbares uebrig -- der Text
+     waechst, der Bildschirm nicht. 24 px sind das Anderthalbfache der
+     Vorgabe; wer mehr braucht, bekommt in Safari zusaetzlich den Zoom der
+     ganzen Seite, und der funktioniert hier unveraendert.
+
+     Reine Funktion, damit der Pruefstand sie ohne Browser rechnen kann. */
+  var TYPE_MIN = 16, TYPE_MAX = 24;
+
+  /* "Bewegung reduzieren" (iOS: Bedienungshilfen > Bewegung). Das Stylesheet
+     nimmt seit v22 Animationen und Uebergaenge heraus -- aber nicht, was JS
+     bewegt: ein weiches Scrollen und die Zoomfahrten der Karte kommen aus
+     Code, nicht aus CSS. Beide werden hier abgefragt.
+
+     Kein einmaliger Wert: die Einstellung laesst sich aendern, waehrend die
+     App laeuft, und matchMedia liefert dann sofort das Neue. */
+  function wenigerBewegung() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch (e) { return false; }
+  }
+
+  function typeSkala(px) {
+    if (typeof px !== 'number' || !isFinite(px) || px <= 0) return null;
+    return Math.max(TYPE_MIN, Math.min(TYPE_MAX, px));
+  }
+
+  /* Die eingestellte Groesse messen. Browser, die das Schluesselwort nicht
+     kennen (alles ausser Safari), lassen die Eigenschaft leer -- dann bleibt
+     die Wurzel, wie sie ist, und nichts aendert sich. */
+  function messeSystemSchrift() {
+    var probe = document.createElement('span');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;'
+      + 'left:-9999px;top:0;font:-apple-system-body';
+    document.body.appendChild(probe);
+    var gesetzt = probe.style.font;      /* leer, wenn unbekannt */
+    var px = gesetzt ? parseFloat(getComputedStyle(probe).fontSize) : 0;
+    probe.remove();
+    return px || 0;
+  }
+
+  function applyDynamicType() {
+    var px = typeSkala(messeSystemSchrift());
+    var root = document.documentElement;
+    if (!px) { root.style.removeProperty('font-size'); return; }
+    root.style.fontSize = px + 'px';
+    /* Der Kopf ist danach hoeher oder niedriger, und daran haengt der Abstand
+       der ganzen Seite. */
+    measureBar();
+  }
+
+  /* --- Die drei Startkarten --------------------------------------------
+
+     Beim ersten Start, danach nie wieder. Sie erklaeren NICHT die Bedienung
+     -- vier Reiter und ein Suchfeld brauchen keine Anleitung. Sie erklaeren
+     die drei Eigenheiten, die sonst als Fehler gelesen werden:
+
+     1. Warum an jedem Ort eine Hundzeile steht.
+     2. Warum 58 Orte ein Fragezeichen tragen und trotzdem in der Liste
+        stehen. Das ist die wichtigste Karte: sie erklaert die eine
+        Konvention, die sonst wie ein Datenfehler aussieht.
+     3. Dass Teilen existiert -- bevor man es braucht.
+
+     Eine Karte nach der anderen, nicht drei untereinander: drei Absaetze
+     ueberspringt man, drei Schritte liest man. Weggehen geht jederzeit, das
+     Sheet schliesst wie jedes andere. */
+  var STARTKARTEN = [
+    { t: 'Jum ist dabei',
+      x: 'An jedem Ort steht, ob der Hund mit hineindarf. Der Schalter „Mit Jum“ '
+       + 'oben blendet nichts aus — er zählt, beschriftet und sortiert.' },
+    { t: 'Offen heißt offen, nicht nein',
+      x: 'Bei 58 der 101 Orte ist die Hunderegel ungeklärt. Sie stehen trotzdem '
+       + 'überall mit, ockerfarben und gestrichelt. Eine Datenlücke ist keine '
+       + 'Absage — und wer davorsteht oder anruft, trägt die Antwort im Ort ein. '
+       + 'Ab dann gilt sie und fährt beim Teilen mit.' },
+    { t: 'Zwei Telefone, ein Plan',
+      x: 'In „Reise“ macht „Teilen“ einen Link aus deiner Liste — mit Notizen, '
+       + 'Tagen und geklärten Hunderegeln. Beim Zusammenführen gewinnt je Feld '
+       + 'das Jüngere. Es gibt keinen Server: nichts verlässt das Gerät außer '
+       + 'über diesen Link.' }
+  ];
+
+  function startHtml(i) {
+    var k = STARTKARTEN[i];
+    var letzte = i === STARTKARTEN.length - 1;
+    return '<p class="sheet__cat">' + (i + 1) + ' von ' + STARTKARTEN.length + '</p>'
+      + '<h2 class="sheet__name" id="sheet-name">' + esc(k.t) + '</h2>'
+      + '<p class="start__x">' + esc(k.x) + '</p>'
+      + '<div class="start__dots" aria-hidden="true">'
+      + STARTKARTEN.map(function (_, j) {
+          return '<span class="start__dot' + (j === i ? ' start__dot--an' : '') + '"></span>';
+        }).join('')
+      + '</div>'
+      + '<div class="sheet__acts">'
+      + '<button type="button" class="btn btn--primary btn--wide" data-startnext="' + i + '">'
+      + (letzte ? 'Los geht’s' : 'Weiter') + '</button>'
+      + (letzte ? '' : '<button type="button" class="btn btn--wide" id="start-skip">'
+          + 'Überspringen</button>')
+      + '</div>';
+  }
+
+  var startOffen = false;
+
+  function zeigeStart(i) {
+    S.openId = null;
+    S.dayOpen = null;
+    S.filterOpen = false;
+    startOffen = true;
+    showSheet(startHtml(i), 'sheet--start');
+  }
+
+  function startFertig() {
+    lsSet(LS_START, 1);
+    closeSheet();
+  }
 
   function applyTheme() {
     var root = document.documentElement;
@@ -1669,7 +1863,7 @@
        wäre ungültig). Geöffnet wird über einen Knopf, der die Karte überdeckt. */
     return '<article class="card ' + accentClass(p.category) + (wasSeen ? ' card--seen' : '') + '">'
       + '<div class="card__head">'
-      + '<h3 class="card__name">' + esc(p.name) + '</h3>'
+      + '<h3 class="card__name"' + langAttr(p.name) + '>' + esc(p.name) + '</h3>'
       + ratingHtml(p)
       + '</div>'
       + '<p class="card__meta">'
@@ -2095,7 +2289,7 @@
     return '<p class="today__cat ' + accentClass(p.category) + '">' + esc(catLabel(p.category))
       + (has(p.hours) ? '<span class="today__hours">' + esc(String(p.hours).replace(/^geöffnet\s+/i, '')) + '</span>' : '')
       + '</p>'
-      + '<h3 class="today__name">' + esc(p.name) + '</h3>'
+      + '<h3 class="today__name"' + langAttr(p.name) + '>' + esc(p.name) + '</h3>'
       + (has(p.note) ? '<p class="today__note">' + esc(p.note) + '</p>' : '')
       + '<p class="today__why">' + whyLine(p, mins, until, ref, tomorrow) + '</p>'
       /* Was es kostet, ihn mitzunehmen -- und wo er hinkaeme. Ohne diese
@@ -2129,7 +2323,7 @@
 
   function smallHtml(p, ref) {
     return '<button type="button" class="today__small" data-open="' + esc(p.id) + '">'
-      + '<span class="today__small-n">' + esc(p.name) + '</span>'
+      + '<span class="today__small-n"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
       + '<span class="today__small-m">' + esc(catLabel(p.category))
       + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min' : '')
       + (p.dog === true ? ' · Jum ok' : '')
@@ -2267,7 +2461,7 @@
         + (ab ? ' als noch nicht erledigt markieren' : ' als erledigt abhaken') + '</span>'
         + ICON.check + '</button>'
         + '<button type="button" class="planheut__open" data-open="' + esc(p.id) + '">'
-        + '<span class="planheut__name">' + esc(p.name) + '</span>'
+        + '<span class="planheut__name"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
         + '<span class="planheut__m">' + esc(catLabel(p.category))
         + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
         + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
@@ -2811,6 +3005,11 @@
       }
     }, 260);
 
+    /* Auch Wegwischen, Esc, das Kreuz und die Zurueck-Geste zaehlen als
+       gelesen. Die Karten ein zweites Mal zu zeigen, weil jemand sie anders
+       weggeklickt hat als vorgesehen, waere eine Strafe fuers Bedienen. */
+    if (startOffen) { startOffen = false; lsSet(LS_START, 1); }
+
     var id = S.openId;
     var wasFilter = S.filterOpen;
     var wasDay = S.dayOpen;
@@ -3106,7 +3305,7 @@
     var bk = badgeKind(p);
     var h = '<p class="sheet__cat">' + esc(catLabel(p.category))
       + (bk && bk !== 'dog' ? ' · ' + esc(p.badge) : '') + '</p>'
-      + '<h2 class="sheet__name" id="sheet-name">' + esc(p.name) + '</h2>'
+      + '<h2 class="sheet__name" id="sheet-name"' + langAttr(p.name) + '>' + esc(p.name) + '</h2>'
       + (has(p.rating)
           ? '<p class="sheet__rate">' + ICON.rating + nf1.format(p.rating)
             + (has(p.reviews) ? '<span class="sheet__rate-n">· ' + nf0.format(p.reviews)
@@ -3141,7 +3340,9 @@
       + (hereKm(p) !== null && dist.length
           ? row('Ab dem Zeltplatz', esc(dist.join(' · ')))
           : dist.length > 1 ? row('Entfernung', esc(dist.join(' · '))) : '')
-      + (has(p.address) ? row('Adresse', esc(p.address)) : '')
+      /* Die Adresse ist immer italienisch -- "Via Sebino 29, Peschiera del
+         Garda" gibt es in keiner anderen Sprache. */
+      + (has(p.address) ? row('Adresse', '<span lang="it">' + esc(p.address) + '</span>') : '')
       + (tel ? row('Telefon', '<a href="tel:' + esc(tel) + '">' + esc(p.phone) + '</a>') : '')
       + '</dl>';
 
@@ -4349,7 +4550,7 @@
                  noch zeigt, gehoert sie dorthin, wo geaendert wird. */
               + '<span class="tagsheet__nr">' + (i + 1) + '</span>'
               + '<span class="tagsheet__txt">'
-              + '<span class="tagsheet__name">' + esc(p.name) + '</span>'
+              + '<span class="tagsheet__name"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
               + '<span class="tagsheet__m">' + esc(catLabel(p.category))
               + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
               + (S.jum ? dogKurz(p) : '') + '</span></span>'
@@ -4458,7 +4659,7 @@
           var w = bez.naehe(p);
           return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
             + '<span class="tagsheet__txt">'
-            + '<span class="tagsheet__name">' + esc(p.name) + '</span>'
+            + '<span class="tagsheet__name"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
             + '<span class="tagsheet__m">' + esc(catLabel(p.category))
             + (w !== null && w !== undefined
                 ? ' · <span class="tagsheet__weit">' + esc(km(w)) + '</span>' : '')
@@ -4520,7 +4721,7 @@
       + ' ' + accentClass(p.category) + '">'
       + '<span class="planrow__mid">'
       + '<button type="button" class="planrow__open" data-open="' + esc(p.id) + '">'
-      + '<span class="planrow__name">' + esc(p.name) + '</span>'
+      + '<span class="planrow__name"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
       + '<span class="planrow__m">' + esc(catLabel(p.category))
       + (has(p.walk_min) ? ' · ' + p.walk_min + ' Min Weg' : '')
       + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
@@ -4587,7 +4788,7 @@
       var weg = w.wege[i];   /* der Weg VON dieser Station zur naechsten */
       return '<li class="tagk__st' + (ab ? ' tagk__st--ab' : '') + ' '
         + accentClass(p.category) + '">'
-        + '<span class="tagk__n">' + esc(p.name) + '</span>'
+        + '<span class="tagk__n"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
         + '<span class="tagk__d">'
         + (ab ? 'erledigt'
              : closedToday(p, new Date(t.iso + 'T12:00:00')) ? 'an dem Tag zu'
@@ -5054,6 +5255,19 @@
         return;
       }
 
+      /* Die drei Startkarten. */
+      var sn = e.target.closest('[data-startnext]');
+      if (sn) {
+        e.preventDefault();
+        var i = +sn.getAttribute('data-startnext');
+        if (i + 1 >= STARTKARTEN.length) { startFertig(); return; }
+        $('sheet-body').innerHTML = startHtml(i + 1);
+        var weiter = $('sheet-body').querySelector('[data-startnext]');
+        if (weiter) { try { weiter.focus({ preventScroll: true }); } catch (err) { /* egal */ } }
+        return;
+      }
+      if (e.target.closest('#start-skip')) { e.preventDefault(); startFertig(); return; }
+
       /* Das Teilen-Sheet: erst zeigen, was drinsteht, dann teilen. */
       if (e.target.closest('#share-go')) {
         e.preventDefault();
@@ -5127,8 +5341,12 @@
           if (!ziel) return;
           /* scroll-padding-top steht auf html und haelt den fixierten Kopf
              frei -- deshalb reicht scrollIntoView, ohne selbst zu rechnen. */
-          try { ziel.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
-          catch (err) { ziel.scrollIntoView(true); }
+          /* Weiches Scrollen ist eine Bewegung ueber den halben Bildschirm
+             -- genau das, was "Bewegung reduzieren" meint. */
+          try {
+            ziel.scrollIntoView({ block: 'start',
+              behavior: wenigerBewegung() ? 'auto' : 'smooth' });
+          } catch (err) { ziel.scrollIntoView(true); }
         }, 300);
         return;
       }
@@ -5463,7 +5681,7 @@
       var d = S.here ? hereKm(p) : (D.meta && D.meta.base_geo ? airKmPoint(D.meta.base_geo, p.geo) : null);
       return '<button type="button" class="msrow ' + accentClass(p.category) + '"'
         + ' data-open="' + esc(p.id) + '">'
-        + '<span class="msrow__n">' + esc(p.name) + '</span>'
+        + '<span class="msrow__n"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
         + '<span class="msrow__m">' + esc(catLabel(p.category))
         + (d !== null && d !== undefined ? ' · ' + esc(km(d)) : '')
         + (p.geo ? '' : ' · nicht auf der Karte')
@@ -5683,7 +5901,7 @@
       + '<div class="bund__l">'
       + g.orte.map(function (p) {
           return '<button type="button" class="bund__b" data-bopen="' + esc(p.id) + '">'
-            + '<span class="bund__n">' + esc(p.name) + '</span>'
+            + '<span class="bund__n"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
             + '<span class="bund__k">' + esc(catLabel(p.category)) + '</span>'
             + '</button>';
         }).join('')
@@ -5760,7 +5978,15 @@
       }
       var base = D.meta && D.meta.base_geo;
       if (!karte) {
-        karte = window.L.map('map', { zoomControl: true, attributionControl: true });
+        /* Leaflet faehrt beim Zoomen und beim Einblenden von Kacheln
+           Animationen -- aus Code, nicht aus CSS, also greift die Regel im
+           Stylesheet nicht. Bei "Bewegung reduzieren" springt die Karte
+           stattdessen. */
+        var ruhig = wenigerBewegung();
+        karte = window.L.map('map', {
+          zoomControl: true, attributionControl: true,
+          zoomAnimation: !ruhig, fadeAnimation: !ruhig, markerZoomAnimation: !ruhig
+        });
         window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
           attribution: '© OpenStreetMap'
@@ -5860,6 +6086,9 @@
       runsToday: runsToday, daysUntil: daysUntil, tripDay: tripDay, unverified: unverified,
       closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,
       dur: dur, km: km, norm: norm, haystack: haystack,
+      typeSkala: typeSkala, TYPE_MIN: TYPE_MIN, TYPE_MAX: TYPE_MAX,
+      sprachIt: sprachIt,
+      wenigerBewegung: wenigerBewegung,
       wegKm: wegKm, wegMin: wegMin, tagWege: tagWege,
       tagModusVorschlag: tagModusVorschlag, rundenVorschlag: rundenVorschlag,
       umwegFuer: umwegFuer,

@@ -276,6 +276,58 @@ ok('Lokal mit "indoor": false bleibt draußen',
 ok('Ausflug mit Tag "wasser" bleibt draußen',
    pk.indoorOf({ category: 'ausflug', tags: ['wasser'] }), false);
 
+/* ---------------------------------------------------------- Dynamic Type */
+/* iOS laesst die Schriftgroesse systemweit einstellen. Alle Groessen im Haus
+   haengen an rem -- steht die Wurzel auf der Systemgroesse, waechst die App
+   mit. Zwei Grenzen gehoeren dazu, und genau die werden hier gerechnet. */
+group('typeSkala — die Systemschrift, in Grenzen');
+
+ok('die Vorgabe bleibt, wie sie ist', pk.typeSkala(16), 16);
+ok('eine groessere Einstellung kommt durch', pk.typeSkala(20), 20);
+/* Nach unten nicht unter 16: iOS zoomt beim Fokus in ein Eingabefeld, dessen
+   Schrift kleiner ist, und das Suchfeld steht auf 1rem. Eine kleiner
+   eingestellte Systemschrift wuerde jedes Tippen zu einem Zoom machen. */
+ok('kleiner als 16 wird nicht durchgereicht', pk.typeSkala(12), 16);
+ok('… auch nicht knapp darunter', pk.typeSkala(15.5), 16);
+/* Nach oben nicht ueber 24: darueber bleibt bei 402 px Breite von einer
+   Zeile mit Name, Bewertung und vier Fakten nichts Lesbares uebrig. */
+ok('groesser als 24 wird gekappt', pk.typeSkala(53), 24);
+ok('… und genau 24 bleibt', pk.typeSkala(24), 24);
+ok('die Grenzen sind die dokumentierten', [pk.TYPE_MIN, pk.TYPE_MAX], [16, 24]);
+/* Kennt der Browser das Schluesselwort nicht, kommt 0 zurueck -- dann bleibt
+   die Wurzel unberuehrt statt auf 16 gezwungen zu werden. */
+ok('ohne Messung bleibt es bei null', pk.typeSkala(0), null);
+ok('… und auch bei Unsinn', pk.typeSkala('gross'), null);
+ok('… und bei NaN', pk.typeSkala(NaN), null);
+
+/* ------------------------------------------------- Sprache der Ortsnamen */
+/* VoiceOver liest die Seite in der Sprache aus <html> -- hier Deutsch.
+   "Osteria sugli Scavi" wird dann buchstabengetreu deutsch ausgesprochen,
+   und wer danach fragt, wird nicht verstanden. */
+group('sprachIt — welcher Name italienisch gelesen wird');
+
+ok('ein italienischer Name gilt als italienisch', pk.sprachIt('Osteria sugli Scavi'), true);
+ok('… auch mit Klammern', pk.sprachIt('Bella Italia Pesce (BIP)'), true);
+/* Die Regel ist umgekehrt gebaut: italienisch, ES SEI DENN ein deutsches
+   oder englisches Wort steht darin. Das ist die sichere Richtung -- wer
+   nicht markiert wird, wird gelesen wie bisher. */
+ok('ein deutsches Wort schliesst aus', pk.sprachIt('Festung Peschiera'), false);
+ok('… auch mitten im Namen', pk.sprachIt('Giro delle Mura — Bootsfahrt'), false);
+ok('ein englisches Wort ebenso', pk.sprachIt('Velolake Bike Rental'), false);
+ok('leer ist nichts', pk.sprachIt(''), false);
+ok('… und null auch nicht', pk.sprachIt(null), false);
+/* "Bar" schliesst aus, "Barcaccia" nicht -- die Regel prueft ganze Woerter. */
+ok('nur ganze Woerter zaehlen', pk.sprachIt('La Barcaccia'), true);
+ok('… und "Lounge Bar" ist eines', pk.sprachIt('Lido 3.9 Lounge Bar'), false);
+
+{
+  /* Die grosse Mehrheit ist italienisch -- waere es umgekehrt, stimmte die
+     Regel nicht mehr mit den Daten ueberein. Die Zahl selbst steht unten im
+     Bericht. */
+  const it = data.places.filter((x) => pk.sprachIt(x.name)).length;
+  ok('die Mehrheit der Namen gilt als italienisch', it > data.places.length / 2, true);
+}
+
 /* ----------------------------------------------------------------- Wissen */
 group('wissen.json — Gruppen, Arten, Kennungen');
 
@@ -1026,6 +1078,10 @@ function stats() {
     `${wegPaare.length} / ${sortP[Math.floor(sortP.length / 2)].toFixed(1)} km`);
   line(`… zu Fuss rechenbar (bis ${pk.FUSS_MAX_KM} km)`,
     wegPaare.filter((d) => d <= pk.FUSS_MAX_KM).length);
+  {
+    const it = P.filter((x) => pk.sprachIt(x.name)).length;
+    line('Ortsnamen italienisch / anders', `${it} / ${P.length - it}`);
+  }
   line('verschiedene Tags', new Set(P.flatMap((p) => p.tags)).size);
   line('Wissen: Einträge / Gruppen', `${wissen.eintraege.length} / ${wissen.gruppen.length}`);
   line('… Regeln / offen / korrigiert',

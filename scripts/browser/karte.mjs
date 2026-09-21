@@ -8,6 +8,7 @@
    Antworten von tile.openstreetmap.org). Geprueft wird deshalb alles, was die
    App selbst tut -- Nadeln, Umschalter, Filter, Leerzustand. */
 import { createRequire } from 'node:module';
+import { ohneStartkarten } from './startfrei.mjs';
 const BASE = process.env.PK_BASE || 'http://localhost:8765';
 const SHOT = process.argv[2] || null;
 const { chromium } = createRequire(import.meta.url)(
@@ -24,7 +25,7 @@ const ok = (n, got, want = true) => {
   R.push([a === b ? 'PASS' : 'FAIL', n, a === b ? '' : `erwartet ${b}, bekommen ${a}`]);
   if (a !== b) process.exitCode = 1;
 };
-const browser = await chromium.launch();
+const browser = ohneStartkarten(await chromium.launch());
 const ctx = await browser.newContext({ viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE' });
 const page = await ctx.newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
@@ -264,7 +265,7 @@ ok('… und liegt im sichtbaren Ausschnitt', zelt && zelt.imBild);
 ok('… und nimmt keinem Ort den Tipp weg', zelt && zelt.durchlaessig, 'none');
 
 /* --- Der eigene Standort, in einem Fenster mit Ortungsrecht -------------- */
-const browser2 = await chromium.launch();
+const browser2 = ohneStartkarten(await chromium.launch());
 {
   const ctx2 = await browser2.newContext({
     viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE',

@@ -19,6 +19,7 @@ const CHROME = process.env.CHROME
   || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const ROOT = process.env.ROOT || process.cwd();
 import { readFileSync, mkdirSync } from 'node:fs';
+import { ohneStartkarten } from './browser/startfrei.mjs';
 
 /* Die Fassung nicht abtippen — sie wandert bei jedem Merge, und ein
    Harness, das "v16" erwartet, meldet dann einen Fehler in der App,
@@ -44,7 +45,11 @@ const ok = (n, got, want = true) => {
   else { fails.push(`${n}\n       erwartet ${b}, bekommen ${a}`); console.log('  FAIL ' + n); }
 };
 
-const browser = await chromium.launch({ executablePath: CHROME });
+/* Seit v41 legt die App beim allerersten Start drei Erklaerkarten als Sheet
+   ueber die Ansicht. Fuer die Abnahme heisst das: jede Seite begaenne mit
+   einem Sheet, das jeden Tipp abfaengt. willkommen.mjs prueft die Karten
+   selbst. */
+const browser = ohneStartkarten(await chromium.launch({ executablePath: CHROME }));
 const ctx = await browser.newContext({
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: 3,

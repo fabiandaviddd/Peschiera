@@ -264,7 +264,8 @@ Er prüft `hoursWindow`, `closedOn`, `closedToday`, `airKmPoint`, `momentsOf`,
 `momentNow`,
 `runsToday`, `tripDay`, `unverified`, `closingSoon`, `fitsLeft`, `indoorOf`,
 die Wegerechnung (`wegKm`, `wegMin`, `tagWege`, `tagModusVorschlag`,
-`rundenVorschlag` samt Eichung gegen die 48 gemessenen Fußwege)
+`rundenVorschlag` samt Eichung gegen die 48 gemessenen Fußwege), `typeSkala`
+und `sprachIt`
 und die Formatierer gegen die Schreibweisen, die in den Daten wirklich
 vorkommen — und dazu `places.json` selbst: eindeutige `id`s, bekannte
 Kategorien, `dog` nur `true`/`false`/`null`, `moment` nur aus den vier
@@ -304,6 +305,138 @@ GitHub Pages, Branch `main`, Ordner `/`. Kein Build.
 ```bash
 git add -A && git commit -m "…" && git push
 ```
+
+## Barrierefreiheit
+
+Vier Dinge, die seit `v41` nicht mehr Absicht, sondern geprüft sind.
+
+### Dynamic Type — die App wächst mit der Systemschrift
+
+iOS läßt die Schriftgröße systemweit einstellen (*Anzeige & Helligkeit >
+Textgröße*, in den Bedienungshilfen bis deutlich größer). Eine Webseite
+bekommt davon nichts mit — außer sie fragt danach: `-apple-system-body`
+liefert in Safari genau die eingestellte Größe. Alle Größen im Haus hängen an
+`rem`, also wächst die ganze App mit, sobald die Wurzel darauf steht. Keine
+einzige Regel ändert sich dafür.
+
+Zwei Grenzen gehören dazu (`typeSkala()`):
+
+- **16 px nach unten**, nicht weniger. Nicht aus Geschmack: iOS zoomt beim
+  Fokus in ein Eingabefeld, dessen Schrift kleiner als 16 px ist, und das
+  Suchfeld steht auf `1rem`. Eine kleiner eingestellte Systemschrift würde
+  jedes Tippen im Suchfeld zu einem Zoom machen.
+- **24 px nach oben** — das Anderthalbfache der Vorgabe. Darüber bleibt bei
+  402 px Breite von einer Zeile mit Name, Bewertung und vier Fakten nichts
+  Lesbares übrig: der Text wächst, der Bildschirm nicht. Wer mehr braucht,
+  bekommt in Safari zusätzlich den Zoom der ganzen Seite.
+
+Browser, die das Schlüsselwort nicht kennen (alles außer Safari), lassen die
+Eigenschaft leer — dann bleibt die Wurzel, wie sie ist. Gemessen wird beim
+Start und beim Zurückkommen aus dem Hintergrund: die Einstellung läßt sich
+ändern, während die App dort liegt, und Safari zeichnet nicht von selbst neu.
+
+**`scripts/browser/schrift.mjs` prüft, was daran wirklich schiefgehen kann:**
+hält das Layout bei 24 px Wurzel in allen vier Ansichten zusammen? Es hat
+zwei echte Fehler gefunden:
+
+- Die Abschnittsleiste in „Jetzt" stand auf `repeat(4, 1fr)`. Die
+  Mindestbreite einer Rasterspalte ist die ihres Inhalts, und „Nachmittag"
+  ist bei großer Schrift breiter als ein Viertel von 402 px — die Seite ließ
+  sich um 6 px seitwärts schieben. Jetzt `minmax(0, 1fr)` plus Umbruch.
+- Der Sortierknopf lief über den rechten Rand hinaus, sichtbar abgeschnitten
+  und nur zur Hälfte tippbar. Die Filterzeile bricht jetzt um.
+
+### Bewegung reduzieren
+
+Das Stylesheet nimmt seit `v22` Animationen und Übergänge heraus (das Sheet
+behält seine 260 ms — sie sagen, daß das Detail *über* der Liste liegt). Was
+es nicht erwischt, ist alles, was **JavaScript** bewegt. Seit `v41` fragt auch
+der Code:
+
+- „Im Plan anzeigen" springt statt weich zu scrollen.
+- Die Karte bekommt `zoomAnimation`, `fadeAnimation` und
+  `markerZoomAnimation` auf `false` — Leaflet animiert aus Code, nicht aus
+  CSS.
+
+Abgefragt wird bei jedem Aufruf neu, nicht einmal beim Start: die Einstellung
+läßt sich ändern, während die App läuft.
+
+### Nicht-Text-Kontraste ≥ 3:1
+
+WCAG 2.1 verlangt für alles, woran man ein Bedienelement oder seinen Zustand
+erkennt, mindestens **3:1** (1.4.11). Genau dort fällt ein Haus wie dieses
+durch: `--line` ist eine Haarlinie mit **1,21:1** auf `--bg`. Als Trennlinie
+zwischen zwei Zeilen ist das richtig — WCAG nimmt rein Schmückendes
+ausdrücklich aus. Als **einziger** Hinweis darauf, daß dort etwas zum Antippen
+liegt, ist es zu wenig.
+
+Deshalb gibt es seit `v41` ein zweites Token:
+
+| Token | Hell | Dunkel | Wofür |
+|---|---|---|---|
+| `--line` | `#E2DBC8` | `#2E2F25` | Trennlinien zwischen Zeilen, Kanten von Flächen |
+| `--rand` | `#8F856E` | `#6F715D` | **Ränder von Bedienelementen** — Chips, Knöpfe, Eingabefelder, Rasterzellen, Tageskarten, Abschnittsleiste, Modus-Leiste |
+
+Gemessen: **3,21:1** auf `--bg` und **3,59:1** auf `--card` (hell), **3,67:1**
+und **3,36:1** (dunkel).
+
+`scripts/browser/kontrast.mjs` rechnet die WCAG-Formel **im Test** nach, in
+beiden Schemata, und mißt gegen die Fläche, auf der das Element wirklich liegt
+— dafür sucht es den nächsten undurchsichtigen Vorfahren, statt pauschal die
+Hintergrundfarbe der Seite anzunehmen. Halbtransparente Ränder werden über der
+Unterlage gemischt, sonst wären sie zu gut gerechnet.
+
+Eine Besonderheit: beim **Fortschrittsbalken** wird die *Füllung gegen die
+Spur* gemessen, nicht die Spur gegen die Karte. Was die Aussage trägt, ist die
+Grenze zwischen gefüllt und leer; eine Spur, die bei 0 % kaum zu sehen ist,
+verschweigt nichts.
+
+### `lang="it"` an italienischen Namen
+
+VoiceOver liest die Seite in der Sprache aus `<html>` — hier Deutsch.
+*„Osteria sugli Scavi"* wird dann buchstabengetreu deutsch ausgesprochen, und
+wer danach fragt, wird nicht verstanden.
+
+Die Daten sagen nicht, welche Sprache ein Name hat, und sollen es auch nicht
+müssen — 101 Einträge von Hand zu markieren wäre eine Datenaufgabe für eine
+Frage, die der Text selbst beantwortet. Die Regel (`sprachIt()`) ist deshalb
+**umgekehrt** gebaut: ein Name gilt als italienisch, **es sei denn**, ein
+deutsches oder englisches Wort steht darin (*Festung*, *Uferweg*, *Bahnhof*,
+*Beach*, *Bike Rental* …). Das ist die sichere Richtung: wer nicht markiert
+wird, wird gelesen wie bisher.
+
+Stand heute: **75 der 101 Namen** gelten als italienisch. Die Wortliste stammt
+aus genau diesen Namen, ist Kuratierung und kein Sprachmodell, und
+`scripts/test-logic.mjs` zählt mit. Die **Adresse** trägt `lang="it"`
+unbedingt — „Via Sebino 29, Peschiera del Garda" gibt es in keiner anderen
+Sprache.
+
+## Die drei Startkarten
+
+Beim ersten Start, danach nie wieder. Sie erklären **nicht die Bedienung** —
+vier Reiter und ein Suchfeld brauchen keine Anleitung. Sie erklären die drei
+Eigenheiten, die sonst als Fehler gelesen werden:
+
+1. **„Jum ist dabei"** — warum an jedem Ort eine Hundzeile steht.
+2. **„Offen heißt offen, nicht nein"** — warum 58 Orte ein Fragezeichen tragen
+   und trotzdem in der Liste stehen. **Das ist die wichtigste Karte**, weil
+   sie die eine Konvention erklärt, die sonst wie ein Datenfehler aussieht.
+3. **„Zwei Telefone, ein Plan"** — daß Teilen existiert, bevor man es braucht.
+
+- **Eine Karte nach der anderen**, nicht drei untereinander: drei Absätze
+  überspringt man, drei Schritte liest man.
+- **Wegwischen, `Esc`, das ✕ und die Zurück-Geste zählen als gelesen.** Die
+  Karten ein zweites Mal zu zeigen, weil jemand sie anders weggeklickt hat als
+  vorgesehen, wäre eine Strafe fürs Bedienen.
+- **Ein Teilen-Link hat Vorrang.** Wer eine geteilte Liste öffnet, hat eine
+  dringendere Frage als drei Erklärkarten; er bekommt sie beim nächsten Start.
+- Gespeichert als `pk.start`.
+
+Für den Prüfstand heißt das: jede Suite begänne mit einem Sheet, das nichts
+mit ihr zu tun hat. Statt in zwanzig Dateien dieselbe Zeile zu verstreuen,
+umhüllt **`scripts/browser/startfrei.mjs`** einmal `browser.newContext` und
+setzt `pk.start` per Init-Skript. `willkommen.mjs` läßt das bewußt weg — es
+ist die eine Suite, die den Zustand „noch nie hier gewesen" wirklich braucht.
 
 ## Was für iOS Safari angepasst ist
 
@@ -426,7 +559,7 @@ Dienst dazwischen — siehe unten.
 ## Prüfstand
 
 ```bash
-node scripts/browser/run.mjs     # 623 Prüfungen im Browser, startet den Server selbst
+node scripts/browser/run.mjs     # 721 Prüfungen im Browser, startet den Server selbst
 node scripts/test-logic.mjs      # Logik ohne Browser
 ```
 
@@ -1157,6 +1290,7 @@ icons/                  App-Icons und iOS-Startbilder
 scripts/test-logic.mjs  Prüfstand für die Freitext-Logik und die Daten (node)
 scripts/browser/run.mjs Sammelläufer: startet den Server und alle Suiten daneben
 scripts/browser/*.mjs   eine Datei je Thema (plan, hund, karte, close, ios …)
+scripts/browser/startfrei.mjs  Helfer: räumt die Startkarten aus dem Weg
 scripts/browser-abnahme.mjs  ältere Gesamtabnahme samt Bildschirmabzügen
 scripts/add-coords.mjs  einmaliges Geocoding für die Karte
 scripts/make-icons.py   Icon-Generator
@@ -1176,7 +1310,7 @@ Kontrast richtig messen, was iOS anders macht) und was offen ist.
 
 ## Getestet
 
-623 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
+721 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
 Sortierung kombiniert, Merkliste über einen Reload, Detail-Sheet ohne
 Layout-Shift, Dark Mode samt Override und Systempräferenz, Touch-Ziele,
 Flugmodus-Test (offline laden, suchen, Merkliste), Fehlerzustand mit Retry und

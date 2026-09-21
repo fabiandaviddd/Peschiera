@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 import { fixtureRoute, FIXTURE } from './fixture.mjs';
+import { ohneStartkarten } from './startfrei.mjs';
 /* Playwright liegt global, nicht im Projekt — der Pfad kommt aus der Umgebung. */
 const BASE = process.env.PK_BASE || 'http://localhost:8765';
 const { chromium } = createRequire(import.meta.url)(
@@ -17,7 +18,7 @@ const ALLE = FIXTURE.alle;
 const MIT_GEO = FIXTURE.mitGeo;
 const OHNE_GEO = FIXTURE.ohneGeo;
 const STAND = FIXTURE.stand;
-const browser = await chromium.launch();
+const browser = ohneStartkarten(await chromium.launch());
 const ctx = await browser.newContext({viewport:{width:402,height:754},hasTouch:true,acceptDownloads:true});
 const page = await ctx.newPage();
 await fixtureRoute(ctx);          // fester Ausgangszustand, siehe fixture.mjs

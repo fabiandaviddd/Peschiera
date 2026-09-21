@@ -11,6 +11,7 @@
    Stueckelung oder die Kopf-Kennung wieder herausnehmen, und kein anderer
    Test wuerde es merken -- die Liste waere ja weiterhin vollstaendig. */
 import { createRequire } from 'node:module';
+import { ohneStartkarten } from './startfrei.mjs';
 const BASE = process.env.PK_BASE || 'http://localhost:8765';
 const { chromium } = createRequire(import.meta.url)(
   process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright');
@@ -20,7 +21,7 @@ const ok = (n, got, want = true) => {
   R.push([a === b ? 'PASS' : 'FAIL', n, a === b ? '' : `erwartet ${b}, bekommen ${a}`]);
   if (a !== b) process.exitCode = 1;
 };
-const browser = await chromium.launch();
+const browser = ohneStartkarten(await chromium.launch());
 const ctx = await browser.newContext({ viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE' });
 const p = await ctx.newPage();
 await p.goto(BASE + '/?v=orte', { waitUntil: 'networkidle' });

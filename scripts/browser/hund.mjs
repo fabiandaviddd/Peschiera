@@ -13,6 +13,7 @@
    Ohne sie koennte jemand den Filter zurueckholen, und keine andere Pruefung
    wuerde es merken: die Liste waere ja weiterhin vollstaendig sortiert. */
 import { createRequire } from 'node:module';
+import { ohneStartkarten } from './startfrei.mjs';
 const BASE = process.env.PK_BASE || 'http://localhost:8765';
 const { chromium } = createRequire(import.meta.url)(
   process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright');
@@ -31,7 +32,7 @@ const OFFEN = ALLE - JA - NEIN;
 /* Ein Ort mit offener Regel und Telefonnummer -- dort steht auch "Anrufen". */
 const OFFENER = DATEN.places.find((p) => (p.dog === null || p.dog === undefined) && p.phone);
 
-const browser = await chromium.launch();
+const browser = ohneStartkarten(await chromium.launch());
 const ctx = await browser.newContext({
   viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE'
 });

@@ -20,6 +20,7 @@
    Die Zahlen werden IM TEST nachgerechnet, nicht aus der App gelesen: eine
    Pruefung, die die App fragt, ob die App recht hat, prueft nichts. */
 import { createRequire } from 'node:module';
+import { ohneStartkarten } from './startfrei.mjs';
 const BASE = process.env.PK_BASE || 'http://localhost:8765';
 const require2 = createRequire(import.meta.url);
 const { chromium } = require2(
@@ -47,7 +48,7 @@ const wegMin = (kmv, m) => Math.round(kmv / V[m] * 60 + (kmv > 0.05 ? PARKEN[m] 
 const byId = {};
 DATEN.places.forEach((p) => { byId[p.id] = p; });
 
-const browser = await chromium.launch();
+const browser = ohneStartkarten(await chromium.launch());
 const mach = () => browser.newContext({
   viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE'
 });

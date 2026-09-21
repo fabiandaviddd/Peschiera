@@ -8,6 +8,7 @@
    (Geruest weg, App da), scheitert (Geruest weg, Meldung da, Knopf da) und
    der zweite Versuch danach. */
 import { createRequire } from 'node:module';
+import { ohneStartkarten } from './startfrei.mjs';
 const BASE = process.env.PK_BASE || 'http://localhost:8765';
 const { chromium } = createRequire(import.meta.url)(
   process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright');
@@ -17,7 +18,7 @@ const ok = (n, got, want = true) => {
   R.push([a === b ? 'PASS' : 'FAIL', n, a === b ? '' : `erwartet ${b}, bekommen ${a}`]);
   if (a !== b) process.exitCode = 1;
 };
-const browser = await chromium.launch();
+const browser = ohneStartkarten(await chromium.launch());
 const mach = () => browser.newContext({ viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE' });
 
 /* --- 1. Waehrend des Ladens ---------------------------------------------- */

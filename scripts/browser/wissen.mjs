@@ -17,6 +17,7 @@
    von selbst" notiert hat, fand den Ort ueber "wassernapf" bis dahin nicht
    -- obwohl genau das der Satz ist, an den man sich erinnert. */
 import { createRequire } from 'node:module';
+import { ohneStartkarten } from './startfrei.mjs';
 const BASE = process.env.PK_BASE || 'http://localhost:8765';
 const require2 = createRequire(import.meta.url);
 const { chromium } = require2(
@@ -40,7 +41,7 @@ const treffer = (q) => {
   return WISSEN.eintraege.filter((e) => teile.every((t) => such(e).indexOf(t) >= 0));
 };
 
-const browser = await chromium.launch();
+const browser = ohneStartkarten(await chromium.launch());
 const ctx = await browser.newContext({
   viewport: { width: 402, height: 754 }, hasTouch: true, locale: 'de-DE'
 });
