@@ -583,7 +583,7 @@ Dienst dazwischen — siehe unten.
 ## Prüfstand
 
 ```bash
-node scripts/browser/run.mjs     # 744 Prüfungen im Browser, startet den Server selbst
+node scripts/browser/run.mjs     # 762 Prüfungen im Browser, startet den Server selbst
 node scripts/test-logic.mjs      # Logik ohne Browser
 ```
 
@@ -1381,6 +1381,102 @@ Wer hier neu anfängt, liest **`docs/uebergabe.md`** zuerst. Dort stehen die
 Konventionen, die Fallen (parallele Zweige, doppelte JSON-Schlüssel,
 Kontrast richtig messen, was iOS anders macht) und was offen ist.
 
+## Ein Ort antippen holt die Karte zu ihm
+
+Gemeldet: *„Wenn ich auf einen Ort in der Kartenansicht drücke, zoomt die
+Karte nicht auf den Ort."* Sie tat es nicht — weder bei der Nadel noch bei
+der Zeile im Ergebnis-Sheet. Man bekam das Ort-Sheet, und darunter stand
+unverändert derselbe Punkthaufen.
+
+Seit `v46` fährt die Karte hin: Zoom 17, der Ort in die Mitte, die Nadel
+bekommt einen Ring. Die Mitte liegt dabei um den halben Sockel des
+Ergebnis-Sheets tiefer, damit der Ort im sichtbaren Streifen darüber landet
+statt dahinter. Es hängt an `openSheet()` und gilt damit für alle drei Wege
+zum Ort — Nadel, Trefferzeile und die Namensliste eines Bündels, das sich
+nicht weiter teilen lässt.
+
+Dazu gehört ein zweiter Teil, ohne den der erste nichts nützt: **die Karte
+passt den Ausschnitt nur noch neu ein, wenn sich die Treffermenge ändert.**
+Bis `v45` rief jedes Neuzeichnen `fitBounds` — jedes selbst gewählte
+Verschieben, jeder Zoom und eben auch der Sprung zum Ort war beim nächsten
+Zeichnen wieder fort. Jetzt gilt: neue Suche, anderer Filter, anderer
+Standort → neu einpassen; alles andere lässt den Ausschnitt stehen.
+
+Nebenbei fiel dabei ein alter Fehler auf: `invalidateSize()` stand **nach**
+`fitBounds`. Die Karte passte also auf die Containergröße von *vor* dem
+Einblenden ein. Bis `v45` fiel das nicht auf, weil der nächste Neuzeichner
+es stillschweigend richtigstellte.
+
+## Ein Bündel deckt nur noch die Fläche ab, die es behauptet
+
+Gemeldet: *„Die Zusammenfassungen der Punkte bei Karte sollten sich schon in
+einer gröberen Zoomstufe aufteilen."*
+
+Die Ursache war nicht ein zu großer Radius, sondern **Kettenbildung**. Die
+Bündelung fragte nur „liegt dieser Ort näher als 34 px an der Mitte dieser
+Gruppe?" — und damit wuchsen Ketten: A nah an B, B an C, C an D, und alle
+vier wurden ein Punkt, obwohl A und D weit auseinanderlagen. Gemessen an den
+101 Orten stand bei Zoom 13 eine **„34" über einer Fläche von 93 px**. Der
+Punkt behauptete eine Lage, die er nicht hatte.
+
+Seit `v46` gibt es zwei Zahlen statt einer:
+
+- **`RADIUS` (17 px)** deckelt die Ausdehnung: Alle Orte eines Bündels müssen
+  in den Kreis passen, den der Punkt selbst einnimmt.
+- **`ABSTAND` (30 px)** hält zwei Punkte auseinandertippbar — die Größe der
+  Nadel selbst. Zwei Nadeln berühren sich schlimmstenfalls, sie überlappen
+  nie.
+
+Gemessen, 101 Orte auf 402 px Breite:
+
+| Zoom | größtes Bündel `v45` → `v46` | Spanne eines Bündels `v45` → `v46` |
+|---|---|---|
+| 12 | 42 → 38 | 64 px → 58 px |
+| 13 | 34 → **26** | 93 px → **46 px** |
+| 14 | 25 → **19** | 78 px → 66 px |
+| 15 | 9 → 6 | 46 px → 35 px |
+
+Der Preis sind vier Pixel Abstand: Die Zusicherung war `≥ 34 px` achsenweise
+und ist jetzt `≥ 30 px` euklidisch. `scripts/browser/karte.mjs` misst beides
+weiter, nur nach der neuen Regel.
+
+**Was sich damit nicht beheben lässt** und auch nicht behoben wird: Die Karte
+öffnet bei Zoom 9, weil die Reise von Mantova bis Malcesine 68 km spannt und
+alle Treffer hineingehören. 46 der 101 Orte liegen im Umkreis von 2 km um den
+Zeltplatz — bei dieser Verteilung ist auf der Übersicht kein Bündelmaß der
+Welt klein. Ein Tipp auf das Bündel bricht es jetzt in vier Schritten auf
+(63 → 31 → 7 → 4 → 3).
+
+## Ein leerer Tag schlägt selbst etwas vor
+
+Gemeldet: *„Wenn ich bei Reise auf einen leeren Tag drücke, muss ich alle Orte
+durchsuchen."* Genau so war es: das Tages-Sheet bot den Vorrat an, und war
+der leer, blieb ein Satz und ein Suchfeld über 101 Orte.
+
+Seit `v46` steht darunter ein zweiter Abschnitt, **„Vorschläge für Mittwoch,
+23.09."**. Vorgeschlagen wird nur, was sich aus den Daten begründen lässt:
+
+- **Was herausfällt, fällt nachprüfbar heraus:** schon an einem Tag, schon
+  gesehen, an dem Tag Ruhetag, ein Termin der an dem Tag nicht läuft, mit
+  eingeschaltetem Jum ein belegtes „ohne Jum".
+- **Ein Termin an genau diesem Tag steht oben** und sagt warum: *nur an
+  diesem Tag*. Es ist das stärkste Argument, das die Daten hergeben — an
+  jedem anderen Tag gibt es ihn nicht.
+- **Höchstens zwei je Kategorie.** Sechs Restaurants sind kein Tagesvorschlag,
+  sondern eine Kategorieliste.
+- **Praktisches nur, wenn man dort Zeit verbringt** (`time_min ≥ 60`). Die
+  Kategorie mischt Strände (180 Min) und den Wochenmarkt (105) mit Apotheke,
+  Tierarzt, Bahnhof, Supermarkt und Radverleih (10 bis 45); zwischen 45 und
+  105 liegt in den Daten nichts. Ohne diese Schwelle kamen auf einen leeren
+  Mittwoch zwei Radverleihe — sie tragen 4,9 Sterne, und danach wurde
+  sortiert.
+- **Erst das Erreichbare, dann das Beste darin** — dieselbe Stufenfolge wie
+  in „Jetzt". Ohne die erste Stufe gewann ein Café mit 4,8 Sternen in 22,7 km
+  gegen eine Osteria mit 4,7 in 887 m.
+
+Was angenommen wird, verschwindet aus den Vorschlägen. Ein vergangener Tag
+bekommt keine — er lässt sich nicht mehr verplanen.
+
 ## Was heute nicht stattfindet, wird heute nicht vorgeschlagen
 
 Gemeldet aus der Benutzung: *„Rievocazione Storica Peschiera ist für heute
@@ -1451,7 +1547,7 @@ sich ändert.
 
 ## Getestet
 
-744 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
+762 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
 Sortierung kombiniert, Merkliste über einen Reload, Detail-Sheet ohne
 Layout-Shift, Dark Mode samt Override und Systempräferenz, Touch-Ziele,
 Flugmodus-Test (offline laden, suchen, Merkliste), Fehlerzustand mit Retry und

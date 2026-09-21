@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v45 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v46 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -3084,6 +3084,9 @@
 
     S.openId = id;
     S.filterOpen = false;
+    /* Wer auf der Karte einen Ort antippt, meint den Ort AUF DER KARTE.
+       Ausserhalb der Kartenansicht tut das hier nichts. */
+    zeigeOrtAufKarte(p);
     showSheet(sheetHtml(p), accentClass(p.category));
   }
 
@@ -4830,7 +4833,10 @@
     }
 
     if (!liste.length) {
-      return '<p class="tagsheet__leer">'
+      /* Der leere Vorrat war bis v45 eine Sackgasse: ein Satz und ein
+         Suchfeld ueber 101 Orte. Die Vorschlaege darunter geben einen
+         Anfang -- deshalb haengen sie hier genauso dran wie unten. */
+      return '<div class="tagfrei"><p class="tagsheet__leer">'
         + (suche
             ? 'Nichts gefunden für „' + esc(q) + '“.'
             : bez.alle.length
@@ -4838,37 +4844,145 @@
                 + 'durchsucht alle ' + D.places.length + ' Orte.'
               : 'Dein Vorrat ist leer. Das Feld darüber durchsucht alle '
                 + D.places.length + ' Orte.')
-        + '</p>';
+        + '</p></div>'
+        + vorschlagHtml(iso, tag, bez, suche);
     }
 
+    /* Zwei Behaelter, damit beide Abschnitte einzeln ansprechbar sind --
+       oben der Vorrat (oder die Suche), darunter die Vorschlaege. */
+    return '<div class="tagfrei">'
+      + abschnittHtml(kopf, lead, liste, iso, tag, bez)
+      + '</div>'
+      + vorschlagHtml(iso, tag, bez, suche);
+  }
+
+  /* Eine Zeile, drei Verwendungen: Vorrat, Suchtreffer, Vorschlag. Sie
+     stand bis v45 nur an einer Stelle; der dritte Aufrufer war der Anlass,
+     sie herauszuziehen statt sie ein zweites Mal hinzuschreiben. */
+  function tagZeileHtml(p, iso, tag, bez, grund) {
+    var w = bez.naehe(p);
+    return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
+      + '<span class="tagsheet__txt">'
+      + '<span class="tagsheet__name"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
+      + '<span class="tagsheet__m">' + esc(catLabel(p.category))
+      + (w !== null && w !== undefined
+          ? ' · <span class="tagsheet__weit">' + esc(km(w)) + '</span>' : '')
+      + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
+      + (closedToday(p, new Date(iso + 'T12:00:00'))
+          ? ' · <span class="tagsheet__zu">an dem Tag zu</span>' : '')
+      + (terminAm(p, iso) === false
+          ? ' · <span class="tagsheet__zu">läuft an dem Tag nicht</span>' : '')
+      /* Was die Suche neu hereinholt, ist noch nicht gemerkt. Das gehoert
+         dazugesagt: der Knopf legt es in einem Schritt auf den Tag UND in
+         die Merkliste. */
+      + (S.saved.indexOf(p.id) < 0
+          ? ' · <span class="tagsheet__neu">noch nicht gemerkt</span>' : '')
+      + (grund ? ' · <span class="tagsheet__grund">' + esc(grund) + '</span>' : '')
+      + '</span></span>'
+      + '<button type="button" class="tagsheet__b" data-dayset="' + esc(p.id) + '"'
+      + ' data-dayiso="' + esc(iso) + '"'
+      + ' aria-label="' + esc(p.name) + ' auf ' + esc(tag.lang) + ' legen">'
+      + ICON.plus + '</button></div>';
+  }
+
+  function abschnittHtml(kopf, lead, liste, iso, tag, bez, gruende) {
     return '<p class="tagsheet__h">' + kopf
       + '<span class="tagsheet__n">' + liste.length + '</span></p>'
       + (lead ? '<p class="tagsheet__lead">' + lead + '</p>' : '')
       + '<div class="tagsheet__l">'
       + liste.map(function (p) {
-          var w = bez.naehe(p);
-          return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
-            + '<span class="tagsheet__txt">'
-            + '<span class="tagsheet__name"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
-            + '<span class="tagsheet__m">' + esc(catLabel(p.category))
-            + (w !== null && w !== undefined
-                ? ' · <span class="tagsheet__weit">' + esc(km(w)) + '</span>' : '')
-            + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
-            + (closedToday(p, new Date(iso + 'T12:00:00'))
-                ? ' · <span class="tagsheet__zu">an dem Tag zu</span>' : '')
-            + (terminAm(p, iso) === false
-                ? ' · <span class="tagsheet__zu">läuft an dem Tag nicht</span>' : '')
-            /* Was die Suche neu hereinholt, ist noch nicht gemerkt. Das
-               gehoert dazugesagt: der Knopf legt es in einem Schritt auf den
-               Tag UND in die Merkliste. */
-            + (S.saved.indexOf(p.id) < 0
-                ? ' · <span class="tagsheet__neu">noch nicht gemerkt</span>' : '')
-            + '</span></span>'
-            + '<button type="button" class="tagsheet__b" data-dayset="' + esc(p.id) + '"'
-            + ' data-dayiso="' + esc(iso) + '"'
-            + ' aria-label="' + esc(p.name) + ' auf ' + esc(tag.lang) + ' legen">'
-            + ICON.plus + '</button></div>';
+          return tagZeileHtml(p, iso, tag, bez, gruende ? gruende[p.id] : '');
         }).join('')
+      + '</div>';
+  }
+
+  /* --- Vorschlaege fuer einen Tag --------------------------------------
+
+     Der Anlass: ein leerer Tag bot bis v45 den Vorrat an, und war der leer,
+     blieb nur "Das Feld darueber durchsucht alle 101 Orte." Wer am Mittwoch
+     noch nichts vorhat, will aber keine Suchmaske, sondern einen Anfang.
+
+     Vorgeschlagen wird nur, was sich aus den Daten BEGRUENDEN laesst; jede
+     Zeile traegt ihren Grund. Geraten wird nichts.
+
+     Was herausfaellt, faellt aus nachpruefbaren Gruenden heraus:
+       - steht schon an diesem oder einem anderen Tag
+       - ist als gesehen markiert
+       - hat an dem Tag Ruhetag
+       - ist ein Termin, der an dem Tag nicht laeuft
+       - traegt mit eingeschaltetem Jum ein belegtes "ohne Jum"
+
+     Hoechstens VORSCHLAG_PRO_KAT je Kategorie: sechs Restaurants sind kein
+     Tagesvorschlag, sondern eine Kategorieliste. */
+  var VORSCHLAG_MAX = 6;
+  var VORSCHLAG_PRO_KAT = 2;
+  /* Praktisches ist kein Tagesvorschlag -- es sei denn, man verbringt dort
+     Zeit. Die Kategorie mischt zwei Dinge: Straende (time_min 180) und den
+     Wochenmarkt (105) auf der einen Seite, Apotheke, Tierarzt, Bahnhof,
+     Supermarkt und Radverleih (10 bis 45) auf der anderen. Zwischen 45 und
+     105 liegt in den Daten nichts, die Schwelle trennt also sauber.
+
+     Ohne sie kamen auf einen leeren Mittwoch zwei Radverleihe -- sie tragen
+     4,9 Sterne, und danach wurde sortiert. Eine gute Bewertung fuer einen
+     Radverleih ist keine Empfehlung fuer einen Tag. */
+  var VORSCHLAG_ZEIT = 60;
+
+  function tagVorschlaege(iso, bez) {
+    var tagDatum = new Date(iso + 'T12:00:00');
+    var gruende = {};
+
+    var frei = D.places.filter(function (p) {
+      if (planTagVon(p.id, bez.gueltig)) return false;      /* hat schon einen Tag */
+      if (S.seen.indexOf(p.id) >= 0) return false;
+      if (terminAm(p, iso) === false) return false;
+      if (closedToday(p, tagDatum)) return false;
+      if (S.jum && dogOf(p).v === false) return false;
+      if (p.category === 'praktisch'
+          && !(has(p.time_min) && p.time_min >= VORSCHLAG_ZEIT)) return false;
+      return true;
+    });
+
+    /* Ein Termin an genau diesem Tag ist das staerkste Argument, das die
+       Daten hergeben: an jedem anderen Tag gibt es ihn nicht. */
+    var termine = frei.filter(function (p) { return terminAm(p, iso) === true; });
+    termine.forEach(function (p) { gruende[p.id] = 'nur an diesem Tag'; });
+
+    var rest = frei.filter(function (p) { return terminAm(p, iso) !== true; })
+      .sort(function (a, b) {
+        /* Dieselbe Stufenfolge wie in "Jetzt": erst das Erreichbare, dann
+           das Beste darin. Ohne die erste Stufe gewann ein Café mit 4,8
+           Sternen in 22,7 km gegen eine Osteria mit 4,7 in 887 m. */
+        var na = has(a.walk_min) && a.walk_min <= WALK_MAX ? 0 : 1;
+        var nb = has(b.walk_min) && b.walk_min <= WALK_MAX ? 0 : 1;
+        if (na !== nb) return na - nb;
+        if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
+        return bez.nachNaehe(a, b);
+      });
+
+    var proKat = {}, gewaehlt = [];
+    for (var i = 0; i < rest.length && gewaehlt.length < VORSCHLAG_MAX - termine.length; i++) {
+      var p = rest[i];
+      var n = proKat[p.category] || 0;
+      if (n >= VORSCHLAG_PRO_KAT) continue;
+      proKat[p.category] = n + 1;
+      gewaehlt.push(p);
+    }
+    return { liste: termine.concat(gewaehlt), gruende: gruende };
+  }
+
+  function vorschlagHtml(iso, tag, bez, suche) {
+    /* Beim Suchen nicht: dort hat man ein Ziel, und ein Vorschlag daneben
+       waere ein zweiter Vorschlag zu einer Frage, die schon gestellt ist. */
+    if (suche) return '';
+    /* Ein vergangener Tag laesst sich nicht mehr verplanen. */
+    if (iso < isoTag(new Date())) return '';
+    var v = tagVorschlaege(iso, bez);
+    if (!v.liste.length) return '';
+    return '<div class="tagvor">'
+      + abschnittHtml('Vorschläge für ' + esc(tag.lang),
+          'Nicht gemerkt, nicht gesehen, an dem Tag geöffnet'
+            + (bez.ankerText ? ' · ' + bez.ankerText.toLowerCase() : ''),
+          v.liste, iso, tag, bez, v.gruende)
       + '</div>';
   }
 
@@ -5349,6 +5463,11 @@
          der seinen aktuellen Stand nennt und beim Tippen umschaltet. */
       if (e.target.closest('#map-btn')) {
         S.map = !S.map;
+        /* Beim Verlassen vergessen, was zuletzt eingepasst war: wer die
+           Karte neu aufmacht, will den Ueberblick, nicht den Ausschnitt von
+           vorhin. */
+        letzteFassung = '';
+        kartePick = null;
         render();
         return;
       }
@@ -5967,57 +6086,155 @@
      zweite externe Abhaengigkeit im Projekt, und bei 101 Punkten rechnet die
      naive Schleife (101 x Gruppenzahl) in unter einer Millisekunde.
 
-     34 px, weil eine Fingerkuppe mit 44 px angesetzt wird und zwei Nadeln,
-     die naeher liegen, nicht mehr einzeln zu treffen sind. */
-  var KACHEL = 34;
+     Zwei Zahlen, nicht eine -- und das ist die Aenderung von v46.
+
+     RADIUS (17 px) deckelt, wie weit ein Buendel reichen darf: alle seine
+     Orte muessen in den Kreis passen, den der Punkt selbst einnimmt. Bis v45
+     gab es diesen Deckel nicht, und die Buendelung bildete KETTEN: A war nah
+     an B, B an C, C an D -- und alle vier wurden ein Punkt, obwohl A und D
+     weit auseinanderlagen. Gemessen an den 101 Orten stand bei Zoom 13 eine
+     "34" ueber einer Flaeche von 93 px. Der Punkt behauptete eine Lage, die
+     er nicht hatte, und wer ihn antippte, landete woanders.
+
+     ABSTAND (30 px) haelt zwei Punkte auseinandertippbar. Er stand bis v45
+     bei 34 px (Chebyshev, also achsenweise) mit der Begruendung "eine
+     Fingerkuppe misst 44 px". Jetzt sind es 30 px euklidisch -- genau die
+     Groesse der Nadel selbst: zwei Nadeln beruehren sich im schlimmsten
+     Fall, sie ueberlappen nie.
+
+     Der Tausch ist gemessen, nicht geschaetzt (101 Orte, 402 px Breite):
+
+       Zoom   groesstes Buendel      Spanne eines Buendels
+              v45   ->  v46          v45    ->  v46
+        12     42        38           64 px     58 px
+        13     34        26           93 px     46 px
+        14     25        19           78 px     66 px
+        15      9         6           46 px     35 px
+
+     Vier Pixel Abstand gegen ein Drittel weniger Buendelgroesse und einen
+     Punkt, der haelt, was er verspricht. */
+  var RADIUS = 17;
+  var ABSTAND = 30;
   var letzteOrte = [];
   var hierNadel = null;
+  /* Der Ort, den jemand auf der Karte angetippt hat. Er bekommt einen Ring,
+     und solange er steht, passt die Karte den Ausschnitt nicht neu ein --
+     sonst spraenge sie beim naechsten Zeichnen von ihm weg. */
+  var kartePick = null;
+  /* Signatur der zuletzt eingepassten Treffermenge. Bis v45 rief jedes
+     Zeichnen fitBounds, auch wenn sich an den Treffern nichts geaendert
+     hatte -- jedes Verschieben und jeder Zoom von Hand war danach
+     zurueckgesetzt. Eingepasst wird jetzt, wenn sich zu SEHEN etwas
+     aendert, nicht wenn neu gezeichnet wird. */
+  var letzteFassung = '';
+
+  /* Die Nadel eines Ortes in die Mitte holen und hineinzoomen.
+
+     Der Anlass: wer auf der Karte einen Ort antippte -- die Nadel oder eine
+     Zeile im Ergebnis-Sheet --, bekam bis v45 nur das Ort-Sheet. Die Karte
+     darunter blieb, wo sie war. Nach dem Schliessen stand man wieder vor
+     demselben Punkthaufen und wusste immer noch nicht, WO der Ort liegt.
+
+     ORT_ZOOM 17 zeigt Strassenzuege; hineingezoomt wird nur, nie heraus --
+     wer naeher steht, hat sich das selbst so eingestellt. */
+  var ORT_ZOOM = 17;
+
+  /* Wie viele Bildpunkte am unteren Rand verdeckt das Ergebnis-Sheet? */
+  function kartenSockel() {
+    var box = $('mapsheet');
+    if (!box || box.hidden) return 0;
+    var r = box.getBoundingClientRect();
+    var m = $('map').getBoundingClientRect();
+    return Math.max(0, Math.round(m.bottom - r.top));
+  }
+
+  function zeigeOrtAufKarte(p) {
+    if (!karte || !p || !p.geo) return;
+    if (!S.map || $('map').hidden) return;
+    kartePick = p.id;
+    var ziel = Math.max(karte.getZoom(), ORT_ZOOM);
+    /* Die Mitte liegt um den halben Sockel tiefer als der Ort: so landet er
+       im sichtbaren Streifen ueber dem Sheet statt dahinter. */
+    var pt = karte.project([p.geo.lat, p.geo.lon], ziel);
+    var mitte = karte.unproject([pt.x, pt.y + kartenSockel() / 2], ziel);
+    karte.setView(mitte, ziel, { animate: !wenigerBewegung() });
+    zeichneNadeln(letzteOrte);
+  }
+
+  /* Mitte einer Ortsmenge in Bildpunkten, oder null, wenn nicht alle in den
+     Kreis mit RADIUS passen. Eine Frage, eine Antwort: der Aufrufer bekommt
+     die neue Mitte gleich mitgeliefert. */
+  function mitteWennEng(pts) {
+    var sx = 0, sy = 0, i;
+    for (i = 0; i < pts.length; i++) { sx += pts[i].x; sy += pts[i].y; }
+    var cx = sx / pts.length, cy = sy / pts.length;
+    for (i = 0; i < pts.length; i++) {
+      if (Math.hypot(pts[i].x - cx, pts[i].y - cy) > RADIUS) return null;
+    }
+    return { x: cx, y: cy };
+  }
 
   function buendel(orte, zoom) {
     var gruppen = [];
     orte.forEach(function (p) {
       var pt = karte.project([p.geo.lat, p.geo.lon], zoom);
+      pt = { x: pt.x, y: pt.y, p: p };
       for (var i = 0; i < gruppen.length; i++) {
-        var g = gruppen[i];
-        if (Math.abs(g.x - pt.x) < KACHEL && Math.abs(g.y - pt.y) < KACHEL) {
-          g.orte.push(p);
-          /* Schwerpunkt nachziehen, sonst haengt das Buendel am ersten Ort
-             und wandert bei drei Nachbarn sichtbar aus der Mitte. */
-          g.x += (pt.x - g.x) / g.orte.length;
-          g.y += (pt.y - g.y) / g.orte.length;
+        var c = mitteWennEng(gruppen[i].pts.concat([pt]));
+        if (c) {
+          gruppen[i].pts.push(pt);
+          gruppen[i].x = c.x; gruppen[i].y = c.y;
           return;
         }
       }
-      gruppen.push({ x: pt.x, y: pt.y, orte: [p] });
+      gruppen.push({ x: pt.x, y: pt.y, pts: [pt] });
     });
 
-    /* Nachlauf. Der Schwerpunkt wandert beim Einsammeln, und dadurch koennen
-       zwei fertige Gruppen naeher beieinander liegen als KACHEL, obwohl beim
-       Einsortieren keine zu nah war. Ohne diesen Durchgang ueberlappten nach
-       einem Tipp auf ein Buendel wieder zwei Nadeln -- gefunden nicht durch
-       Nachdenken, sondern weil die Zusicherung "keine zwei naeher als 34 px"
-       fehlschlug.
+    /* Zwei Nachlaeufe, und die Reihenfolge ist wichtig.
 
-       Terminiert: jede Zusammenlegung verringert die Zahl der Gruppen. */
-    var nochmal = true;
-    while (nochmal) {
-      nochmal = false;
-      for (var i = 0; i < gruppen.length && !nochmal; i++) {
-        for (var j = i + 1; j < gruppen.length; j++) {
-          var a = gruppen[i], b = gruppen[j];
-          if (Math.abs(a.x - b.x) < KACHEL && Math.abs(a.y - b.y) < KACHEL) {
-            var n = a.orte.length + b.orte.length;
-            a.x = (a.x * a.orte.length + b.x * b.orte.length) / n;
-            a.y = (a.y * a.orte.length + b.y * b.orte.length) / n;
-            a.orte = a.orte.concat(b.orte);
-            gruppen.splice(j, 1);
-            nochmal = true;
-            break;
+       Der erste legt zusammen, was gemeinsam noch in den Kreis passt: beim
+       Einsammeln wandert die Mitte, und dadurch koennen zwei fertige Gruppen
+       enger beieinander liegen, als es beim Einsortieren aussah.
+
+       Der zweite legt zusammen, was naeher als ABSTAND beieinander steht --
+       auch wenn das Ergebnis den Kreis sprengt. Ohne ihn fielen zwei Punkte
+       bei Zoom 12 auf 5 px Abstand zusammen, und dann ist keiner mehr zu
+       treffen. Die Zusicherung "kein Paar naeher als ABSTAND" gewinnt also
+       gegen den Deckel; der Deckel gilt fuer alles, was diese Zusicherung
+       nicht erzwingt.
+
+       Beide terminieren: jede Zusammenlegung verringert die Zahl der
+       Gruppen. */
+    [1, 2].forEach(function (durchgang) {
+      var nochmal = true;
+      while (nochmal) {
+        nochmal = false;
+        for (var i = 0; i < gruppen.length && !nochmal; i++) {
+          for (var j = i + 1; j < gruppen.length; j++) {
+            var a = gruppen[i], b = gruppen[j];
+            var zusammen = a.pts.concat(b.pts);
+            var c = durchgang === 1
+              ? mitteWennEng(zusammen)
+              : (Math.hypot(a.x - b.x, a.y - b.y) < ABSTAND ? schwerpunkt(zusammen) : null);
+            if (c) {
+              a.pts = zusammen; a.x = c.x; a.y = c.y;
+              gruppen.splice(j, 1);
+              nochmal = true;
+              break;
+            }
           }
         }
       }
-    }
-    return gruppen;
+    });
+    return gruppen.map(function (g) {
+      return { x: g.x, y: g.y, orte: g.pts.map(function (q) { return q.p; }) };
+    });
+  }
+
+  function schwerpunkt(pts) {
+    var sx = 0, sy = 0;
+    for (var i = 0; i < pts.length; i++) { sx += pts[i].x; sy += pts[i].y; }
+    return { x: sx / pts.length, y: sy / pts.length };
   }
 
   /* Groesster Pixelabstand innerhalb einer Gruppe bei gegebenem Zoom. Sagt,
@@ -6117,7 +6334,8 @@
         m = window.L.marker([p.geo.lat, p.geo.lon], {
           icon: window.L.divIcon({
             className: 'mk ' + accentClass(p.category)
-              + (S.seen.indexOf(p.id) >= 0 ? ' mk--seen' : ''),
+              + (S.seen.indexOf(p.id) >= 0 ? ' mk--seen' : '')
+              + (kartePick === p.id ? ' mk--pick' : ''),
             /* 30 statt 16: der Punkt bleibt 16 px gross, die Trefferflaeche
                waechst. Erst durch die Buendelung ist dafuer ueberhaupt Platz
                -- vorher haetten sich die groesseren Flaechen gegenseitig
@@ -6134,7 +6352,8 @@
         m = window.L.marker(mitte, {
           icon: window.L.divIcon({
             className: 'mk mk--bund' + (gross ? ' mk--bund-gross' : '')
-              + (alleGesehen ? ' mk--seen' : ''),
+              + (alleGesehen ? ' mk--seen' : '')
+              + (g.orte.some(function (o) { return o.id === kartePick; }) ? ' mk--pick' : ''),
             html: '<span>' + g.orte.length + '</span>',
             iconSize: gross ? [38, 38] : [32, 32],
             iconAnchor: gross ? [19, 19] : [16, 16]
@@ -6146,7 +6365,7 @@
              den Daten tragen mehr als einen Ort -- dieselbe Adresse, dieselbe
              Koordinate. Dort hilft kein Zoom, dort muessen die Namen her.
              Ohne diese Frage tippte man erst zweimal ins Leere. */
-          if (spreizung(g.orte, maxZ) < KACHEL) {
+          if (spreizung(g.orte, maxZ) < ABSTAND) {
             m.bindPopup(buendelListe(g), { className: 'bundpop', maxWidth: 260 }).openPopup();
             return;
           }
@@ -6233,6 +6452,14 @@
           'Du bist hier' + (hereAt() ? ' · ' + hereAt() : '')).addTo(karte);
       }
 
+      /* Vor dem Einpassen, nicht danach: fitBounds rechnet mit der Groesse
+         des Containers, und die steht beim ersten Oeffnen noch auf dem
+         Stand von vor dem Einblenden. Bis v45 fiel das nicht auf, weil
+         JEDES Zeichnen neu einpasste und der zweite Lauf es richtigstellte
+         -- seit v46 passt nur noch der erste ein, und der lag dadurch
+         gemessen bei Zoom 9 statt 11. */
+      karte.invalidateSize();
+
       if (mitGeo.length) {
         /* Der Bezugspunkt gehoert mit ins Bild. "Von wo starte ich" laesst
            sich nicht beantworten, wenn der Startpunkt ausserhalb des
@@ -6246,15 +6473,19 @@
         /* Das Ergebnis-Sheet deckt den unteren Rand ab. Ohne diesen Abstand
            laege ein Teil der Nadeln dahinter -- sichtbar gerechnet,
            unsichtbar gezeichnet. */
-        var unten = 0;
-        if (!$('mapsheet').hidden) {
-          var r = $('mapsheet').getBoundingClientRect();
-          var m = $('map').getBoundingClientRect();
-          unten = Math.max(0, Math.round(m.bottom - r.top));
+        /* Eingepasst wird nur, wenn sich die Treffermenge geaendert hat --
+           sonst wuerde jedes Zeichnen den Ausschnitt zuruecksetzen, den
+           jemand gerade selbst gewaehlt hat (durch Verschieben, Zoomen oder
+           einen Tipp auf einen Ort). */
+        var sig = mitGeo.map(function (q) { return q.id; }).join(',')
+          + '|' + (S.here ? S.here.lat + ',' + S.here.lon : '');
+        if (sig !== letzteFassung) {
+          letzteFassung = sig;
+          kartePick = null;
+          karte.fitBounds(window.L.latLngBounds(ecken).pad(0.15), {
+            maxZoom: 16, paddingBottomRight: [0, kartenSockel()]
+          });
         }
-        karte.fitBounds(window.L.latLngBounds(ecken).pad(0.15), {
-          maxZoom: 16, paddingBottomRight: [0, unten]
-        });
       }
       /* Nach fitBounds, nicht davor: gebuendelt wird nach Pixelabstand, und
          der haengt am Zoom. Vorher gezeichnet waere die Buendelung die des
@@ -6262,7 +6493,6 @@
          ohnehin noch einmal -- zeichneNadeln raeumt zuerst ab, doppelt
          schadet also nicht. */
       zeichneNadeln(mitGeo);
-      karte.invalidateSize();
 
       var ohne = orte.length - mitGeo.length;
       mapNote(!orte.length

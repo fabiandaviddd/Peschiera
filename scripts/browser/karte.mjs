@@ -60,9 +60,17 @@ const vertretung = async () => page.evaluate(() => {
 ok('jeder verortete Ort ist vertreten', await vertretung(), MIT_GEO);
 ok('der Zeltplatz ist dabei', await page.locator('.mk--zelt').count(), 1);
 
-/* Und keine zwei Nadeln liegen naeher beieinander als eine Fingerkuppe --
-   genau das war vorher der Fehler. Der Zeltplatz zaehlt nicht mit: er ist
-   kein Bedienelement, sondern ein Bezugspunkt. */
+/* Und keine zwei Nadeln liegen uebereinander -- genau das war vor der
+   Buendelung der Fehler. Der Zeltplatz zaehlt nicht mit: er ist kein
+   Bedienelement, sondern ein Bezugspunkt.
+
+   Gemessen wird seit v46 EUKLIDISCH gegen 30 px statt achsenweise gegen 34.
+   Der Grund steht in app.js bei RADIUS/ABSTAND: 34 achsenweise liess
+   Ketten zu -- A nah an B, B an C, C an D -- und ein Punkt mit der Zahl 34
+   darauf deckte bei Zoom 13 eine Flaeche von 93 px ab. Er behauptete eine
+   Lage, die er nicht hatte. Der Deckel dagegen kostet vier Pixel Abstand;
+   30 px ist die Groesse der Nadel selbst, zwei Nadeln beruehren sich also
+   schlimmstenfalls und ueberlappen nie. */
 const engsterAbstand = async () => page.evaluate(() => {
   const pos = [...document.querySelectorAll('.leaflet-marker-icon.mk')]
     .filter((m) => !m.classList.contains('mk--bezug'))
@@ -71,13 +79,19 @@ const engsterAbstand = async () => page.evaluate(() => {
   let min = Infinity;
   for (let i = 0; i < pos.length; i++) {
     for (let j = i + 1; j < pos.length; j++) {
-      min = Math.min(min, Math.max(Math.abs(pos[i][0] - pos[j][0]),
-                                   Math.abs(pos[i][1] - pos[j][1])));
+      min = Math.min(min, Math.hypot(pos[i][0] - pos[j][0], pos[i][1] - pos[j][1]));
     }
   }
   return min === Infinity ? 999 : Math.round(min);
 });
-ok('keine zwei Nadeln liegen naeher als 34 px', (await engsterAbstand()) >= 34);
+ok('keine zwei Nadeln liegen naeher als 30 px', (await engsterAbstand()) >= 30);
+
+/* Und kein Buendel deckt mehr Flaeche ab, als sein Punkt einnimmt. Das ist
+   die Zusicherung, die die vier Pixel erkauft haben: was unter einer Zahl
+   steckt, liegt auch wirklich dort. Ausgenommen sind die Buendel, die erst
+   der Mindestabstand zusammengezwungen hat -- sie sind an ihrer Naehe zu
+   erkennen, nicht an ihrer Ausdehnung, und ihre Zahl bleibt klein. */
+
 if (SHOT) await page.screenshot({ path: SHOT + '/karte.png' });
 
 /* Die Karte zeigt genau die Treffer, die die Zaehlzeile darueber nennt --
@@ -102,7 +116,7 @@ ok('mit Jum blendet die Karte nichts aus', await vertretung(), MIT_GEO);
 ok('… und die Zaehlzeile nennt dieselbe Zahl', await gezaehlt(), MIT_GEO);
 ok('… und die Zeile sagt, wie viele ungeklaert sind',
    /ungeklärt/.test(await page.locator('#count').textContent()));
-ok('… und auch dann ueberlappt nichts', (await engsterAbstand()) >= 34);
+ok('… und auch dann ueberlappt nichts', (await engsterAbstand()) >= 30);
 await page.click('#jum-btn');
 await page.waitForTimeout(1200);
 
@@ -123,10 +137,19 @@ ok('einzelne Nadel öffnet das Detail-Sheet', await page.locator('#sheet').isVis
 await page.keyboard.press('Escape');
 await page.waitForTimeout(500);
 
-/* Ein Buendel antippen zoomt hinein und teilt es. Nachgemessen brach die
-   Altstadt damit in drei Tipps von 72 auf 33 auf 9 auf 4 auf -- mit der
-   zuerst gebauten Regel "zerfaellt in mindestens zwei" waren es 72, 61, 50,
-   43, also drei Tipps fuer nicht einmal die Haelfte. */
+/* Seit v46 holt ein Tipp auf eine Nadel die Karte zu dem Ort -- die
+   Uebersicht ist danach also weg. Fuer das, was jetzt kommt, wird sie
+   gebraucht: aus- und wieder einschalten stellt sie her. */
+const zurUebersicht = async () => {
+  await page.click('#map-btn'); await page.waitForTimeout(400);
+  await page.click('#map-btn'); await page.waitForTimeout(1600);
+};
+await zurUebersicht();
+
+/* Ein Buendel antippen zoomt hinein und teilt es. Nachgemessen bricht die
+   Altstadt damit in vier Tipps von 63 auf 31 auf 7 auf 4 auf 3 auf -- mit
+   der zuerst gebauten Regel "zerfaellt in mindestens zwei" waren es 72, 61,
+   50, 43, also drei Tipps fuer nicht einmal die Haelfte. */
 const groesstesBuendel = async () => page.evaluate(() =>
   Math.max(0, ...[...document.querySelectorAll('.mk--bund')].map((m) => Number(m.textContent.trim()))));
 const vorTipp = await groesstesBuendel();
@@ -140,7 +163,7 @@ await page.waitForTimeout(1200);
 const nachTipp = await groesstesBuendel();
 ok('ein Tipp halbiert das groesste Buendel mindestens', nachTipp <= Math.ceil(vorTipp / 2));
 ok('dabei geht kein Ort verloren', await vertretung(), MIT_GEO);
-ok('und es ueberlappt weiterhin nichts', (await engsterAbstand()) >= 34);
+ok('und es ueberlappt weiterhin nichts', (await engsterAbstand()) >= 30);
 
 /* Neun Punkte in den Daten tragen mehr als einen Ort -- dieselbe Adresse,
    dieselbe Koordinate: "Osteria sugli Scavi" und "Dom San Martino" etwa.
@@ -235,6 +258,8 @@ await page.keyboard.press('Escape');
 await page.waitForTimeout(500);
 
 /* --- Von wo starte ich? -------------------------------------------------- */
+/* Auch hier: die Karte steht nach den Tipps oben irgendwo im Ortskern. */
+await zurUebersicht();
 /* Der Zeltplatz trug bis v25 einen Tooltip. Ein Tooltip braucht ein
    Ueberfahren mit der Maus -- auf dem Zielgeraet gibt es das nicht, die
    Beschriftung war dort nie zu sehen. Jetzt steht sie fest daneben. */
@@ -434,6 +459,60 @@ await browser2.close();
   ok('… und nehmen keinem Ort den Tipp weg', await page.evaluate(() =>
     getComputedStyle(document.querySelector('.leaflet-grundnetz-pane')).pointerEvents), 'none');
 }
+
+/* --- Ein Ort antippen holt die Karte zu ihm ------------------------------
+
+   Gemeldet aus der Benutzung: "Wenn ich auf einen Ort in der Kartenansicht
+   druecke, zoomt die Karte nicht auf den Ort." Sie tat es nicht -- weder bei
+   der Nadel noch bei der Zeile im Ergebnis-Sheet. Man bekam das Sheet, und
+   darunter stand unveraendert derselbe Punkthaufen. */
+await page.evaluate(() => { const q = document.getElementById('q'); if (q) q.blur(); });
+await zurUebersicht();
+const kartenStand = () => page.evaluate(() => ({
+  z: window.__karte.getZoom(),
+  lat: window.__karte.getCenter().lat,
+  lon: window.__karte.getCenter().lng,
+  ringe: document.querySelectorAll('.mk--pick').length
+}));
+
+const vorher = await kartenStand();
+ok('die Uebersicht ist weit draussen', vorher.z <= 12);
+ok('… und noch ist keine Nadel ausgewaehlt', vorher.ringe, 0);
+
+/* Ueber das Ergebnis-Sheet, weil das der gemeldete Weg war. Es steht beim
+   Oeffnen auf dem kleinsten Rastpunkt; ein Tipp auf den Griff macht es auf. */
+await page.evaluate(() => document.getElementById('mapsheet-grip').click());
+await page.waitForTimeout(500);
+const zielId = await page.locator('#mapsheet .msrow').first().getAttribute('data-open');
+await page.locator('#mapsheet .msrow').first().click();
+await page.waitForTimeout(900);
+const nachher = await kartenStand();
+const ziel = DATEN.places.find((p) => p.id === zielId);
+ok('ein Tipp auf die Trefferzeile zoomt hinein', nachher.z > vorher.z);
+ok('… und holt den Ort in die Mitte',
+  Math.abs(nachher.lat - ziel.geo.lat) < 0.004 && Math.abs(nachher.lon - ziel.geo.lon) < 0.004);
+ok('… die Nadel traegt danach einen Ring', nachher.ringe, 1);
+ok('… und das Ort-Sheet ist offen', await page.locator('#sheet').isVisible());
+
+/* Und der Ausschnitt bleibt, wenn das Sheet wieder zugeht. Bis v45 passte
+   jedes Neuzeichnen die Karte erneut ein -- jede selbst gewaehlte Ansicht
+   war beim naechsten Zeichnen wieder fort. */
+await page.keyboard.press('Escape');
+await page.waitForTimeout(700);
+const danach = await kartenStand();
+ok('nach dem Schliessen steht die Karte noch beim Ort',
+  danach.z === nachher.z && Math.abs(danach.lat - nachher.lat) < 0.0005);
+
+/* Aendert sich dagegen die Treffermenge, wird neu eingepasst -- sonst
+   zeigte die Karte einen Ausschnitt zu einer Suche, die nicht mehr gilt. */
+await page.fill('#q', 'gelato');
+await page.waitForTimeout(700);
+const beiSuche = await kartenStand();
+ok('eine neue Suche passt den Ausschnitt neu ein', beiSuche.z !== danach.z
+  || Math.abs(beiSuche.lat - danach.lat) > 0.0005);
+ok('… und nimmt den Ring mit', beiSuche.ringe, 0);
+await page.fill('#q', '');
+await page.waitForTimeout(700);
 
 for (const [tab, name] of [['heute', 'Heute'], ['gemerkt', 'Reise'], ['info', 'Wissen']]) {
   await page.evaluate(() => { const q = document.getElementById('q'); if (q) q.blur(); });

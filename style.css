@@ -1733,6 +1733,13 @@ body.is-typing .tabs { transform: translateY(110%); }
    nicht erst im Plan -- der richtige Zeitpunkt fuer diese Auskunft ist der,
    an dem man den Tag waehlt. */
 .tagsheet__zu { color: var(--brick-ink); font-weight: 500; }
+/* Der Grund, aus dem ein Ort vorgeschlagen wird. Er steht am Ende der
+   Metazeile, damit er die Auskuenfte davor nicht verdraengt. */
+.tagsheet__grund { color: var(--verde-ink); font-weight: 700; }
+
+/* Die Vorschlaege setzen sich vom Vorrat ab: eine Linie darueber, sonst
+   dieselbe Zeile. Sie sind ein zweiter Abschnitt, keine zweite Gattung. */
+.tagvor { margin-top: 1.1rem; padding-top: .9rem; border-top: 1px solid var(--line); }
 
 .tagsheet__b {
   /* 44 px, wie jedes Bedienelement des Hauses. */
@@ -2070,6 +2077,15 @@ body.is-map .map__note { display: none; }
   box-shadow: 0 1px 3px rgba(0,0,0,.45);
 }
 .mk--seen span { opacity: .45; }
+
+/* Der angetippte Ort. Ohne diesen Ring weiss man nach dem Schliessen des
+   Sheets nicht mehr, welcher der Punkte gemeint war -- und genau dafuer
+   faehrt die Karte ja hin. Ein zweiter Ring aussen herum, keine andere
+   Farbe: die Kategorie bleibt ablesbar. */
+.mk--pick span {
+  box-shadow: 0 0 0 3px var(--ink), 0 1px 3px rgba(0,0,0,.45);
+}
+.mk--pick.mk--bund span { box-shadow: 0 0 0 3px var(--ink); }
 
 /* Die Nadel bleibt 16 px, ihre Trefferflaeche misst 30. Erst die Buendelung
    schafft dafuer Platz -- vorher lagen 100 von 102 Nadeln naeher als 34 px

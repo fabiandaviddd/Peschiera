@@ -593,21 +593,23 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
     (await q.locator('#sheet-name').textContent()).trim(), langTag(tagC));
   ok('… und sagt, dass noch nichts dasteht',
     /noch nichts geplant/.test(await q.locator('.tagsheet__leer').first().textContent()));
-  const ausMerk = await q.locator(`[data-dayiso="${tagC}"]`).count();
+  /* Im Vorrat-Abschnitt gezaehlt, nicht im ganzen Sheet: seit v46 tragen
+     auch die Vorschlaege darunter einen Knopf auf denselben Tag. */
+  const ausMerk = await q.locator(`.tagfrei [data-dayiso="${tagC}"]`).count();
   ok('… und bietet die Merkliste an', ausMerk, 13);
 
   /* Hinzufuegen laesst das Sheet offen: einen Tag fuellt man selten mit
      einem einzigen Ort. */
-  await q.locator(`[data-dayiso="${tagC}"]`).first().click();
+  await q.locator(`.tagfrei [data-dayiso="${tagC}"]`).first().click();
   await q.waitForTimeout(400);
   ok('Hinzufuegen laesst das Sheet offen', await q.locator('#sheet').isVisible());
-  await q.locator(`[data-dayiso="${tagC}"]`).first().click();
+  await q.locator(`.tagfrei [data-dayiso="${tagC}"]`).first().click();
   await q.waitForTimeout(400);
   ok('zwei Orte stehen jetzt an dem Tag', await q.evaluate((t) =>
     Object.values(JSON.parse(localStorage.getItem('pk.days') || '{}'))
       .filter((v) => v === t).length, tagC), 2);
   ok('… die Merkliste im Sheet ist um zwei kuerzer',
-    await q.locator(`[data-dayiso="${tagC}"]`).count(), ausMerk - 2);
+    await q.locator(`.tagfrei [data-dayiso="${tagC}"]`).count(), ausMerk - 2);
 
   /* Herunternehmen: der Ort wandert zurueck in die Merkliste, er verlaesst
      den Plan nicht. */
@@ -711,12 +713,12 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   daten.orte.forEach((o) => { byId[o.id] = o; });
   const zwanzig = daten.orte.slice(0, 20).map((o) => o.id);
 
-  const namenImSheet = async () => q.evaluate(() =>
-    [...document.querySelectorAll('.tagsheet__l')].pop()
-      .querySelectorAll('.tagsheet__name').length
-      ? [...[...document.querySelectorAll('.tagsheet__l')].pop()
-          .querySelectorAll('.tagsheet__name')].map((e) => e.textContent.trim())
-      : []);
+  /* Nur der Vorrat, nicht die Vorschlaege darunter: seit v46 stehen im
+     Tages-Sheet zwei Listen, und .pop() traf ab da die falsche. */
+  const namenImSheet = async () => q.evaluate(() => {
+    const l = document.querySelector('.tagfrei .tagsheet__l');
+    return l ? [...l.querySelectorAll('.tagsheet__name')].map((e) => e.textContent.trim()) : [];
+  });
 
   /* (a) Leerer Tag: der Bezugspunkt der App gilt -- der Zeltplatz. */
   await q.evaluate((ids) => {
@@ -736,7 +738,7 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   await q.waitForTimeout(600);
 
   ok('ein leerer Tag misst ab dem Zeltplatz',
-    (await q.locator('.tagsheet__lead').textContent()).trim(),
+    (await q.locator('.tagfrei .tagsheet__lead').textContent()).trim(),
     'Nach Entfernung vom Zeltplatz');
   const abZelt = await namenImSheet();
   const sollZelt = zwanzig.slice(1).map((id) => byId[id])
@@ -744,9 +746,62 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
     .map((o) => o.name);
   ok('… und steht in dieser Reihenfolge', abZelt, sollZelt);
   ok('jede Zeile nennt ihre Entfernung', await q.evaluate(() =>
-    [...[...document.querySelectorAll('.tagsheet__l')].pop()
+    [...document.querySelector('.tagfrei .tagsheet__l')
       .querySelectorAll('.tagsheet__row')]
       .every((r) => !!r.querySelector('.tagsheet__weit'))));
+  /* --- Vorschlaege fuer den Tag ---------------------------------------
+
+     Gemeldet aus der Benutzung: "Wenn ich bei Reise auf einen leeren Tag
+     druecke, muss ich alle Orte durchsuchen." Genau so war es: der Vorrat,
+     und war der leer, ein Suchfeld ueber 101 Orte.
+
+     Geprueft wird nicht, WAS vorgeschlagen wird -- das haengt am Bestand --,
+     sondern dass jeder Vorschlag die Regeln einhaelt, die ihn begruenden. */
+  const vorschlaege = async () => q.evaluate(() =>
+    [...document.querySelectorAll('.tagvor .tagsheet__row')].map((r) => ({
+      name: r.querySelector('.tagsheet__name').textContent.trim(),
+      meta: r.querySelector('.tagsheet__m').textContent.trim()
+    })));
+  const roh = await q.evaluate(async () => {
+    const d = await (await fetch('./data/places.json')).json();
+    return d.places.map((x) => ({ id: x.id, name: x.name, category: x.category,
+      time_min: x.time_min, badge: x.badge }));
+  });
+  const v1 = await vorschlaege();
+  ok('ein leerer Tag bekommt Vorschlaege', v1.length > 0);
+  ok('… hoechstens sechs', v1.length <= 6);
+  const gefunden = v1.map((x) => roh.find((p) => p.name === x.name)).filter(Boolean);
+  ok('… und jeder ist ein echter Ort', gefunden.length, v1.length);
+  /* Kein Ort, der schon an einem Tag steht -- der ist vergeben. */
+  const verplant = await q.evaluate(() =>
+    Object.keys(JSON.parse(localStorage.getItem('pk.days') || '{}')));
+  ok('… mindestens einer ist ueberhaupt verplant', verplant.length > 0);
+  ok('… und keiner der Vorschlaege gehoert dazu',
+    gefunden.filter((p) => verplant.indexOf(p.id) >= 0).map((p) => p.id), []);
+  /* Kein Radverleih, keine Apotheke, kein Bahnhof: Praktisches nur, wenn
+     man dort Zeit verbringt. */
+  const praktischKurz = gefunden.filter((p) => p.category === 'praktisch'
+    && !(p.time_min >= 60));
+  ok('… kein Praktisches unter einer Stunde', praktischKurz.map((p) => p.id), []);
+  /* Hoechstens zwei je Kategorie -- sonst ist es eine Kategorieliste, kein
+     Tagesvorschlag. */
+  const proKat = {};
+  gefunden.forEach((p) => { proKat[p.category] = (proKat[p.category] || 0) + 1; });
+  ok('… hoechstens zwei je Kategorie',
+    Object.keys(proKat).filter((k) => proKat[k] > 2), []);
+  /* Und was auf den Tag gelegt wird, verschwindet aus den Vorschlaegen:
+     zweimal dasselbe vorzuschlagen waere das Gegenteil von Hilfe. */
+  const ersterName = v1[0].name;
+  await q.locator('.tagvor [data-dayiso]').first().click();
+  await q.waitForTimeout(450);
+  const v2 = await vorschlaege();
+  ok('ein angenommener Vorschlag steht nicht mehr darunter',
+    v2.some((x) => x.name === ersterName), false);
+  ok('… und er steht jetzt im Tag', await q.evaluate(
+    () => [...document.querySelectorAll('.tagsheet__row--drin .tagsheet__name')]
+      .map((e) => e.textContent.trim())).then((n) => n.indexOf(ersterName) >= 0), true);
+  await q.keyboard.press('Escape');
+  await q.waitForTimeout(450);
 
   /* (b) Ein Ort am Tag: er ist der Anker, und er wird benannt. */
   const ankerA = zwanzig[7];
@@ -761,7 +816,7 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   await q.waitForTimeout(600);
 
   ok('ein belegter Tag nennt seinen Anker beim Namen',
-    (await q.locator('.tagsheet__lead').textContent()).trim(),
+    (await q.locator('.tagfrei .tagsheet__lead').textContent()).trim(),
     'Nach Nähe zu ' + byId[ankerA].name);
   const abAnker = await namenImSheet();
   const sollAnker = zwanzig.filter((id) => id !== ankerA).map((id) => byId[id])
@@ -791,7 +846,7 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
     await q.waitForTimeout(600);
 
     ok('bei mehreren Orten nennt der Kopf keinen einzelnen',
-      (await q.locator('.tagsheet__lead').textContent()).trim(),
+      (await q.locator('.tagfrei .tagsheet__lead').textContent()).trim(),
       'Nach Nähe zum nächsten Ort dieses Tages');
     const abZwei = await namenImSheet();
     const sollZwei = rest.map((id) => byId[id])
