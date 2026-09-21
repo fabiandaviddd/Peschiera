@@ -1,4 +1,4 @@
-# Übergabe — Peschiera kompakt
+# Übergabe — Arilica (bis `v43` „Peschiera kompakt")
 
 Für den nächsten, der hier weiterarbeitet. Stand `v18`, 18.09.2026.
 

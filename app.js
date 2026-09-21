@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Peschiera kompakt — app.js
+   Arilica — app.js
 
    Vanilla, kein Modul (damit file:// eine Chance hat), kein Build.
    Alle Inhalte kommen aus data/places.json — hier stehen keine Ortsdaten.
@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v43 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v44 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -5142,7 +5142,7 @@
 
   function doShareWirklich() {
     var url = shareLink();
-    var txt = 'Meine Liste aus Peschiera kompakt';
+    var txt = 'Meine Liste aus Arilica';
     var fallback = function () {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(function () { flash('Link kopiert'); },
@@ -5152,7 +5152,7 @@
       }
     };
     if (navigator.share) {
-      navigator.share({ title: 'Peschiera kompakt', text: txt, url: url })
+      navigator.share({ title: 'Arilica', text: txt, url: url })
         .catch(function (err) { if (!err || err.name !== 'AbortError') fallback(); });
     } else {
       fallback();
@@ -5225,7 +5225,7 @@
   }
 
   /* Fragt den Worker nach seinem Cache-Namen und vergleicht nur die Marke
-     davor: 'peschiera-v16' gegen 'v16 · 2026-09-18' ist gleich, das Datum
+     davor: 'arilica-v44' gegen 'v44 · 2026-09-21' ist gleich, das Datum
      dahinter zaehlt nicht mit. */
   function checkCacheVersion() {
     if (!('serviceWorker' in navigator) || !window.MessageChannel) return;
@@ -5236,7 +5236,7 @@
       ch.port1.onmessage = function (ev) {
         var cache = ev.data && ev.data.cache;
         if (!cache) return;
-        var sw = String(cache).replace(/^peschiera-/, '');
+        var sw = String(cache).replace(/^arilica-/, '');
         var app = String(VERSION).split(/[\s·]/)[0];
         swMismatch = sw === app ? null : { sw: sw, app: app };
         updateOfflineNote();
@@ -6243,7 +6243,7 @@
   $('boot-retry').addEventListener('click', function () {
     $('boot').classList.remove('boot--fehler');
     $('boot-retry').hidden = true;
-    $('boot-title').textContent = 'Peschiera kompakt';
+    $('boot-title').textContent = 'Arilica';
     $('boot-text').textContent = 'Daten werden geladen…';
     loadData(start, bootError);
   });

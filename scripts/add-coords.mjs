@@ -19,7 +19,7 @@ import path from 'node:path';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = path.join(ROOT, 'data', 'places.json');
 
-const UA = 'peschiera-kompakt/1.0 (https://github.com/fabiandaviddd/peschiera-kompakt)';
+const UA = 'arilica/1.0 (https://github.com/fabiandaviddd/Peschiera)';
 /* Reisegegend — hält Treffer aus dem Rest Italiens fern */
 const BOX = { lonMin: 10.35, latMax: 45.95, lonMax: 11.15, latMin: 45.05 };
 const PAUSE = 1100;                 // ms — etwas über dem Limit von 1 req/s

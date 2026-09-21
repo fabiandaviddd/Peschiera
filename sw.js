@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Peschiera kompakt — Service Worker
+   Arilica — Service Worker
 
    App-Shell, Schriften und places.json werden vorgehalten, damit nach
    einmaligem Laden alles offline funktioniert.
@@ -9,7 +9,7 @@
    ========================================================================== */
 'use strict';
 
-var CACHE = 'peschiera-v43';
+var CACHE = 'arilica-v44';
 var TIMEOUT = 2500;   // ms, danach greift der Cache
 
 /* Leaflet liegt im Repo, nicht auf einem fremden Server -- sonst waere die
@@ -54,8 +54,10 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(keys.map(function (k) {
-        /* Ohne Ausnahme -- das raeumt auch den alten peschiera-fonts-*
-           Cache ab, den Bestandsgeraete von der Google-Fassung noch haben. */
+        /* Ohne Ausnahme -- das raeumt die Caches unter dem alten Namen mit
+           ab: peschiera-v43 von der letzten Fassung und den noch aelteren
+           peschiera-fonts-*, den Bestandsgeraete von der Google-Fassung
+           haben. Der Name der Marke ist mit v44 auf arilica- gewechselt. */
         if (k !== CACHE) return caches.delete(k);
       }));
     }).then(function () { return self.clients.claim(); })

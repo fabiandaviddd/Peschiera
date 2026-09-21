@@ -1,11 +1,35 @@
-# Peschiera kompakt
+# Arilica
 
-Nachschlagewerk für Peschiera del Garda — Essen, Café, Sehen, Ausflüge,
-Praktisches. Mobil-first, offline lauffähig, Hund (Jum) durchgängig als
-Filterkriterium.
+Nachschlagewerk und Reiseplaner für Peschiera del Garda — Essen, Café, Sehen,
+Ausflüge, Praktisches. Mobil-first, offline lauffähig, Hund (Jum) durchgängig
+als Filterkriterium.
 
 Vanilla HTML/CSS/JS. Kein Framework, kein Bundler, kein Build-Schritt —
 GitHub Pages liefert das Repo unverändert aus.
+
+## Der Name
+
+**Arilica** ist der römische Name Peschieras. Kurz, ortsgebunden, in beiden
+Sprachen aussprechbar — und er beschreibt, worum es geht: einen Ort, nicht
+eine Datei. Bis `v43` hieß die App „Peschiera kompakt"; der Vorschlag steht in
+`docs/app-relaunch-konzept.md`, übernommen wurde er mit `v44`.
+
+Umbenannt ist alles, wo die App **sich selbst** benennt: Seitentitel,
+iOS-Titel (`apple-mobile-web-app-title`), Startbildschirm, Manifest samt `id`,
+der Titel beim Teilen, `meta.title` in `places.json`, der Selbsttest, die
+Koordinatenseite — und der Cache-Name im Service Worker, der jetzt
+`arilica-v44` heißt statt `peschiera-v43`. `activate()` räumt die Caches unter
+dem alten Namen beim ersten Start ab; auf dem Gerät bleibt nichts liegen.
+
+Der **Ort** heißt unverändert Peschiera. Adressen, Ortsnamen, Wissenseinträge
+und die Reisedaten sind nicht angefasst. Die älteren Dokumente unter `docs/`
+tragen weiter den alten Namen: sie beschreiben einen früheren Stand, und ihn
+nachträglich umzuschreiben hieße, den Verlauf zu fälschen.
+
+Damit ein Umbenennen nicht wieder an den Stellen durchfällt, die niemand oft
+ansieht, prüft `scripts/test-logic.mjs` jetzt sieben davon gegeneinander —
+inklusive der Regel, dass „Peschiera kompakt" in `index.html`,
+`manifest.webmanifest`, `sw.js` und `app.js` nicht mehr vorkommen darf.
 
 ## Zielgerät — vor jeder Änderung lesen
 

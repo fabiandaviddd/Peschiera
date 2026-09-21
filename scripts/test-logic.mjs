@@ -884,12 +884,39 @@ const zieleUnbekannt = (mani?.shortcuts || [])
   .filter((v) => v && tabIds.indexOf(v) < 0);
 ok('jeder Kurzbefehl zeigt auf eine echte Ansicht', zieleUnbekannt, []);
 
+group('Der Name steht überall gleich');
+
+/* Mit v44 heisst die App Arilica -- der roemische Name Peschieras. Ein
+   Umbenennen faellt sonst genau dort durch, wo niemand oft hinsieht: im
+   Manifest, im iOS-Titel, im Namen des Caches. Der Ort heisst weiter
+   Peschiera; geprueft wird nur, wo die App sich selbst benennt. */
+const NAME = 'Arilica';
+const idxSrc = readFileSync(join(root, 'index.html'), 'utf8');
+const holen = (re) => (idxSrc.match(re) || [, ''])[1];
+
+truthy('index.html: der Seitentitel nennt die App',
+       holen(/<title>([^<]*)<\/title>/).includes(NAME));
+ok('index.html: der iOS-Titel ist der App-Name',
+   holen(/name="apple-mobile-web-app-title" content="([^"]*)"/), NAME);
+ok('index.html: der Startbildschirm nennt die App',
+   holen(/<h2 id="boot-title">([^<]*)<\/h2>/), NAME);
+ok('manifest: name', mani?.name, NAME);
+ok('manifest: short_name', mani?.short_name, NAME);
+truthy('manifest: die id ist auf den Namen gezogen',
+       /^arilica/.test(String(mani?.id || '')));
+
+/* Der alte Name darf nur noch dort stehen, wo er den ORT meint. In diesen
+   vier Dateien benennt sich die App selbst -- hier waere er ein Rest. */
+const restVomAltenNamen = ['index.html', 'manifest.webmanifest', 'sw.js', 'app.js']
+  .filter((f) => /Peschiera kompakt/.test(readFileSync(join(root, f), 'utf8')));
+ok('kein "Peschiera kompakt" mehr in der App selbst', restVomAltenNamen, []);
+
 group('app.js und sw.js — dieselbe Fassung');
 
 const appSrc = readFileSync(join(root, 'app.js'), 'utf8');
 const swSrc = readFileSync(join(root, 'sw.js'), 'utf8');
 const appV = (appSrc.match(/var VERSION = '([^']+)'/) || [])[1];
-const swV = (swSrc.match(/var CACHE = 'peschiera-([^']+)'/) || [])[1];
+const swV = (swSrc.match(/var CACHE = 'arilica-([^']+)'/) || [])[1];
 truthy('VERSION steht in app.js', !!appV);
 truthy('CACHE steht in sw.js', !!swV);
 ok('CACHE passt zu VERSION', swV, appV ? appV.split(/[\s·]/)[0] : null);

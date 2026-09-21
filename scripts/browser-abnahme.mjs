@@ -575,7 +575,7 @@ const schrift = await page.evaluate(async () => {
   const breit = (w) => {
     const s = document.createElement('span');
     s.style.cssText = 'position:absolute;visibility:hidden;font:' + w + ' 40px Fraunces';
-    s.textContent = 'Peschiera kompakt';
+    s.textContent = 'Arilica';
     document.body.appendChild(s);
     const x = s.getBoundingClientRect().width;
     s.remove();

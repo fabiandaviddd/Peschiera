@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Erzeugt App-Icons und iOS-Splashscreens für Peschiera kompakt.
+"""Erzeugt App-Icons und iOS-Splashscreens für Arilica.
 
 Motiv: das Fünfeck der venezianischen Festung von Peschiera.
 Einmalig laufen lassen, die PNGs liegen fest im Repo:

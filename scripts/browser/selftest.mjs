@@ -17,7 +17,7 @@ await page.waitForTimeout(400);
 
 ok('Seite lädt ohne JS-Fehler', errs.length===0, errs.join(' | '));
 const out0 = await page.inputValue('#out');
-ok('Bericht wird befüllt', out0.includes('Peschiera kompakt') && out0.includes('Gerät'), String(out0.length));
+ok('Bericht wird befüllt', out0.includes('Arilica') && out0.includes('Gerät'), String(out0.length));
 ok('Zeigt "noch nicht getippt"', (await page.textContent('#tap-res')).includes('noch nicht'));
 
 // Tap mit echtem Touch simulieren
