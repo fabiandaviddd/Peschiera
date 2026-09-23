@@ -709,7 +709,8 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   const daten = await q.evaluate(async () => {
     const d = await (await fetch('./data/places.json')).json();
     return { base: d.meta.base_geo,
-      orte: d.places.map((x) => ({ id: x.id, name: x.name, geo: x.geo })) };
+      orte: d.places.map((x) => ({ id: x.id, name: x.name, geo: x.geo,
+        walk_min: x.walk_min, bike_min: x.bike_min, distance_km: x.distance_km })) };
   });
   const byId = {};
   daten.orte.forEach((o) => { byId[o.id] = o; });
@@ -743,8 +744,18 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
     (await q.locator('.tagfrei .tagsheet__lead').textContent()).trim(),
     'Nach Entfernung vom Zeltplatz');
   const abZelt = await namenImSheet();
+  /* Seit v48 nach derselben Zahl, die in der Zeile steht -- und die ist
+     dieselbe wie in der Liste und im Ort: gemessene Gehminuten, dann Rad,
+     dann Kilometer; nur wo nichts gemessen ist, gerechnet (Luftlinie × 1,50,
+     4,5 km/h). Bis v47 stand hier die Luftlinie in Metern ("887 m"), waehrend
+     der Ort "18 Min" und "1,3 km" sagte. Nachgerechnet wird hier, nicht in
+     der App gefragt. */
+  const rangAbZelt = (o) => o.walk_min != null ? o.walk_min
+    : o.bike_min != null ? 1000 + o.bike_min
+    : o.distance_km != null ? 2000 + o.distance_km
+    : ((s) => (s <= 8 ? s / 4.5 * 60 : 2000 + s))(luft(daten.base, o.geo) * 1.5);
   const sollZelt = zwanzig.slice(1).map((id) => byId[id])
-    .sort((x, y) => luft(daten.base, x.geo) - luft(daten.base, y.geo))
+    .sort((x, y) => rangAbZelt(x) - rangAbZelt(y))
     .map((o) => o.name);
   ok('… und steht in dieser Reihenfolge', abZelt, sollZelt);
   ok('jede Zeile nennt ihre Entfernung', await q.evaluate(() =>

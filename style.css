@@ -683,6 +683,13 @@ body.is-compact .bar__top {
   border-style: solid; color: var(--lake-ink); border-color: var(--lake);
   background: color-mix(in srgb, var(--lake) 12%, transparent);
 }
+/* Auf einem Tag, an dem der Ort zu hat: Ziegel und gestrichelt, dieselbe
+   Sprache wie "an dem Tag zu" im Tagesplan. Die Form traegt es mit, nicht nur
+   die Farbe. */
+.daychip--zu select {
+  color: var(--brick-ink); border-color: var(--brick); border-style: dashed;
+  background: color-mix(in srgb, var(--brick) 10%, transparent);
+}
 /* Die Trefferflaeche bleibt bei 44 px, auch wenn der Chip flacher aussieht:
    ein unsichtbarer Rand um das Bedienelement, wie ihn iOS selbst benutzt. */
 .daychip::after {
@@ -1733,6 +1740,12 @@ body.is-typing .tabs { transform: translateY(110%); }
    nicht erst im Plan -- der richtige Zeitpunkt fuer diese Auskunft ist der,
    an dem man den Tag waehlt. */
 .tagsheet__zu { color: var(--brick-ink); font-weight: 500; }
+/* Dieselbe Warnung auf der Tageskarte in "Reise": Ziegel, fett und mit
+   Zeichen -- die Form traegt es mit, nicht nur die Farbe. */
+.tagk__zu { display: inline-flex; align-items: center; gap: .2rem;
+  color: var(--brick-ink); font-weight: 700; }
+.tagk__zu svg { width: 13px; height: 13px; flex: 0 0 auto;
+  fill: none; stroke: currentColor; stroke-width: 2.2; }
 /* Der Grund, aus dem ein Ort vorgeschlagen wird. Er steht am Ende der
    Metazeile, damit er die Auskuenfte davor nicht verdraengt. */
 .tagsheet__grund { color: var(--verde-ink); font-weight: 700; }

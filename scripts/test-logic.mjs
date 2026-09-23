@@ -265,6 +265,73 @@ for (const p of terminOrte) {
 ok('terminAm und terminStand stimmen an allen 15 Reisetagen überein', falschLaufend, []);
 console.log('    ' + 'Orte mit Termin'.padEnd(38) + terminOrte.map((p) => p.id).join(' · '));
 
+/* ------------------------------------------ Offene Tage und Schluss des Tages */
+group('offenAmTag — auch die offenen Tage zaehlen, nicht nur der Ruhetag');
+
+/* Gemeldet: "Tag planen" schlug die Osteria Bakarè fuer einen Dienstag vor,
+   mit "an dem Tag geoeffnet" darueber. Ihre Angabe ist "Mi–Sa 19:00–23:00".
+   closedOn() las nur Ruhetage; die offenen Tage las niemand. */
+const T = { so: 0, mo: 1, di: 2, mi: 3, do: 4, fr: 5, sa: 6 };
+const bak = 'Mi–Sa 19:00–23:00 (ungeprüft)';
+ok('Bakarè: dienstags zu', pk.offenAmTag(bak, T.di), false);
+ok('Bakarè: mittwochs offen', pk.offenAmTag(bak, T.mi), true);
+ok('Bakarè: sonntags zu', pk.offenAmTag(bak, T.so), false);
+ok('closedToday sieht es jetzt auch', pk.closedToday({ hours: bak }, new Date(2026, 8, 22)), true);
+ok('"So–Fr" geht ueber das Wochenende', pk.offeneTage('So–Fr 9:30–23, Sa bis 1:00').sort(), [0, 1, 2, 3, 4, 5, 6].sort());
+ok('"Sa/So" ist eine Liste', pk.offenAmTag('werktags nur abends, Sa/So auch 12–14, Ruhetag Dienstag', T.sa), true);
+ok('… und der Ruhetag gewinnt', pk.offenAmTag('werktags nur abends, Sa/So auch 12–14, Ruhetag Dienstag', T.di), false);
+ok('"Di 8–13": nur dienstags', pk.offenAmTag('Di 8–13', T.mi), false);
+ok('"montags bis ca. 13:00": nur montags', pk.offenAmTag('montags bis ca. 13:00', T.di), false);
+ok('"Mo–Sa …, bis 01.11. auch So": sonntags offen', pk.offenAmTag('Mo–Sa 9–18:30, bis 01.11. auch So', T.so), true);
+ok('"Weinshop Mo–Sa …": sonntags zu', pk.offenAmTag('Weinshop Mo–Sa 8:30–12:30 und 14–18', T.so), false);
+/* Die Gegenproben wiegen schwerer: ein erfundenes "zu" nimmt einen Ort aus
+   jedem Vorschlag. */
+ok('"So durchgehend" heisst nicht "nur sonntags"',
+   pk.offenAmTag('9–12:30 und 14:30–19, So durchgehend', T.mo), null);
+ok('"Juni–September" sind Monate, keine Tage', pk.offeneTage('Juni–September 10–21'), null);
+ok('ohne Tagesangabe weiss man nichts', pk.offenAmTag('geöffnet bis 22:30', T.di), null);
+ok('ein Uferweg ohne Angabe ist nicht geschlossen', pk.offenAmTag(null, T.di), null);
+
+group('tagesSchluss — das Ende des letzten Fensters, nicht des ersten');
+
+const hm = (h, m) => h * 60 + (m || 0);
+ok('"12–14 und 19–22:30": 22:30, nicht 14:00',
+   pk.tagesSchluss('12–14 und 19–22:30, Ruhetag Dienstag', T.mo), hm(22, 30));
+ok('"täglich 11–01": ueber Mitternacht', pk.tagesSchluss('täglich 11–01', T.mo), hm(25));
+ok('"Sa bis 1:00" gilt am Samstag', pk.tagesSchluss('So–Fr 9:30–23, Sa bis 1:00', T.sa), hm(25));
+ok('… und nicht am Freitag', pk.tagesSchluss('So–Fr 9:30–23, Sa bis 1:00', T.fr), hm(23));
+ok('"Di–Do 9:30–12:30, Fr–So 9:30–18:30": dienstags 12:30',
+   pk.tagesSchluss('Di–Do 9:30–12:30, Fr–So 9:30–18:30, Mo zu', T.di), hm(12, 30));
+ok('… freitags 18:30', pk.tagesSchluss('Di–Do 9:30–12:30, Fr–So 9:30–18:30, Mo zu', T.fr), hm(18, 30));
+ok('"bis 01.11." ist ein Datum, keine Uhrzeit',
+   pk.tagesSchluss('Mo–Sa 9–18:30, bis 01.11. auch So', T.so), null);
+ok('"auch" heisst: zusaetzlich zu Unbekanntem',
+   pk.tagesSchluss('werktags nur abends, Sa/So auch 12–14, Ruhetag Dienstag', T.sa), null);
+ok('"öffnet 10:00": die Schlusszeit steht nicht da',
+   pk.tagesSchluss('öffnet 10:00 · Mi geschlossen', T.di), null);
+ok('ein geschlossener Tag hat keinen Schluss', pk.tagesSchluss(bak, T.di), null);
+
+/* Gemeldet: um 16:48 stand der Dienstagsmarkt in Desenzano (8–13 Uhr) ganz
+   oben in "Jetzt". closingSoon() prueft nur die halbe Stunde um den Schluss. */
+const markt = { hours: 'Di 8–13' };
+ok('der Markt hat am Dienstag um 16:48 schon zu', pk.schonZu(markt, new Date(2026, 8, 22, 16, 48)), true);
+ok('… um 10:00 noch nicht', pk.schonZu(markt, new Date(2026, 8, 22, 10, 0)), false);
+ok('ohne Schlusszeit nie "schon zu"', pk.schonZu({ hours: 'öffnet 10:00' }, new Date(2026, 8, 22, 22, 0)), false);
+
+/* Und ueber den ganzen Bestand: jeder Ruhetag ist auch fuer den neuen Leser
+   ein geschlossener Tag, und kein Ort hat an allen sieben Tagen zu -- das
+   waere ein Lesefehler, kein Ort. */
+const ruhetagWiderspruch = data.places.filter((p) => {
+  const r = pk.closedOn(p.hours);
+  return r !== null && pk.offenAmTag(p.hours, r) !== false;
+}).map((p) => p.id);
+ok('jeder Ruhetag bleibt ein geschlossener Tag', ruhetagWiderspruch, []);
+const nieOffen = data.places.filter((p) =>
+  [0, 1, 2, 3, 4, 5, 6].every((wd) => pk.offenAmTag(p.hours, wd) === false)).map((p) => p.id);
+ok('kein Ort hat an allen sieben Tagen zu', nieOffen, []);
+const mitTagen = data.places.filter((p) => pk.offeneTage(p.hours) !== null).length;
+console.log('    ' + 'Orte mit gelesenen offenen Tagen'.padEnd(38) + mitTagen);
+
 /* ------------------------------------------------------------------ Reisetag */
 group('tripDay — Tag n von m aus dem Untertitel');
 

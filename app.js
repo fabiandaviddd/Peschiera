@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v47 · 2026-09-23';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v48 · 2026-09-23';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -1939,6 +1939,12 @@
      im Tagesplan und als Knopf im Ort selbst. In der Liste SUCHT man --
      dort ist "erledigt" eine Auskunft (die gedaempfte Zeile sagt sie), kein
      Bedienelement. */
+  /* Hat der Ort an diesem Reisetag zu? Fuer die Tag-Auswahl: der Fehler
+     soll beim Waehlen auffallen, nicht erst am Dienstagabend vor der
+     verschlossenen Tuer. Waehlbar bleibt der Tag trotzdem -- die Angabe
+     kann "ungeprueft" sein, und ihr wisst es vielleicht besser. */
+  function zuAm(p, iso) { return closedToday(p, new Date(iso + 'T12:00:00')); }
+
   function tagChipHtml(p) {
     var gemerkt = S.saved.indexOf(p.id) >= 0;
     var tag = gemerkt ? planTagVon(p.id, tagKennungen()) : '';
@@ -1960,15 +1966,22 @@
       var vorbei = t.iso < heute;
       o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '')
         + (vorbei && tag !== t.iso ? ' disabled' : '') + '>'
-        + esc(t.kurz.replace(/\.\d\d\.$/, '.')) + '</option>';
+        + esc(t.kurz.replace(/\.\d\d\.$/, '.'))
+        + (tag !== t.iso && zuAm(p, t.iso) ? ' · zu' : '') + '</option>';
     });
     o += '</optgroup>';
     if (gemerkt) o += '<option value="weg">Nicht mehr merken</option>';
 
     var zu = gemerkt ? (tag ? ' daychip--tag' : ' daychip--vorrat') : '';
+    /* Liegt er auf einem Tag, an dem er zu hat, faerbt sich der Chip -- und
+       der Vorleser bekommt es gesagt. Der Text bleibt kurz ("Di 22."), die
+       Zeile ist schmal. */
+    var chipZu = tag && zuAm(p, tag);
+    if (chipZu) zu += ' daychip--zu';
     return '<span class="daychip' + zu + '">'
       + '<select data-daychip="' + esc(p.id) + '"'
-      + ' aria-label="' + esc(p.name) + ': merken oder Tag festlegen">'
+      + ' aria-label="' + esc(p.name) + ': merken oder Tag festlegen'
+      + (chipZu ? ' — an dem gewählten Tag geschlossen' : '') + '">'
       + o + '</select></span>';
   }
 
@@ -2089,6 +2102,142 @@
     return null;
   }
 
+  /* --- Offene Tage und der Schluss des Tages -----------------------------
+
+     closedOn() liest den Ruhetag. Das reichte nicht: "Mi–Sa 19:00–23:00"
+     nennt keinen Ruhetag, sondern die OFFENEN Tage -- und sagt damit, dass
+     dienstags zu ist. Bis v47 las das niemand. "Tag planen" schlug die
+     Osteria Bakarè fuer einen Dienstag vor, mit "an dem Tag geoeffnet"
+     darueber, und in "Reise" stand keine Warnung, als man sie darauf legte.
+
+     Als Aussage ueber Tage gilt:
+       Spannen                     "Mi–Sa", "So–Fr" (auch ueber das Wochenende)
+       Listen                      "Sa/So"
+       ein Tag mit Zeit dahinter   "Mo 9–13", "Di 8–13", "Sa bis 1:00"
+       "auch So", "montags", "werktags", "täglich"
+     Ein Tag mit etwas ANDEREM dahinter ist keine: "So durchgehend" sagt, dass
+     sonntags die Mittagspause entfaellt -- nicht, dass nur sonntags offen ist.
+     "Mo zu" und "Ruhetag Montag" liest weiter closedOn().
+
+     Geprueft gegen alle 55 Oeffnungszeiten im Bestand; test-logic.mjs haelt
+     jede Form fest, die darin vorkommt. */
+  var TAG_WOCHE = ['mo', 'di', 'mi', 'do', 'fr', 'sa', 'so'];   // Reihenfolge der Woche
+  var TAG_RE = '(mo|di|mi|do|fr|sa|so)';
+  var RE_SPANNE = new RegExp('\\b' + TAG_RE + '\\s*[–-]\\s*' + TAG_RE + '\\b', 'g');
+  var RE_LISTE  = new RegExp('\\b' + TAG_RE + '\\s*\\/\\s*' + TAG_RE + '\\b', 'g');
+  var RE_MITZEIT = new RegExp('\\b' + TAG_RE + '\\s+(?=\\d|bis\\b)', 'g');
+  var RE_AUCH   = new RegExp('\\bauch\\s+' + TAG_RE + '\\b', 'g');
+  var RE_ADVERB = /\b(sonntag|montag|dienstag|mittwoch|donnerstag|freitag|samstag)s\b/g;
+
+  /* "so","fr" -> die getDay()-Nummern von Sonntag bis Freitag. */
+  function tagSpanne(a, b) {
+    var i = TAG_WOCHE.indexOf(a), out = [];
+    for (var k = 0; k < 7; k++) {
+      var t = TAG_WOCHE[(i + k) % 7];
+      out.push(WD_SHORT.indexOf(t));
+      if (t === b) break;
+    }
+    return out;
+  }
+
+  function alleTreffer(re, s, f) {
+    re.lastIndex = 0;
+    var m;
+    while ((m = re.exec(s))) f(m);
+  }
+
+  /* Die Tage, ueber die ein Stueck der Angabe etwas sagt -- oder null, wenn
+     es keine Tage nennt. Ein Stueck ist, was zwischen Komma, Mittelpunkt
+     oder Semikolon steht. */
+  function tageIn(stueck) {
+    var s = String(stueck).toLowerCase(), tage = [];
+    if (/t(ä|ae)glich/.test(s)) return [0, 1, 2, 3, 4, 5, 6];
+    alleTreffer(RE_SPANNE, s, function (m) { tage = tage.concat(tagSpanne(m[1], m[2])); });
+    alleTreffer(RE_LISTE, s, function (m) {
+      tage.push(WD_SHORT.indexOf(m[1]), WD_SHORT.indexOf(m[2]));
+    });
+    alleTreffer(RE_MITZEIT, s, function (m) { tage.push(WD_SHORT.indexOf(m[1])); });
+    alleTreffer(RE_AUCH, s, function (m) { tage.push(WD_SHORT.indexOf(m[1])); });
+    alleTreffer(RE_ADVERB, s, function (m) { tage.push(WD_LONG.indexOf(m[1])); });
+    if (/\bwerktags\b/.test(s)) tage = tage.concat([1, 2, 3, 4, 5]);
+    return tage.length ? tage : null;
+  }
+
+  function stueckeVon(h) { return String(h).split(/[,·;]/); }
+
+  /* Alle Tage, an denen die Angabe Oeffnung nennt, oder null. */
+  function offeneTage(h) {
+    if (!has(h)) return null;
+    var alle = null;
+    stueckeVon(h).forEach(function (st) {
+      var t = tageIn(st);
+      if (t) alle = (alle || []).concat(t);
+    });
+    /* Jeder Tag einmal: "So–Fr 9:30" nennt den Freitag zweimal -- in der
+       Spanne und als Tag mit Uhrzeit dahinter. */
+    return alle && alle.filter(function (t, i) { return alle.indexOf(t) === i; });
+  }
+
+  /* Hat der Ort an diesem Wochentag offen? true, false -- oder null, wenn die
+     Angabe es nicht sagt. null wird nie zu "offen" umgedeutet und nie zu
+     "zu": ein Uferweg ohne Oeffnungszeit ist nicht geschlossen. */
+  function offenAmTag(h, wd) {
+    if (!has(h)) return null;
+    if (closedOn(h) === wd) return false;
+    var tage = offeneTage(h);
+    if (tage === null) return null;
+    return tage.indexOf(wd) >= 0;
+  }
+
+  /* Die Enden aller Zeitfenster in einem Stueck, in Minuten ab Mitternacht.
+     Ueber Mitternacht zaehlt weiter: "11–01" endet bei 25:00, nicht 1:00.
+     "bis 01.11." ist ein Datum und keine Uhrzeit -- deshalb das (?![.\d]). */
+  function zeitEnden(stueck) {
+    var s = String(stueck), out = [], m;
+    var bereich = /(\d{1,2})(?:[:.](\d{2}))?\s*[–-]\s*(\d{1,2})(?:[:.](\d{2}))?/g;
+    while ((m = bereich.exec(s))) {
+      var a = (+m[1]) * 60 + (+(m[2] || 0)), b = (+m[3]) * 60 + (+(m[4] || 0));
+      out.push(b <= a ? b + 1440 : b);
+    }
+    var bis = /bis\s*(?:ca\.\s*)?(\d{1,2})[:.](\d{2})(?![.\d])/g;
+    while ((m = bis.exec(s))) {
+      var e = (+m[1]) * 60 + (+m[2]);
+      out.push(e < 5 * 60 ? e + 1440 : e);
+    }
+    return out;
+  }
+
+  /* Wann ist an diesem Wochentag Schluss? Das Ende des LETZTEN Fensters --
+     hoursWindow() nimmt das erste, und "12–14 und 19–22:30" hiesse dann
+     "um 14 Uhr zu", obwohl abends wieder offen ist.
+
+     null, wenn es nicht sicher dasteht: kein Fenster fuer den Tag, ein Tag
+     ohne Uhrzeit ("werktags nur abends", "Di–So"), oder ein "auch" ("Sa/So
+     auch 12–14" -- das ist ZUSAETZLICH zu etwas, das nicht dasteht). */
+  function tagesSchluss(h, wd) {
+    if (!has(h) || offenAmTag(h, wd) === false) return null;
+    var spaet = null, unklar = false;
+    stueckeVon(h).forEach(function (st) {
+      var tage = tageIn(st);
+      if (tage && tage.indexOf(wd) < 0) return;           /* gilt fuer andere Tage */
+      var enden = zeitEnden(st);
+      if (tage && (/\bauch\b/i.test(st) || !enden.length)) { unklar = true; return; }
+      enden.forEach(function (e) { if (spaet === null || e > spaet) spaet = e; });
+    });
+    return unklar ? null : spaet;
+  }
+
+  /* Hat der Ort heute schon zu? Nur, wenn die Schlusszeit sicher dasteht.
+     Um 16:48 stand der Dienstagsmarkt in Desenzano (8–13 Uhr) ganz oben in
+     "Jetzt" -- closingSoon() prueft nur die halbe Stunde um den Schluss, und
+     was um 13 Uhr zugemacht hat, fiel um 16 Uhr durch jedes Raster. */
+  function schonZu(p, now, mins) {
+    var s = tagesSchluss(p.hours, now.getDay());
+    if (s === null) return false;
+    var m = typeof mins === 'number' ? mins : now.getHours() * 60 + now.getMinutes();
+    return m >= s;
+  }
+
   /* Ohne Datum gilt der heutige Tag. "Heute" schaut nach 23 Uhr auf morgen
      und reicht deshalb sein eigenes Bezugsdatum herein.
 
@@ -2098,10 +2247,9 @@
      die ganze Ansicht mitnehmen. Ein Argument, das kein Datum ist, ist
      immer ein Versehen und nie eine Absicht. */
   function closedToday(p, when) {
-    var d = closedOn(p.hours);
-    if (d === null) return false;
     var ref = (when instanceof Date && !isNaN(when.getTime())) ? when : new Date();
-    return d === ref.getDay();
+    /* Seit v48 zaehlen auch die offenen Tage: "Mi–Sa" heisst dienstags zu. */
+    return offenAmTag(p.hours, ref.getDay()) === false;
   }
 
   /* Reihenfolge: was im JSON steht, gilt. Erst wenn dort nichts steht, wird
@@ -2258,9 +2406,64 @@
      Der Leerzustand sagt es -- still schrumpfen tut hier nichts. */
   var terminNichtHeute = 0;
 
+  /* Wie viele Orte der Abschnitt kennt, die heute zu haben, schon
+     zugemacht haben oder zumachen, bevor man dort ist. */
+  var zuHeute = 0;
+
+  /* Wann waere man dort? Jetzt plus der gemessene Fussweg. Ohne Fussweg
+     (die Ausfluege) bleibt es bei jetzt -- lieber zu frueh gerechnet als eine
+     Ankunftszeit erfinden. */
+  function ankunftUm(p, mins) {
+    return mins + (has(p.walk_min) ? p.walk_min : 0);
+  }
+
+  /* Ab wann die Frage "hat es noch offen, wenn ich ankomme" zaehlt. Morgens
+     um zehn ist eine unbekannte Schliesszeit kein Problem, nachmittags um
+     fuenf schon: gemeldet an der Palazzina Storica, "oeffnet 10:00", um 16:48
+     empfohlen, bei 21 Minuten Weg gegen 17:10 dort -- und ob sie dann offen
+     hat, stand nirgends. */
+  var SPAET = 15 * 60;
+
+  /* Was ueber den Schluss sicher zu sagen ist:
+       { art: 'ok' }        Schluss bekannt, man hat genug Zeit
+       { art: 'knapp' }     Schluss bekannt, die Zeit reicht kaum
+       { art: 'unbekannt' } nachmittags, der Ort HAT Oeffnungszeiten, aber
+                            keine Schlusszeit
+       null                 nichts zu sagen (ein Uferweg schliesst nicht) */
+  function schlussLage(p, mins, now) {
+    var ank = ankunftUm(p, mins);
+    var sch = tagesSchluss(p.hours, now.getDay());
+    if (sch !== null) {
+      /* Beim Essen zaehlt die Kueche, nicht die Aufenthaltsdauer: 45
+         Minuten vor Schluss setzt sich niemand mehr hin. Sonst die Zeit
+         vor Ort, hoechstens eine Stunde. */
+      var bedarf = (p.category === 'essen' || p.category === 'cafe') ? 45
+        : Math.min(has(p.time_min) ? p.time_min : 30, 60);
+      return { art: sch - ank < bedarf ? 'knapp' : 'ok', schluss: sch, ankunft: ank };
+    }
+    if (ank >= SPAET && hoursWindow(p.hours).open !== null && !unverified(p)) {
+      return { art: 'unbekannt', ankunft: ank };
+    }
+    return null;
+  }
+
+  /* Fuer Oeffnungszeiten zaehlt die echte Uhr. Wer um 16:48 "Mittag"
+     antippt, rechnete bis v47 so, als waere es 11:30 -- und bekam den
+     Dienstagsmarkt (8–13 Uhr) ganz oben, weil er "heute laeuft". Der Mittag
+     ist heute aber vorbei. Nur ein SPAETERER Abschnitt (vorausschauen)
+     rechnet ab seinem Beginn, und ein anderer Tag ab dem gewaehlten
+     Abschnitt. */
+  function abUhr(mins, ref) {
+    var jetzt = new Date();
+    if (isoTag(ref) !== isoTag(jetzt)) return mins;
+    return Math.max(mins, jetzt.getHours() * 60 + jetzt.getMinutes());
+  }
+
   function todayList(mid, mins, until, now, mitGesehenen) {
+    var ab = abUhr(mins, now);
     jumNeinHeute = 0;
     terminNichtHeute = 0;
+    zuHeute = 0;
     var out = D.places.filter(function (p) {
       if (momentsOf(p).indexOf(mid) < 0) return false;
       /* Ein Termin, der heute nicht laeuft, ist kein Vorschlag fuer jetzt.
@@ -2276,6 +2479,16 @@
          und machte ganze Abschnitte leer. */
       if (S.jum && dogOf(p).v === false) { jumNeinHeute++; return false; }
       if (S.wet && indoorOf(p) !== true) return false;
+      /* Was heute zu hat, ist kein Vorschlag fuer jetzt. Bis v47 blieb es im
+         Stapel und sank nur nach hinten -- mit "heute Ruhetag" daneben, aber
+         im Stapel. Seit v48 kennt die App auch die offenen Tage ("Mi–Sa"),
+         und damit waeren es Dutzende Orte, die man wegblaettern muesste. */
+      if (closedToday(p, now)) { zuHeute++; return false; }
+      /* Und was zumacht, bevor man dort ist: der Markt, der um 13 Uhr endet,
+         um 16:48 -- oder das Lokal, das um 22 Uhr schliesst, bei 25 Minuten
+         Weg um 21:40. */
+      var sch = tagesSchluss(p.hours, now.getDay());
+      if (sch !== null && ankunftUm(p, ab) >= sch) { zuHeute++; return false; }
       if (closingSoon(p, mins)) return false;
       return true;
     });
@@ -2309,6 +2522,11 @@
       if (fa !== fb) return fa - fb;
       var ua = unverified(a) ? 1 : 0, ub = unverified(b) ? 1 : 0;
       if (ua !== ub) return ua - ub;
+      /* Wo man nicht weiss, ob es bei Ankunft noch offen hat, oder weiss,
+         dass es knapp wird, steht hinter dem, wo es sicher reicht. */
+      var la = schlussLage(a, ab, now), lb = schlussLage(b, ab, now);
+      var sa2 = la && la.art !== 'ok' ? 1 : 0, sb2 = lb && lb.art !== 'ok' ? 1 : 0;
+      if (sa2 !== sb2) return sa2 - sb2;
       var ea = runsToday(a, now) ? 1 : 0, eb = runsToday(b, now) ? 1 : 0;
       if (ea !== eb) return eb - ea;
       /* Greift nur noch im Rueckfall (mitGesehenen), wenn der Abschnitt sonst
@@ -2400,7 +2618,18 @@
     else if (has(p.time_min)) bits.push(esc(dur(p.time_min)));
     if (p.dog === true) bits.push('Jum darf mit');
     if (unverified(p)) bits.push('Zeiten ungeprüft, vorher anrufen');
+    /* Nicht verschweigen, was man nicht weiss: "du waerst um 17:09 dort, und
+       wann geschlossen wird, steht nicht da" ist eine Auskunft, mit der man
+       entscheiden kann. */
+    var lage = schlussLage(p, abUhr(mins, ref), ref);
+    if (lage && lage.art === 'unbekannt') {
+      bits.push('Schließzeit unbekannt — du wärst ≈ ' + hhmm(lage.ankunft) + ' dort');
+    }
     var out = bits.join(' · ');
+    if (lage && lage.art === 'knapp') {
+      out += '<span class="today__late"> — schließt um ' + hhmm(lage.schluss % 1440)
+        + ', du wärst ≈ ' + hhmm(lage.ankunft) + ' dort</span>';
+    }
     /* Steht er trotzdem da — weil sonst nichts uebrig ist oder weil jemand
        weiterblaettert —, dann mit dem Grund. */
     if (closedToday(p, ref)) {
@@ -2770,7 +2999,9 @@
             ? 'ein Ort' : jumNeinHeute + ' Orte') + ' mit ausdrücklichem „ohne Jum“ heraus.' : '')
         + (terminNichtHeute ? ' ' + (terminNichtHeute === 1
             ? 'Ein Termin findet' : terminNichtHeute + ' Termine finden')
-            + ' heute nicht statt.' : '');
+            + ' heute nicht statt.' : '')
+        + (zuHeute ? ' ' + (zuHeute === 1 ? 'Ein Ort hat' : zuHeute + ' Orte haben')
+            + ' heute zu oder schon geschlossen.' : '');
       body = todayGesehen
         ? '<div class="today__none"><h3>Alles schon gesehen</h3><p>'
           + 'Für diesen Tagesabschnitt ' + (todayGesehen === 1
@@ -3428,7 +3659,8 @@
       var vorbei = t.iso < heute;
       o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '')
         + (vorbei && tag !== t.iso ? ' disabled' : '') + '>'
-        + t.kurz + (t.iso === heute ? ' · heute' : vorbei ? ' · vorbei' : '') + '</option>';
+        + t.kurz + (t.iso === heute ? ' · heute' : vorbei ? ' · vorbei' : '')
+        + (zuAm(p, t.iso) ? ' · zu' : '') + '</option>';
     });
     return '<div class="sheetday' + (tag ? ' sheetday--zu' : '') + '">'
       + '<label class="sheetday__l" for="sheet-day">Tag festlegen</label>'
@@ -4621,6 +4853,38 @@
 
      Eigene Funktion, weil die Suche im Sheet denselben Bezugspunkt braucht
      und beim Tippen nur die Trefferliste neu gebaut wird. */
+  /* Wie weit ist es -- in derselben Einheit wie in der Liste und im Ort.
+     Ohne Standort die GEMESSENEN Gehminuten ab dem Zeltplatz ("18 Min zu
+     Fuß"), dann Rad, dann Kilometer. Mit Standort die Luftlinie "von hier",
+     wie in factsHtml(). Bis v47 zeigten das Tages-Sheet und die Trefferliste
+     unter der Karte stattdessen die Luftlinie in Metern: bei der Osteria
+     Bakarè "887 m", waehrend ihr Eintrag "1,3 km" und "18 Min" sagte. Alle
+     drei Zahlen stimmten -- nur war es jedes Mal etwas anderes. */
+  function wegAbStart(p) {
+    var hk = hereKm(p);
+    if (hk !== null) return { text: km(hk) + ' von hier', rang: hk * 1000 };
+    if (has(p.walk_min)) return { text: p.walk_min + ' Min zu Fuß', rang: p.walk_min };
+    if (has(p.bike_min)) return { text: p.bike_min + ' Min mit dem Rad', rang: 1000 + p.bike_min };
+    if (has(p.distance_km)) return { text: km(p.distance_km), rang: 2000 + p.distance_km };
+    /* Neun Orte tragen weder Gehzeit noch Strecke (Dallazia, Gelateria Dodo,
+       die Supermaerkte …), aber eine Koordinate. Fuer sie wird gerechnet
+       wie im Plan -- und mit "≈" gesagt, dass es gerechnet ist. */
+    var base = D.meta && D.meta.base_geo;
+    return base && p.geo ? wegGerechnet(airKmPoint(base, p.geo)) : null;
+  }
+
+  /* Luftlinie in km -> "≈ 12 Min zu Fuß" bzw. "≈ 23 km". Sortiert wird nach
+     dem UNGERUNDETEN Wert: zwei Orte bei 5,2 und 5,4 Minuten waeren gerundet
+     beide "5 Min" und stuenden in beliebiger Reihenfolge. */
+  function wegGerechnet(luft) {
+    if (luft === null || luft === undefined) return null;
+    var strecke = luft * UMWEG;
+    if (strecke <= FUSS_MAX_KM) {
+      return { text: '≈ ' + wegMin(strecke, 'fuss') + ' Min zu Fuß', rang: strecke / V_FUSS * 60 };
+    }
+    return { text: '≈ ' + km(strecke), rang: 2000 + strecke };
+  }
+
   function tagBezug(iso) {
     var gueltig = tagKennungen();
     var alle = planList();
@@ -4654,18 +4918,29 @@
       return klein;
     }
 
+    /* Was in der Zeile steht und wonach sortiert wird, ist DIESELBE Zahl.
+       Ab dem Zeltplatz oder dem Standort gilt die Regel der Liste. Ab einem
+       Ort dieses Tages gibt es keine gemessene Zahl -- dort wird gerechnet,
+       wie ueberall im Plan (Luftlinie × 1,50, 4,5 km/h), und mit "≈"
+       gekennzeichnet. */
+    var abStart = !drin.length;
+    function weg(o) {
+      if (abStart) return wegAbStart(o);
+      return wegGerechnet(naehe(o));
+    }
+
     var nachNaehe = function (a, b) {
-      var da = naehe(a), db = naehe(b);
-      if (da === null && db === null) return 0;
-      if (da === null) return 1;
-      if (db === null) return -1;
-      return da - db;
+      var wa = weg(a), wb = weg(b);
+      if (!wa && !wb) return 0;
+      if (!wa) return 1;
+      if (!wb) return -1;
+      return wa.rang - wb.rang;
     };
-    if (anker.length) frei = frei.slice().sort(nachNaehe);
+    frei = frei.slice().sort(nachNaehe);
 
     return { drin: drin, frei: frei, alle: alle, gueltig: gueltig,
              ankerText: ankerText, naehe: anker.length ? naehe : function () { return null; },
-             nachNaehe: nachNaehe };
+             weg: weg, nachNaehe: nachNaehe };
   }
 
   function daySheetHtml(iso) {
@@ -4766,6 +5041,10 @@
                  der App: man faehrt hin und steht vor nichts. */
               + (terminAm(p, iso) === false
                   ? ' · <span class="tagsheet__zu">läuft an dem Tag nicht</span>' : '')
+              /* Bis v47 warnte nur die Suche darunter -- was schon auf dem Tag
+                 lag, sagte es nicht. */
+              + (closedToday(p, new Date(iso + 'T12:00:00'))
+                  ? ' · <span class="tagsheet__zu">an dem Tag zu</span>' : '')
               + (S.jum ? dogKurz(p) : '') + '</span></span>'
               /* Zwei Knoepfe statt einer Wischgeste: bei einer Handvoll
                  Stationen treffsicherer, und ohne echtes iOS pruefbar.
@@ -4880,7 +5159,7 @@
      stand bis v45 nur an einer Stelle; der dritte Aufrufer war der Anlass,
      sie herauszuziehen statt sie ein zweites Mal hinzuschreiben. */
   function tagZeileHtml(p, iso, tag, bez, grund, vorschlag) {
-    var w = bez.naehe(p);
+    var w = bez.weg(p);
     return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
       + '<span class="tagsheet__txt">'
       + '<span class="tagsheet__name"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
@@ -4890,8 +5169,7 @@
       + '<span class="tagsheet__m">'
       + (grund ? '<span class="tagsheet__grund">' + esc(grund) + '</span> · ' : '')
       + esc(catLabel(p.category))
-      + (w !== null && w !== undefined
-          ? ' · <span class="tagsheet__weit">' + esc(km(w)) + '</span>' : '')
+      + (w ? ' · <span class="tagsheet__weit">' + esc(w.text) + '</span>' : '')
       + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
       + (closedToday(p, new Date(iso + 'T12:00:00'))
           ? ' · <span class="tagsheet__zu">an dem Tag zu</span>' : '')
@@ -4958,12 +5236,26 @@
   function tagVorschlaege(iso, bez) {
     var tagDatum = new Date(iso + 'T12:00:00');
     var gruende = {};
+    /* Fuer HEUTE zaehlt auch die Uhr: was schon zugemacht hat oder zumacht,
+       bevor man dort ist, ist kein Vorschlag mehr. */
+    var jetzt = new Date();
+    var heuteMin = iso === isoTag(jetzt) ? jetzt.getHours() * 60 + jetzt.getMinutes() : null;
 
     var frei = D.places.filter(function (p) {
       if (planTagVon(p.id, bez.gueltig)) return false;      /* hat schon einen Tag */
+      /* Gemerktes steht schon darueber, unter "Gemerkt, noch ohne Tag". Bis
+         v48 stand es ein zweites Mal hier -- unter einer Zeile, die "Nicht
+         gemerkt" behauptet. */
+      if (S.saved.indexOf(p.id) >= 0) return false;
       if (S.seen.indexOf(p.id) >= 0) return false;
       if (terminAm(p, iso) === false) return false;
+      /* Seit v48 mit den offenen Tagen: "Mi–Sa" heisst dienstags zu. Bis
+         dahin kam hier die Osteria Bakarè fuer einen Dienstag heraus. */
       if (closedToday(p, tagDatum)) return false;
+      if (heuteMin !== null) {
+        var sch = tagesSchluss(p.hours, tagDatum.getDay());
+        if (sch !== null && ankunftUm(p, heuteMin) >= sch) return false;
+      }
       if (S.jum && dogOf(p).v === false) return false;
       if (p.category === 'praktisch'
           && !(has(p.time_min) && p.time_min >= VORSCHLAG_ZEIT)) return false;
@@ -5014,7 +5306,10 @@
     if (!v.liste.length) return '';
     return '<div class="tagvor">'
       + abschnittHtml('Vorschläge für ' + esc(tag.lang),
-          'Nicht gemerkt, nicht gesehen, an dem Tag geöffnet'
+          /* Bis v47 stand hier "an dem Tag geoeffnet". Das behauptete mehr,
+             als die Daten wissen: bei 45 Orten steht gar keine Oeffnungszeit.
+             Jetzt steht da, was die App wirklich getan hat. */
+          'Nicht gemerkt, nicht gesehen, Geschlossenes aussortiert'
             /* Nur der erste Buchstabe: toLowerCase() machte in v46 aus
                "Nach Entfernung vom Zeltplatz" "nach entfernung vom
                zeltplatz". */
@@ -5049,7 +5344,8 @@
       var vorbei = t.iso < heute;
       o += '<option value="' + t.iso + '"' + (tag === t.iso ? ' selected' : '')
         + (vorbei && tag !== t.iso ? ' disabled' : '') + '>'
-        + t.kurz + (t.iso === heute ? ' · heute' : vorbei ? ' · vorbei' : '') + '</option>';
+        + t.kurz + (t.iso === heute ? ' · heute' : vorbei ? ' · vorbei' : '')
+        + (zuAm(p, t.iso) ? ' · zu' : '') + '</option>';
     });
     return '<span class="pday' + (tag ? ' pday--zu' : '') + '">'
       + '<select data-day="' + esc(p.id) + '" aria-label="' + esc(p.name) + ': Tag festlegen">'
@@ -5134,8 +5430,12 @@
         + accentClass(p.category) + '">'
         + '<span class="tagk__n"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
         + '<span class="tagk__d">'
+        /* Die Warnung muss auffallen: bis v48 stand "an dem Tag zu" im selben
+           Grau wie die Aufenthaltsdauer daneben, und wer die Karte
+           ueberflog, las darueber hinweg. */
         + (ab ? 'erledigt'
-             : closedToday(p, new Date(t.iso + 'T12:00:00')) ? 'an dem Tag zu'
+             : closedToday(p, new Date(t.iso + 'T12:00:00'))
+               ? '<span class="tagk__zu">' + ICON.warn + 'an dem Tag zu</span>'
              : has(p.time_min) ? esc(dur(p.time_min)) : '')
         + '</span></li>'
         + (weg ? '<li class="tagk__wg' + (weg.min >= WEG_LANG ? ' tagk__wg--weit' : '') + '">'
@@ -6034,12 +6334,14 @@
        Wahrheit aufmachen. Gezeigt werden auch Orte ohne geo -- sie fehlen
        auf der Karte, sind aber Treffer. */
     $('mapsheet-l').innerHTML = items.map(function (p) {
-      var d = S.here ? hereKm(p) : (D.meta && D.meta.base_geo ? airKmPoint(D.meta.base_geo, p.geo) : null);
+      /* Dieselbe Zahl wie in der Liste darueber -- bis v47 stand hier die
+         Luftlinie in Metern, wo die Liste Gehminuten zeigt. */
+      var d = wegAbStart(p);
       return '<button type="button" class="msrow ' + accentClass(p.category) + '"'
         + ' data-open="' + esc(p.id) + '">'
         + '<span class="msrow__n"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
         + '<span class="msrow__m">' + esc(catLabel(p.category))
-        + (d !== null && d !== undefined ? ' · ' + esc(km(d)) : '')
+        + (d ? ' · ' + esc(d.text) : '')
         + (p.geo ? '' : ' · nicht auf der Karte')
         + (S.jum ? dogKurz(p) : '') + '</span></button>';
     }).join('');
@@ -6552,6 +6854,8 @@
       momentsOf: momentsOf, momentNow: momentNow,
       runsToday: runsToday, daysUntil: daysUntil, terminStand: terminStand,
       terminAm: terminAm, tripDay: tripDay, unverified: unverified,
+      offeneTage: offeneTage, offenAmTag: offenAmTag, tagesSchluss: tagesSchluss,
+      schonZu: schonZu,
       closingSoon: closingSoon, fitsLeft: fitsLeft, indoorOf: indoorOf,
       dur: dur, km: km, norm: norm, haystack: haystack,
       typeSkala: typeSkala, TYPE_MIN: TYPE_MIN, TYPE_MAX: TYPE_MAX,
