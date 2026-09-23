@@ -31,6 +31,49 @@ ansieht, prüft `scripts/test-logic.mjs` jetzt sieben davon gegeneinander —
 inklusive der Regel, dass „Peschiera kompakt" in `index.html`,
 `manifest.webmanifest`, `sw.js` und `app.js` nicht mehr vorkommen darf.
 
+## Zwei Worte: Merken und Tag festlegen
+
+Gemeldet aus der Benutzung: *„Zu viele Begriffe für ‚will ich machen'. Es
+gibt ‚Merken', ‚Für später', ‚Vorrat', ‚+ Tag', den Stern, ‚gemerkt' und
+‚verplant'."* Die leere Reise erklärte das in einem Satz: *„In ‚Entdecken'
+legt der Tag-Wähler im Ort einen Tag fest — oder der Stern legt ihn hier
+ab."* Vier Begriffe in einem Satz, den man dreimal lesen musste.
+
+Seit `v47` gibt es **genau zwei**:
+
+| bis `v46` | seit `v47` |
+|---|---|
+| „Für später", „Merken" | **Merken** |
+| „Im Vorrat", „Gemerkt — entfernen", „gemerkt" | **Gemerkt** |
+| „+ Tag", „Reisetag", „In den Tag", „einem Tag zuordnen" | **Tag festlegen** (bzw. „Heute festlegen") |
+| „Vorrat", „Aus deinem Vorrat" | **Gemerkt, noch ohne Tag** |
+| „4 verplant · 8 Orte" | **8 Orte an 4 Tagen** |
+| „Tag offen", „Noch keinem Tag" | **Kein Tag** |
+| „Entfernen" (im Chip) | **Nicht mehr merken** |
+| „Tageszuordnungen" (beim Teilen) | **Orte mit festgelegtem Tag** |
+| „Noch nichts markiert" (Teilen-Leiste) | **Noch nichts gemerkt oder gesehen** |
+
+Und der **Stern** heißt nur noch **Bewertung**. Bis `v46` stand dieselbe Form
+für drei Dinge: „★ 4,7", den Merken-Knopf und — in der Listenzeile — den
+festgelegten Tag. Jetzt: Stern = Bewertung, Lesezeichen = Merken,
+Kalender = Tag.
+
+Dasselbe galt für die dritte Startkarte. *„Beim Zusammenführen gewinnt je
+Feld das Jüngere"* ist richtig — aber außer für uns kein Satz: Wie
+zusammengeführt wird, muss man nicht wissen, um es zu benutzen. Sie sagt
+jetzt, was man tut und was man davon hat: **„Teile in ‚Reise' den Link, dann
+habt ihr beide denselben Plan."** Auf der zweiten Karte ist aus
+„Datenlücke" „ungeklärt" geworden.
+
+`scripts/test-logic.mjs` hält das fest: Keine Zeichenkette in `app.js` —
+Kommentare ausgenommen, die erzählen, wie es dazu kam — darf die alten
+Wörter wieder enthalten. Die Prüfung fand beim ersten Lauf sofort eine
+Stelle, die die Bestandsaufnahme von Hand übersehen hatte: die Überzeile
+„Reisetag" im Tages-Sheet. Dort steht jetzt „Tag 10 von 15".
+
+Die Abschnitte weiter unten, die frühere Fassungen beschreiben, behalten die
+alten Namen — sie erzählen, was damals da stand.
+
 ## Zielgerät — vor jeder Änderung lesen
 
 **Ein iPhone auf iOS 27, Safari, 402×754. Die App läuft als Seite im Browser,
@@ -68,7 +111,7 @@ schreibt die Fassung dazu, für die es gilt.
 | **Tags** | Über achtzig Stück — zu viele für eine Chip-Reihe. Sie liegen hinter dem Knopf „Tags" im selben Sheet, das auch den Ort zeigt, nach Häufigkeit sortiert und mit laufender Trefferzahl. |
 | **Aufenthaltsdauer** | Auf jeder Karte kompakt (`3 h`, `45 Min`), im Detail die volle Textfassung („1–1,5 h, mit Museum 2 h"). |
 | **Sortierung** | Ein Knopf rechts in der Filterzeile, der seinen Stand nennt und beim Tippen umschaltet: Entfernung (Standard) oder Bewertung. Zwei Möglichkeiten brauchen keine dauerhafte Segmentleiste. Orte ohne Wert stehen hinten, nicht vorne. |
-| **Merkliste** | Stern auf jeder Karte, eigener Reiter „Reise" mit Zähler. Persistenz über `localStorage` (`pk.saved`), jeder Zugriff in try/catch. Die Reihenfolge steckt im Array und wird beim Merken hinten angehängt; innerhalb eines Tages ist sie die Reihenfolge der Stationen. Gemerktes ohne Tag heißt in der Ansicht **Vorrat**. |
+| **Merken** | Lesezeichen im Ort und in „Jetzt", der Chip in jeder Listenzeile, eigener Reiter „Reise" mit Zähler. Persistenz über `localStorage` (`pk.saved`), jeder Zugriff in try/catch. Die Reihenfolge steckt im Array und wird beim Merken hinten angehängt; innerhalb eines Tages ist sie die Reihenfolge der Stationen. Gemerktes ohne Tag heißt in der Ansicht **„Gemerkt, noch ohne Tag"**. |
 | **Eigene Notiz** | Ein einzeiliges Feld im Detail, direkt unter der Hundzeile — dort, wo die häufigste offene Frage steht: bei 58 von 101 Orten ist die Hunderegel ungeklärt, und wer vor Ort gefragt hat, konnte die Antwort bis v22 nirgends hinschreiben. Speichert beim Verlassen des Feldes **und** beim Schließen des Sheets, auch über die Zurück-Geste; ein Speichern-Knopf wäre ein zweiter Schritt für etwas, das man im Vorbeigehen tippt. In der Listenzeile steht die Notiz **vor** der Beschreibung — sie ist das, was man selbst herausgefunden hat. Liegt nur im Gerät (`pk.notes`), nie in `places.json`: Notizen sind persönlich. Wird aus einer Notiz eine Tatsache, führt der Weg über die offenen Punkte. Der Teilen-Link trägt sie mit, aber nur die vorhandenen; beim Zusammenführen gewinnt die eigene. |
 | **Termine mit Vorlauf** | Vier Orte tragen ein Datum im Badge. „Läuft heute" ist beim Wochenmarkt am Dienstag zu spät — wer morgens davon liest, packt keine Kühltasche mehr. Seit v22 steht über dem Tagesvorschlag eine Zeile je Termin, der in den nächsten **drei** Tagen anfängt: „Morgen · Wochenmarkt Desenzano · Di 22.09.", antippbar. Drei Tage, nicht sieben: bei fünfzehn Reisetagen und vier Terminen stünde die Zeile sonst an neun Tagen da und würde zur Tapete. |
 | **Schon gesehen** | Haken auf jeder Karte und im Detail. Gesehene Orte werden gedämpft dargestellt und tragen eine Marke; der Chip „Noch nicht gesehen" blendet sie aus. **In „Heute" verschwinden sie seit v20 ganz** — bis dahin standen sie nur hinten, was bei fünfzehn Reisetagen heißt, dass der Stapel sich mit Orten füllt, an denen man schon war, und „1 / 37" eine Auswahl verspricht, die es nicht mehr gibt. In der Liste bleiben sie sichtbar: dort sucht man, in „Heute" bekommt man vorgeschlagen. Wird ein Abschnitt dadurch leer, sagt der Leerzustand das und bietet „Trotzdem zeigen" — für diesen Abschnitt, bis zum nächsten Wechsel. Der Chip hieß bis v7 „Noch offen" und wurde neben Fakten wie „öffnet 9:30" als Öffnungszeit gelesen. Eigener Speicher, unabhängig vom Merken. |
@@ -446,6 +489,14 @@ Eigenheiten, die sonst als Fehler gelesen werden:
    und trotzdem in der Liste stehen. **Das ist die wichtigste Karte**, weil
    sie die eine Konvention erklärt, die sonst wie ein Datenfehler aussieht.
 3. **„Zwei Telefone, ein Plan"** — daß Teilen existiert, bevor man es braucht.
+   Seit `v47` in einem Satz, der sagt, was man tut und was man davon hat:
+   *„Teile in ‚Reise' den Link, dann habt ihr beide denselben Plan."* Wie
+   zusammengeführt wird, steht nicht mehr darauf — das muss man nicht wissen,
+   um es zu benutzen.
+
+**Die Karten sind in Alltagssprache.** Kein „Zusammenführen", kein „Feld",
+keine „Datenlücke", kein „Server". Wer sie liest, hat die App noch nie
+benutzt.
 
 - **Eine Karte nach der anderen**, nicht drei untereinander: drei Absätze
   überspringt man, drei Schritte liest man.
@@ -583,7 +634,7 @@ Dienst dazwischen — siehe unten.
 ## Prüfstand
 
 ```bash
-node scripts/browser/run.mjs     # 762 Prüfungen im Browser, startet den Server selbst
+node scripts/browser/run.mjs     # 767 Prüfungen im Browser, startet den Server selbst
 node scripts/test-logic.mjs      # Logik ohne Browser
 ```
 
@@ -706,13 +757,17 @@ Seit `v42` steht dort **ein Chip**, und er ist der ganze Weg:
 
 | Zustand | Chip | Bedeutung |
 |---|---|---|
-| nirgends | `+ Tag`, gestrichelt | noch nicht gemerkt |
-| gemerkt, ohne Tag | **Vorrat**, gold | im Vorrat |
-| verplant | **So 20.**, seeblau | an diesem Reisetag |
+| nirgends | `+ Merken`, gestrichelt | noch nicht gemerkt |
+| gemerkt, ohne Tag | **Gemerkt**, gold | gemerkt, noch ohne Tag |
+| mit Tag | **So 20.**, seeblau | an diesem Tag festgelegt |
+
+*(Bis `v46` hießen die ersten beiden Zustände „+ Tag" und „Vorrat" — siehe
+„Zwei Worte" oben.)*
 
 Ein natives `<select>` — auf dem Zielgerät öffnet iOS sein Wählrad, vertraut
 und treffsicher, und ohne eine Zeile eigenen Menü-Codes. Die Auswahl sind
-„Vorrat", die Reisetage und „Entfernen"; vergangene Tage sind deaktiviert.
+„Nur merken" bzw. „Gemerkt", darunter die Tage unter der Zwischenzeile
+**„Tag festlegen"** und „Nicht mehr merken"; vergangene Tage sind deaktiviert.
 
 - **Der Chip sieht flacher aus als 44 px, seine Trefferfläche ist es nicht.**
   Ein unsichtbarer Rand darum (`::after`, `inset: -11px -6px`) — dieselbe
@@ -741,14 +796,14 @@ Kandidaten, in dieser Reihenfolge, und genau **einer** davon:
 4. **Die Adresse**, bis zum ersten Komma. Sie sagt, wo man landet, und stand
    vorher nur im Sheet.
 
-## Reise: Tage und Vorrat
+## Reise: Tage und Gemerktes
 
 **Es sind zwei Dinge mit zwei Aufgaben:**
 
 | | |
 |---|---|
 | **Die Tage** | Der Fahrplan. Was an welchem Tag ansteht. |
-| **Der Vorrat** | Was gemerkt ist und noch keinen Tag hat. |
+| **Gemerkt, noch ohne Tag** | Was gemerkt ist und noch keinen Tag hat. Hieß bis `v46` „Vorrat". |
 
 Bis `v32` teilten sie sich einen Bildschirm: unten am Plan hing die Merkliste
 als vierte „Tagesgruppe" namens *Gemerkt, noch ohne Tag*. Das las sich wie ein
@@ -760,12 +815,13 @@ dem Bild.
 
 Seit `v36` ist „Reise" **eine Ansicht**, untereinander:
 
-1. **Der Kopf** — „Fünfzehn Tage", darunter „4 verplant · 8 Orte".
+1. **Der Kopf** — „Fünfzehn Tage", darunter „8 Orte an 4 Tagen".
 2. **Das Raster** über alle Reisetage (siehe unten). Es steht jetzt *immer*
    da, auch ohne eine einzige Zuordnung.
 3. **Eine Karte je verplantem Tag**, in Datumsreihenfolge, plus **eine Karte
    für den nächsten freien Tag**.
-4. **Der Vorrat** als eigener Abschnitt, mit eigener Zahl und eigener Zeit.
+4. **„Gemerkt, noch ohne Tag"** als eigener Abschnitt, mit eigener Zahl und
+   eigener Zeit.
 
 - **Kein fünfter Reiter.** Die Leiste unten trägt vier; bei fünf blieben je
   80 px. Tage und Vorrat gehören ohnehin zusammen.
@@ -783,8 +839,8 @@ Seit `v36` ist „Reise" **eine Ansicht**, untereinander:
   („so lange bräuchtest du für alles, was noch keinen Tag hat"); über die
   ganze Ansicht addierte dieselbe Zahl Tage und Vorrat zu einer Stunde, die
   nirgends vorkommt. Die Zeit je Tag steht auf der Tageskarte.
-- **Die Teilen-Leiste nennt beide Zahlen** („8 verplant · 12 im Vorrat · 0
-  gesehen"). „20 gemerkt" allein sagte nicht, wie viel davon schon einen Tag
+- **Die Teilen-Leiste nennt beide Zahlen** („20 gemerkt, 8 davon mit Tag ·
+  0 gesehen"). „20 gemerkt" allein sagte nicht, wie viel davon schon einen Tag
   hat — und genau das ist die Frage, die diese Ansicht beantwortet.
 - **Kein eigener Leerzustand mehr.** Bis `v35` bekam, wer nichts gemerkt
   hatte, einen Absatz Text und sonst nichts — und erfuhr nie, dass diese
@@ -1475,7 +1531,22 @@ Seit `v46` steht darunter ein zweiter Abschnitt, **„Vorschläge für Mittwoch,
   gegen eine Osteria mit 4,7 in 887 m.
 
 Was angenommen wird, verschwindet aus den Vorschlägen. Ein vergangener Tag
-bekommt keine — er lässt sich nicht mehr verplanen.
+bekommt keine — er lässt sich nicht mehr festlegen.
+
+**Zwei Fehler in `v46`, gefunden beim Ansehen der Bildschirmabzüge:** Der
+Grund stand am Ende der Zeile, und die Zeile endet in einer Ellipse — von
+„nur an diesem Tag" blieb auf 402 px „nur an d…". Seit `v47` steht er vorn,
+und das „noch nicht gemerkt" in jeder Vorschlagszeile ist weg: das sagt die
+Zeile über dem Abschnitt schon. Und `toLowerCase()` hatte aus „Nach
+Entfernung vom Zeltplatz" „nach entfernung vom zeltplatz" gemacht; jetzt wird
+nur der erste Buchstabe klein. `scripts/browser/termin.mjs` prüft beides —
+Gegenprobe gemacht, gegen `v46` schlagen alle drei Zusagen an.
+
+**Ein dritter, gefunden vom Prüfstand am 23.09.:** „Höchstens zwei je
+Kategorie" galt nicht, sobald Termine dabei waren. Die Termine wurden am
+Deckel vorbei gezählt — am 26.09. stehen Rievocazione und Visite alla Rocca
+an, beide „Sehen", und danach kamen noch zwei weitere „Sehen" dazu. Seit
+`v47` zählen Termine zum Deckel, fallen aber nie heraus.
 
 ## Was heute nicht stattfindet, wird heute nicht vorgeschlagen
 
@@ -1547,7 +1618,7 @@ sich ändert.
 
 ## Getestet
 
-762 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
+767 Browser-Prüfungen in Chromium auf iPhone-Viewport (402×754): Suche, Filter und
 Sortierung kombiniert, Merkliste über einen Reload, Detail-Sheet ohne
 Layout-Shift, Dark Mode samt Override und Systempräferenz, Touch-Ziele,
 Flugmodus-Test (offline laden, suchen, Merkliste), Fehlerzustand mit Retry und

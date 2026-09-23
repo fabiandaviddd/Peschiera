@@ -77,8 +77,10 @@ await zumPlan(p);
 ok('es gibt keine Umschaltleiste mehr', await p.locator('.ptabs').count(), 0);
 ok('die Ansicht nennt die Zahl der Reisetage',
   (await p.locator('.reise__t').textContent()).trim(), 'Fünfzehn Tage');
-ok('… und sagt, dass noch nichts verplant ist',
-  (await p.locator('.reise__s').textContent()).trim(), 'noch nichts verplant');
+/* Seit v47 heisst das, was bis dahin "verplant" hiess, "Tag festlegen" --
+   zwei Worte fuer "will ich machen", nicht sieben. */
+ok('… und sagt, dass noch kein Tag festgelegt ist',
+  (await p.locator('.reise__s').textContent()).trim(), 'noch kein Tag festgelegt');
 
 /* Das Raster steht seit v36 IMMER da, auch ohne eine einzige Zuordnung.
    Bis v35 erschien es erst mit der ersten -- mit der Begruendung, es waere
@@ -93,8 +95,8 @@ ok('es gibt noch keine volle Tageskarte',
   await p.locator('.tagk:not(.tagk--frei)').count(), 0);
 ok('… aber eine fuer den naechsten freien Tag',
   await p.locator('.tagk--frei').count(), 1);
-ok('… und die sagt, wie viel im Vorrat liegt',
-  /5 Orte liegen im Vorrat/.test(await p.locator('.tagk__leer').textContent()));
+ok('… und die sagt, wie viele Gemerkte noch keinen Tag haben',
+  /5 gemerkte Orte haben noch keinen Tag/.test(await p.locator('.tagk__leer').textContent()));
 
 const vorratN = async () => p.evaluate(() =>
   +document.querySelector('.vorrat__n').textContent);
@@ -136,8 +138,8 @@ await p.waitForTimeout(300);
    beiden Sektionen. */
 ok('der Vorrat schrumpft', await vorratN(), 2);
 ok('… und zeigt nur noch zwei Zeilen', await p.locator('.planrow').count(), 2);
-ok('die Ansicht zaehlt die verplanten Tage',
-  (await p.locator('.reise__s').textContent()).trim(), '2 verplant · 3 Orte');
+ok('die Ansicht zaehlt Orte und Tage',
+  (await p.locator('.reise__s').textContent()).trim(), '3 Orte an 2 Tagen');
 
 ok('es stehen zwei Tageskarten da',
   await p.locator('.tagk:not(.tagk--frei)').count(), 2);
@@ -300,7 +302,7 @@ const link = await p.evaluate(() => {
   ok('alter Link ohne Tage: keine Tageskarte',
     await q.locator('.tagk:not(.tagk--frei)').count(), 0);
   ok('… und die Ansicht sagt das auch',
-    (await q.locator('.reise__s').textContent()).trim(), 'noch nichts verplant');
+    (await q.locator('.reise__s').textContent()).trim(), 'noch kein Tag festgelegt');
   /* Verloren ist nichts: ohne Tag gehoeren sie in den Vorrat, und dort
      stehen sie vollstaendig. */
   ok('… aber alle Orte sind im Vorrat', await q.locator('.planrow').count(), 5);
@@ -656,7 +658,7 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
   const summe = (await q.locator('.reise__s').textContent()).trim();
   /* Acht statt sieben und vier Tage statt drei: der freie Tag ist eben
      dazugekommen, einer der zwei Hinzugefuegten wieder heruntergenommen. */
-  ok('der Kopf zaehlt nur das Verplante', summe, '4 verplant · 8 Orte');
+  ok('der Kopf zaehlt nur, was einen Tag hat', summe, '8 Orte an 4 Tagen');
   ok('… und nennt keine Gesamtstundenzahl', /Aufenthalt|Weg/.test(summe), false);
 
   /* --- 15. Der Vorrat zaehlt sich selbst --------------------------------- */
@@ -680,7 +682,7 @@ ok('… und die Marke kommt wieder', await p.locator('#tab-n').textContent(), '1
      Ansicht beantwortet. */
   ok('die Teilen-Leiste zaehlt beide Haelften',
     (await q.locator('#sharebar-t').textContent()).trim(),
-    '8 verplant · 12 im Vorrat · 0 gesehen');
+    '20 gemerkt, 8 davon mit Tag · 0 gesehen');
 
   ok('keine JS-Fehler in der Uebersicht', errs4.length ? errs4.join(' | ') : 0, 0);
   await c4.close();

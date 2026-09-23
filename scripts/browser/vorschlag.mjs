@@ -172,8 +172,8 @@ ok('das Tages-Sheet hat ein Suchfeld', await p.locator('#tagsuche').count(), 1);
 ok('… und es nennt die Zahl aller Orte',
   new RegExp('Alle ' + DATEN.places.length + ' Orte')
     .test(await p.locator('#tagsuche').getAttribute('placeholder')), true);
-ok('ohne Begriff steht der Vorrat da',
-  /Aus deinem Vorrat/.test(await p.locator('#tagtreffer').textContent()));
+ok('ohne Begriff steht das Gemerkte ohne Tag da',
+  /Gemerkt, noch ohne Tag/.test(await p.locator('#tagtreffer').textContent()));
 
 /* Ein Begriff, der in den Daten wirklich vorkommt -- gesucht wird nicht nach
    einem geratenen Wort. */

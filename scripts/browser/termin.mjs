@@ -196,6 +196,47 @@ await p.waitForTimeout(500);
 ok('am richtigen Tag warnt es nicht',
   (await p.locator('#sheet').innerText()).includes('läuft an dem Tag nicht'), false);
 
+/* --- Der Grund im Vorschlag ist lesbar ----------------------------------
+
+   In v46 stand der Grund am Ende der Zeile, und die Zeile endet in einer
+   Ellipse: von "nur an diesem Tag" blieb auf 402 px "nur an d…". Das war
+   genau der Teil, um den es ging. Gefunden nicht durch einen Test, sondern
+   beim Ansehen der Bildschirmabzuege fuer die Praesentationsseite. */
+await p.evaluate(() => {
+  localStorage.setItem('pk.saved', '[]');
+  localStorage.setItem('pk.days', '{}');
+});
+await stelleUhr('2026-09-23T10:00:00');
+await p.reload({ waitUntil: 'networkidle' });
+await p.waitForSelector('#app:not([hidden])');
+await p.evaluate(() => {
+  const t = document.querySelector('[data-tab="gemerkt"]');
+  if (t) t.click();
+});
+await p.waitForTimeout(400);
+await p.locator('[data-dayopen="2026-09-26"]').first().click();
+await p.waitForTimeout(600);
+const gruende = await p.evaluate(() =>
+  [...document.querySelectorAll('.tagvor .tagsheet__grund')].map((g) => {
+    const r = g.getBoundingClientRect();
+    const zeile = g.closest('.tagsheet__m').getBoundingClientRect();
+    return { text: g.textContent.trim(), ganz: r.right <= zeile.right + 0.5 && r.width > 0 };
+  }));
+ok('am 26.09. tragen die laufenden Termine einen Grund', gruende.length >= 1, true);
+ok('… er lautet "nur an diesem Tag"', gruende.every((g) => g.text === 'nur an diesem Tag'), true);
+ok('… und ist ganz zu sehen, nicht abgeschnitten', gruende.every((g) => g.ganz), true);
+ok('… weil er vorne steht', await p.evaluate(() => {
+  const m = document.querySelector('.tagvor .tagsheet__m');
+  return !!m && m.firstElementChild && m.firstElementChild.classList.contains('tagsheet__grund');
+}), true);
+/* toLowerCase() machte in v46 aus "Nach Entfernung vom Zeltplatz" "nach
+   entfernung vom zeltplatz". */
+const vorLead = (await p.locator('.tagvor .tagsheet__lead').innerText()).trim();
+ok('die Zeile ueber den Vorschlaegen schreibt Substantive gross',
+  /Entfernung vom Zeltplatz/.test(vorLead) && !/entfernung vom zeltplatz/.test(vorLead), true);
+await p.keyboard.press('Escape');
+await p.waitForTimeout(400);
+
 ok('keine JS-Fehler auf dem ganzen Weg', errs.length ? errs.join(' | ') : 0, 0);
 await ctx.close();
 await browser.close();

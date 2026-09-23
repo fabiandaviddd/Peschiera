@@ -56,10 +56,10 @@ await A.waitForTimeout(200);
 await A.keyboard.press('Escape');
 await A.waitForTimeout(450);
 await A.click('[data-tab="gemerkt"]'); await A.waitForTimeout(150);
-/* Seit v33 nennt die Leiste beide Haelften: verplant und Vorrat. Hier ist
-   nichts verplant, also liegen beide gemerkten im Vorrat. */
-ok('Leiste nennt Plan-, Merk- und Gesehen-Zahl',
-   /0 verplant.*2 im Vorrat.*1 gesehen/.test(await A.textContent('#sharebar-t')),
+/* Seit v33 nennt die Leiste beide Haelften, seit v47 in zwei Worten statt
+   in "verplant" und "Vorrat". Hier hat keiner der beiden gemerkten einen Tag. */
+ok('Leiste nennt Merk-, Tag- und Gesehen-Zahl',
+   /2 gemerkt, 0 davon mit Tag.*1 gesehen/.test(await A.textContent('#sharebar-t')),
    await A.textContent('#sharebar-t'));
 ok('Teilen-Knopf jetzt da', await A.evaluate(()=>
   document.getElementById('share-btn').getBoundingClientRect().height>0));

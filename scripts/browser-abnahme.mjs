@@ -367,8 +367,9 @@ await goTab('gemerkt');
    sagt das. */
 ok('es gibt keine Umschaltleiste mehr', await page.locator('.ptabs').count(), 0);
 ok('das Raster steht auch ohne Zuordnung da', await page.locator('.uebs__d').count(), 15);
-ok('der Kopf sagt, dass noch nichts verplant ist',
-   (await page.locator('.reise__s').textContent()).trim(), 'noch nichts verplant');
+/* Seit v47 zwei Worte fuer "will ich machen": Merken und Tag festlegen. */
+ok('der Kopf sagt, dass noch kein Tag festgelegt ist',
+   (await page.locator('.reise__s').textContent()).trim(), 'noch kein Tag festgelegt');
 ok('der Vorrat zaehlt den einen Ort',
    (await page.locator('.vorrat__n').textContent()).trim(), '1');
 ok('… und zeigt ihn als Zeile', await page.locator('.planrow').count(), 1);
@@ -396,12 +397,12 @@ ok('der Vorrat ist danach leer',
    (await page.locator('.vorrat__n').textContent()).trim(), '0');
 ok('… und sagt das auch',
    (await page.locator('.vorrat__leer').textContent()).trim(),
-   'Jeder gemerkte Ort hat einen Reisetag.');
+   'Jeder gemerkte Ort hat einen Tag.');
 ok('mit Tag steht er auf einer Tageskarte',
    await page.locator('.tagk:not(.tagk--frei)').count(), 1);
 ok('… als eine Station', await page.locator('.tagk__st').count(), 1);
 ok('… und der Kopf zaehlt ihn',
-   (await page.locator('.reise__s').textContent()).trim(), '1 verplant · 1 Ort');
+   (await page.locator('.reise__s').textContent()).trim(), '1 Ort an 1 Tag');
 ok('Teilen-Leiste ist da', await page.locator('#sharebar').isVisible());
 ok('Teilen-Knopf ist sichtbar', await page.locator('#share-btn').isVisible());
 await page.screenshot({ path: OUT + '/04-gemerkt.png' });

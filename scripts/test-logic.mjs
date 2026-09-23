@@ -149,7 +149,13 @@ ok('ohne hours nie geschlossen', pk.closedToday({ hours: null }, mittwoch), fals
    ist das erst, als der Ruhetag-Zweig und der Tagesblatt-Zweig
    zusammenkamen. Keiner der beiden hatte den Fehler allein. */
 const ruhetagMi = { hours: 'täglich 18–23, Ruhetag Mittwoch' };
-ok('ein durchgereichter Index stuerzt nicht ab', pk.closedToday(ruhetagMi, 1), false);
+/* Bis v47 stand hier "ergibt false". Ein Index ist kein Datum, closedToday
+   faellt dann auf HEUTE zurueck -- und an einem Mittwoch ist der Ruhetag
+   Mittwoch eben heute. Die Pruefung schlug damit jede Woche einen Tag lang
+   fehl, zuerst am 23.09.2026. Gemeint war nie "false", sondern: stuerzt
+   nicht ab und verhaelt sich wie ohne Datum. */
+ok('ein durchgereichter Index stuerzt nicht ab',
+   pk.closedToday(ruhetagMi, 1), pk.closedToday(ruhetagMi));
 ok('Index 0 ebenso', pk.closedToday(ruhetagMi, 0), pk.closedToday(ruhetagMi));
 ok('ein ungueltiges Datum faellt auf heute zurueck',
    pk.closedToday(ruhetagMi, new Date('kein Datum')), pk.closedToday(ruhetagMi));
@@ -959,6 +965,36 @@ truthy('manifest: die id ist auf den Namen gezogen',
 const restVomAltenNamen = ['index.html', 'manifest.webmanifest', 'sw.js', 'app.js']
   .filter((f) => /Peschiera kompakt/.test(readFileSync(join(root, f), 'utf8')));
 ok('kein "Peschiera kompakt" mehr in der App selbst', restVomAltenNamen, []);
+
+group('Zwei Worte: Merken und Tag festlegen');
+
+/* Seit v47 gibt es fuer "das will ich machen" genau zwei Begriffe. Bis dahin
+   waren es sieben: Merken, Fuer spaeter, Vorrat, + Tag, der Stern, gemerkt,
+   verplant -- und die leere Reise erklaerte sie in einem Satz, den man
+   dreimal lesen musste ("... legt der Tag-Waehler im Ort einen Tag fest --
+   oder der Stern legt ihn hier ab").
+
+   Geprueft wird, was man SIEHT oder vorgelesen bekommt: die
+   Zeichenketten in app.js, ohne Kommentare. Die Kommentare duerfen die
+   alten Namen tragen -- sie erzaehlen, wie es dazu kam. Interne Namen
+   (die Klasse .vorrat, der Wert "vorrat") sind keine Woerter fuer
+   Menschen und fallen durch den Filter unten heraus. */
+const ohneKommentar = readFileSync(join(root, 'app.js'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
+const sichtbar = [...ohneKommentar.matchAll(/'((?:[^'\\]|\\.)*)'/g)]
+  .map((m) => m[1])
+  .filter((t) => !/^[a-z0-9_.#\-\[\]="]*$/.test(t));   /* Klassen, Werte, Schluessel */
+const ALTE_WORTE = [/Vorrat/, /[Ff]ür später/, /\+ Tag\b/, /verplant/, /Merkliste/,
+  /Reisetag/, /Tag offen/, /keinem Tag/, /Tageszuordnung/, /Stern/, /Zusammenführen gewinnt/,
+  /In den Tag/, /nichts markiert/];
+const reste = [];
+for (const t of sichtbar) for (const w of ALTE_WORTE) if (w.test(t)) reste.push(t.slice(0, 60));
+ok('kein altes Wort mehr in dem, was man sieht', reste, []);
+truthy('„Merken" kommt vor', sichtbar.some((t) => /\bMerken\b/.test(t)));
+truthy('„Tag festlegen" kommt vor', sichtbar.some((t) => /Tag festlegen/.test(t)));
+/* Und der Stern heisst nur noch Bewertung. */
+truthy('ICON.star gibt es nicht mehr', !/ICON\.star\b/.test(ohneKommentar));
 
 group('app.js und sw.js — dieselbe Fassung');
 

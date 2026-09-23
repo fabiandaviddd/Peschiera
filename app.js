@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = 'v46 · 2026-09-21';   /* muss zu CACHE in sw.js passen */
+  var VERSION = 'v47 · 2026-09-23';   /* muss zu CACHE in sw.js passen */
   var DATA_URL = './data/places.json';
   /* Das Wissen liegt seit v38 in einer eigenen Datei. Bis v37 standen die
      drei Listen ("Gut zu wissen", "Offene Punkte", Faktencheck) IN
@@ -433,7 +433,11 @@
   /* --------------------------------------------------------------- Symbole */
 
   var ICON = {
-    star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.9l6-.8z"/></svg>',
+    /* Merken ist ein Lesezeichen, kein Stern. Bis v47 stand derselbe Stern
+       fuer drei Dinge: die Bewertung ("★ 4,7"), das Merken und -- in der
+       Listenzeile -- den festgelegten Tag. Jetzt heisst der Stern nur noch
+       Bewertung (ICON.rating), das Lesezeichen Merken, der Kalender Tag. */
+    merk: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.8h10v16.6l-5-3.7-5 3.7z"/></svg>',
     check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.8 12.6l4.6 4.6 9.8-10"/></svg>',
     checkRound: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M8.2 12.3l2.6 2.6 5-5.4"/></svg>',
     share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.4V3.8M8.4 7.4L12 3.8l3.6 3.6"/><path d="M6 11.4H4.6v8.8h14.8v-8.8H18"/></svg>',
@@ -811,14 +815,16 @@
        + 'oben blendet nichts aus — er zählt, beschriftet und sortiert.' },
     { t: 'Offen heißt offen, nicht nein',
       x: 'Bei 58 der 101 Orte ist die Hunderegel ungeklärt. Sie stehen trotzdem '
-       + 'überall mit, ockerfarben und gestrichelt. Eine Datenlücke ist keine '
-       + 'Absage — und wer davorsteht oder anruft, trägt die Antwort im Ort ein. '
-       + 'Ab dann gilt sie und fährt beim Teilen mit.' },
+       + 'überall mit, ockerfarben und gestrichelt. Ungeklärt heißt nicht '
+       + 'verboten — und wer davorsteht oder anruft, trägt die Antwort im Ort '
+       + 'ein. Ab dann gilt sie, auch für alle, mit denen du teilst.' },
+    /* Bis v47 stand hier "Beim Zusammenfuehren gewinnt je Feld das Juengere.
+       Es gibt keinen Server". Richtig, aber fuer niemanden ausser uns ein
+       Satz: wie zusammengefuehrt wird, muss man nicht wissen, um es zu
+       benutzen. Die Karte sagt jetzt, was man TUT und was man davon hat. */
     { t: 'Zwei Telefone, ein Plan',
-      x: 'In „Reise“ macht „Teilen“ einen Link aus deiner Liste — mit Notizen, '
-       + 'Tagen und geklärten Hunderegeln. Beim Zusammenführen gewinnt je Feld '
-       + 'das Jüngere. Es gibt keinen Server: nichts verlässt das Gerät außer '
-       + 'über diesen Link.' }
+      x: 'Teile in „Reise“ den Link, dann habt ihr beide denselben Plan — '
+       + 'mit Tagen, Notizen und Hunderegeln.' }
   ];
 
   function startHtml(i) {
@@ -1852,7 +1858,7 @@
       ? planTagVon(p.id, tagKennungen()) : null;
     if (tagVon) {
       var tk = tripTage().filter(function (t) { return t.iso === tagVon; })[0];
-      f.push('<span class="fact fact--day">' + ICON.star
+      f.push('<span class="fact fact--day">' + ICON.kalender
         + esc(tagVon === isoTag(new Date()) ? 'heute' : (tk ? tk.kurz : tagVon)) + '</span>');
     } else if (closedToday(p)) {
       f.push('<span class="fact fact--closed">' + ICON.clock + 'heute zu</span>');
@@ -1938,9 +1944,16 @@
     var tag = gemerkt ? planTagVon(p.id, tagKennungen()) : '';
     var heute = isoTag(new Date());
 
+    /* Zwei Worte, sonst keine: Merken und Tag festlegen. Bis v47 stand hier
+       "+ Tag" und "Vorrat", im Ort "Fuer spaeter" und "Im Vorrat", in der
+       Reise "verplant" -- sieben Begriffe fuer zwei Handlungen. Die Tage
+       stehen unter einer eigenen Ueberschrift; iOS zeigt sie im Waehlrad
+       als Zwischenzeile. */
     var o = '';
-    if (!gemerkt) o += '<option value="" selected>+ Tag</option>';
-    o += '<option value="vorrat"' + (gemerkt && !tag ? ' selected' : '') + '>Vorrat</option>';
+    if (!gemerkt) o += '<option value="" selected>+ Merken</option>';
+    o += '<option value="vorrat"' + (gemerkt && !tag ? ' selected' : '') + '>'
+      + (gemerkt ? 'Gemerkt' : 'Nur merken') + '</option>';
+    o += '<optgroup label="Tag festlegen">';
     tripTage().forEach(function (t) {
       /* Ein vergangener Tag laesst sich nicht mehr verplanen -- er bleibt
          waehlbar, solange er der aktuelle Wert ist. */
@@ -1949,12 +1962,13 @@
         + (vorbei && tag !== t.iso ? ' disabled' : '') + '>'
         + esc(t.kurz.replace(/\.\d\d\.$/, '.')) + '</option>';
     });
-    if (gemerkt) o += '<option value="weg">Entfernen</option>';
+    o += '</optgroup>';
+    if (gemerkt) o += '<option value="weg">Nicht mehr merken</option>';
 
     var zu = gemerkt ? (tag ? ' daychip--tag' : ' daychip--vorrat') : '';
     return '<span class="daychip' + zu + '">'
       + '<select data-daychip="' + esc(p.id) + '"'
-      + ' aria-label="' + esc(p.name) + ': Reisetag wählen oder merken">'
+      + ' aria-label="' + esc(p.name) + ': merken oder Tag festlegen">'
       + o + '</select></span>';
   }
 
@@ -2432,10 +2446,10 @@
       + '<button type="button" class="btn btn--primary" data-open="' + esc(p.id) + '">Ansehen</button>'
       + (u
           ? '<button type="button" class="btn" data-einfuegen="' + esc(p.id) + '">'
-            + ICON.plus + 'In den Tag</button>'
+            + ICON.kalender + 'Heute festlegen</button>'
           : '<button type="button" class="btn" data-save="' + esc(p.id) + '" aria-pressed="'
             + (on ? 'true' : 'false') + '">'
-            + ICON.star + (on ? 'Gemerkt' : 'Merken') + '</button>')
+            + ICON.merk + (on ? 'Gemerkt' : 'Merken') + '</button>')
       + '</div>'
       /* Zwei Knoepfe statt eines: der Stapel hat jetzt Anfang, Ende und
          Rueckweg. Der Zaehler steht oben im Kicker. */
@@ -2537,8 +2551,8 @@
       return '<section class="planheut planheut--leer">'
         + '<p class="planheut__h"><span class="planheut__t">Heute</span></p>'
         + '<p class="planheut__f">Für heute ist nichts geplant.'
-        + (vorrat ? ' ' + vorrat + (vorrat === 1 ? ' Ort liegt' : ' Orte liegen')
-            + ' im Vorrat.' : '')
+        + (vorrat ? ' ' + vorrat + (vorrat === 1 ? ' gemerkter Ort hat' : ' gemerkte Orte haben')
+            + ' noch keinen Tag.' : '')
         + '</p>'
         + '<button type="button" class="btn btn--wide" id="planheut-los">'
         + 'Tag planen</button></section>';
@@ -3406,7 +3420,7 @@
     if (!tage.length) return '';
     var heute = isoTag(new Date());
     var tag = planTagVon(p.id, tagKennungen());
-    var o = '<option value=""' + (tag ? '' : ' selected') + '>Noch keinem Tag</option>';
+    var o = '<option value=""' + (tag ? '' : ' selected') + '>Kein Tag</option>';
     tage.forEach(function (t) {
       /* Vergangene Reisetage stehen als vergangen da und lassen sich nicht
          mehr waehlen -- bis v33 trugen sie im Reiseraster ein "+", und am
@@ -3417,10 +3431,10 @@
         + t.kurz + (t.iso === heute ? ' · heute' : vorbei ? ' · vorbei' : '') + '</option>';
     });
     return '<div class="sheetday' + (tag ? ' sheetday--zu' : '') + '">'
-      + '<label class="sheetday__l" for="sheet-day">Reisetag</label>'
+      + '<label class="sheetday__l" for="sheet-day">Tag festlegen</label>'
       + '<span class="pday' + (tag ? ' pday--zu' : '') + '">'
       + '<select id="sheet-day" data-day="' + esc(p.id) + '"'
-      + ' aria-label="' + esc(p.name) + ' einem Reisetag zuordnen">'
+      + ' aria-label="' + esc(p.name) + ': Tag festlegen">'
       + o + '</select></span></div>';
   }
 
@@ -3473,8 +3487,8 @@
       + tagWaehlerHtml(p)
       + '<div class="actrow">'
       + '<button type="button" class="act" data-save="' + esc(p.id) + '" aria-pressed="'
-      + (on ? 'true' : 'false') + '">' + ICON.star
-      + '<span>' + (on ? 'Im Vorrat' : 'Für später') + '</span></button>'
+      + (on ? 'true' : 'false') + '">' + ICON.merk
+      + '<span>' + (on ? 'Gemerkt' : 'Merken') + '</span></button>'
       + '<button type="button" class="act" data-seen="' + esc(p.id) + '" aria-pressed="'
       + (wasSeen ? 'true' : 'false') + '">' + ICON.checkRound
       + '<span>' + 'Gesehen' + '</span></button>'
@@ -3598,11 +3612,13 @@
     for (var i = 0; i < btns.length; i++) {
       btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
       var sr = btns[i].querySelector('.sr-only');
-      if (sr) sr.textContent = on ? 'Aus der Merkliste entfernen' : 'Merken';
+      if (sr) sr.textContent = on ? 'Nicht mehr merken' : 'Merken';
+      /* Ein Wortlaut fuer beide Knoepfe. Bis v47 hiess derselbe Zustand
+         hier "Gemerkt — entfernen", im Sheet vorher "Im Vorrat". */
       if (btns[i].classList.contains('btn')) {
-        btns[i].innerHTML = ICON.star + (on ? 'Gemerkt — entfernen' : 'Merken');
+        btns[i].innerHTML = ICON.merk + (on ? 'Gemerkt' : 'Merken');
       } else if (btns[i].classList.contains('act')) {
-        btns[i].innerHTML = ICON.star + '<span>' + (on ? 'Gemerkt' : 'Merken') + '</span>';
+        btns[i].innerHTML = ICON.merk + '<span>' + (on ? 'Gemerkt' : 'Merken') + '</span>';
       }
     }
 
@@ -3788,7 +3804,7 @@
     var zeilen = [];
     if (n.m) zeilen.push(n.m + (n.m === 1 ? ' gemerkter Ort' : ' gemerkte Orte'));
     if (n.g) zeilen.push(n.g + (n.g === 1 ? ' gesehener Ort' : ' gesehene Orte'));
-    if (n.d) zeilen.push(n.d + (n.d === 1 ? ' Tageszuordnung' : ' Tageszuordnungen'));
+    if (n.d) zeilen.push(n.d + (n.d === 1 ? ' Ort mit festgelegtem Tag' : ' Orte mit festgelegtem Tag'));
     /* Notizen stehen mit ihrem Namen da und nicht unter "Markierungen": sie
        sind das Persoenlichste, was diese App kennt. */
     if (n.n) zeilen.push('<b>' + n.n + (n.n === 1 ? ' eigene Notiz' : ' eigene Notizen') + '</b>');
@@ -4068,7 +4084,7 @@
       if (stern && iso) {
         stern.setAttribute('aria-pressed', 'true');
         var txt = stern.querySelector('span:not(.sr-only)');
-        if (txt) txt.textContent = 'Im Vorrat';
+        if (txt) txt.textContent = 'Gemerkt';
       }
       return;
     }
@@ -4556,7 +4572,7 @@
        4 verplant", und "Reiseplan · 4 von 15 Tagen verplant" sagte dasselbe
        noch einmal. Fuer Vorleser bleibt die Auskunft als sr-only stehen. */
     return '<section class="uebs" aria-label="Reiseplan">'
-      + '<p class="sr-only">' + verplant + ' von ' + tage.length + ' Tagen verplant.</p>'
+      + '<p class="sr-only">An ' + verplant + ' von ' + tage.length + ' Tagen steht schon etwas.</p>'
       + '<div class="uebs__g">' + zellen + '</div>'
       + (frei ? '<p class="sr-only">' + frei + (frei === 1 ? ' Tag ist' : ' Tage sind')
           + ' noch ohne Plan.</p>' : '')
@@ -4668,7 +4684,11 @@
     var vorschlag = tagModusVorschlag(drin);
     var w = tagWege(drin, modus);
 
-    var h = '<p class="sheet__cat">Reisetag' + (iso === heute ? ' · heute' : '') + '</p>'
+    /* "Tag 10 von 15" statt "Reisetag": dieselbe Stelle, aber eine Auskunft
+       statt eines weiteren Begriffs. */
+    var nr = tripDay(new Date(iso + 'T12:00:00'));
+    var h = '<p class="sheet__cat">' + (nr ? 'Tag ' + nr.n + ' von ' + nr.of : 'Tag')
+      + (iso === heute ? ' · heute' : '') + '</p>'
       + '<h2 class="sheet__name" id="sheet-name">' + esc(tag.lang) + '</h2>';
 
     if (drin.length) {
@@ -4816,7 +4836,7 @@
     if (!tag) return '';
     var bez = tagBezug(iso);
     var q = S.daySuche.trim();
-    var liste = bez.frei, kopf = 'Aus deinem Vorrat', lead = bez.ankerText, suche = false;
+    var liste = bez.frei, kopf = 'Gemerkt, noch ohne Tag', lead = bez.ankerText, suche = false;
 
     if (q) {
       suche = true;
@@ -4842,7 +4862,7 @@
             : bez.alle.length
               ? 'Alle gemerkten Orte haben schon einen Tag. Das Feld darüber '
                 + 'durchsucht alle ' + D.places.length + ' Orte.'
-              : 'Dein Vorrat ist leer. Das Feld darüber durchsucht alle '
+              : 'Noch nichts gemerkt. Das Feld darüber durchsucht alle '
                 + D.places.length + ' Orte.')
         + '</p></div>'
         + vorschlagHtml(iso, tag, bez, suche);
@@ -4859,12 +4879,17 @@
   /* Eine Zeile, drei Verwendungen: Vorrat, Suchtreffer, Vorschlag. Sie
      stand bis v45 nur an einer Stelle; der dritte Aufrufer war der Anlass,
      sie herauszuziehen statt sie ein zweites Mal hinzuschreiben. */
-  function tagZeileHtml(p, iso, tag, bez, grund) {
+  function tagZeileHtml(p, iso, tag, bez, grund, vorschlag) {
     var w = bez.naehe(p);
     return '<div class="tagsheet__row ' + accentClass(p.category) + '">'
       + '<span class="tagsheet__txt">'
       + '<span class="tagsheet__name"' + langAttr(p.name) + '>' + esc(p.name) + '</span>'
-      + '<span class="tagsheet__m">' + esc(catLabel(p.category))
+      /* Der Grund steht VORN. In v46 stand er am Ende der Zeile, und die
+         Zeile endet in einer Ellipse -- auf 402 px blieb von "nur an diesem
+         Tag" genau "nur an d…" uebrig. Das Wichtigste zuerst. */
+      + '<span class="tagsheet__m">'
+      + (grund ? '<span class="tagsheet__grund">' + esc(grund) + '</span> · ' : '')
+      + esc(catLabel(p.category))
       + (w !== null && w !== undefined
           ? ' · <span class="tagsheet__weit">' + esc(km(w)) + '</span>' : '')
       + (has(p.time_min) ? ' · ' + esc(dur(p.time_min)) : '')
@@ -4875,9 +4900,11 @@
       /* Was die Suche neu hereinholt, ist noch nicht gemerkt. Das gehoert
          dazugesagt: der Knopf legt es in einem Schritt auf den Tag UND in
          die Merkliste. */
-      + (S.saved.indexOf(p.id) < 0
+      /* In den Vorschlaegen nicht: dass sie nicht gemerkt sind, sagt die
+         Zeile ueber dem Abschnitt schon -- sechsmal wiederholt kostete es
+         genau den Platz, den der Grund braucht. */
+      + (!vorschlag && S.saved.indexOf(p.id) < 0
           ? ' · <span class="tagsheet__neu">noch nicht gemerkt</span>' : '')
-      + (grund ? ' · <span class="tagsheet__grund">' + esc(grund) + '</span>' : '')
       + '</span></span>'
       + '<button type="button" class="tagsheet__b" data-dayset="' + esc(p.id) + '"'
       + ' data-dayiso="' + esc(iso) + '"'
@@ -4886,12 +4913,13 @@
   }
 
   function abschnittHtml(kopf, lead, liste, iso, tag, bez, gruende) {
+    var vorschlag = !!gruende;
     return '<p class="tagsheet__h">' + kopf
       + '<span class="tagsheet__n">' + liste.length + '</span></p>'
       + (lead ? '<p class="tagsheet__lead">' + lead + '</p>' : '')
       + '<div class="tagsheet__l">'
       + liste.map(function (p) {
-          return tagZeileHtml(p, iso, tag, bez, gruende ? gruende[p.id] : '');
+          return tagZeileHtml(p, iso, tag, bez, gruende ? gruende[p.id] : '', vorschlag);
         }).join('')
       + '</div>';
   }
@@ -4959,7 +4987,13 @@
         return bez.nachNaehe(a, b);
       });
 
+    /* Die Termine zaehlen zum Deckel je Kategorie, fallen aber nie heraus:
+       sie gibt es nur an diesem Tag. Bis v47 wurden sie am Deckel vorbei
+       gezaehlt -- am 26.09. stehen Rievocazione und Visite alla Rocca an,
+       beide "Sehen", und danach kamen noch zwei weitere "Sehen" dazu. Vier
+       Sehenswuerdigkeiten sind kein Tag, sondern eine Kategorieliste. */
     var proKat = {}, gewaehlt = [];
+    termine.forEach(function (t) { proKat[t.category] = (proKat[t.category] || 0) + 1; });
     for (var i = 0; i < rest.length && gewaehlt.length < VORSCHLAG_MAX - termine.length; i++) {
       var p = rest[i];
       var n = proKat[p.category] || 0;
@@ -4981,7 +5015,11 @@
     return '<div class="tagvor">'
       + abschnittHtml('Vorschläge für ' + esc(tag.lang),
           'Nicht gemerkt, nicht gesehen, an dem Tag geöffnet'
-            + (bez.ankerText ? ' · ' + bez.ankerText.toLowerCase() : ''),
+            /* Nur der erste Buchstabe: toLowerCase() machte in v46 aus
+               "Nach Entfernung vom Zeltplatz" "nach entfernung vom
+               zeltplatz". */
+            + (bez.ankerText ? ' · ' + bez.ankerText.charAt(0).toLowerCase()
+                + bez.ankerText.slice(1) : ''),
           v.liste, iso, tag, bez, v.gruende)
       + '</div>';
   }
@@ -5003,7 +5041,7 @@
      eine Zeile eigenen Menue-Codes, den close.mjs dann absichern muesste. */
   function tagWaehler(p, tag) {
     var heute = isoTag(new Date());
-    var o = '<option value=""' + (tag ? '' : ' selected') + '>Tag offen</option>';
+    var o = '<option value=""' + (tag ? '' : ' selected') + '>Kein Tag</option>';
     tripTage().forEach(function (t) {
       /* Ein vergangener Tag laesst sich nicht mehr verplanen. Er bleibt
          waehlbar, solange er der aktuelle Wert ist -- sonst verloere ein
@@ -5014,7 +5052,7 @@
         + t.kurz + (t.iso === heute ? ' · heute' : vorbei ? ' · vorbei' : '') + '</option>';
     });
     return '<span class="pday' + (tag ? ' pday--zu' : '') + '">'
-      + '<select data-day="' + esc(p.id) + '" aria-label="' + esc(p.name) + ' einem Tag zuordnen">'
+      + '<select data-day="' + esc(p.id) + '" aria-label="' + esc(p.name) + ': Tag festlegen">'
       + o + '</select></span>';
   }
 
@@ -5131,8 +5169,8 @@
       + '<span class="tagk__sum">frei</span></span>'
       + '<span class="tagk__leer">'
       + (vorrat
-          ? vorrat + (vorrat === 1 ? ' Ort liegt' : ' Orte liegen') + ' im Vorrat.'
-          : 'Noch nichts im Vorrat.')
+          ? vorrat + (vorrat === 1 ? ' gemerkter Ort hat' : ' gemerkte Orte haben') + ' noch keinen Tag.'
+          : 'Noch nichts gemerkt.')
       + ' Antippen zum Füllen.</span></button>';
   }
 
@@ -5157,8 +5195,9 @@
     var h = '<div class="reise__h">'
       + '<h2 class="reise__t">' + ZAHLWORT(tage.length) + ' Tage</h2>'
       + '<p class="reise__s">' + (nTage
-          ? nTage + ' verplant · ' + zu.length + (zu.length === 1 ? ' Ort' : ' Orte')
-          : 'noch nichts verplant') + '</p></div>';
+          ? zu.length + (zu.length === 1 ? ' Ort' : ' Orte') + ' an '
+            + nTage + (nTage === 1 ? ' Tag' : ' Tagen')
+          : 'noch kein Tag festgelegt') + '</p></div>';
 
     /* Das Raster steht jetzt IMMER da, auch ohne eine einzige Zuordnung.
        Bis v35 erschien es erst mit der ersten -- mit der Begruendung, es
@@ -5182,14 +5221,18 @@
     h += '<div class="reise__tage">' + karten.join('') + '</div>';
 
     /* --- Der Vorrat ---------------------------------------------------- */
-    h += '<section class="vorrat"><p class="vorrat__h">Vorrat'
+    h += '<section class="vorrat"><p class="vorrat__h">Gemerkt, noch ohne Tag'
       + '<span class="vorrat__n">' + vorrat.length + '</span></p>';
 
     if (!vorrat.length) {
       h += '<p class="vorrat__leer">'
         + (alle.length
-            ? 'Jeder gemerkte Ort hat einen Reisetag.'
-            : 'Noch nichts gemerkt. In „Entdecken“ legt der Tag-Wähler im Ort einen Tag fest — oder der Stern legt ihn hier ab.')
+            ? 'Jeder gemerkte Ort hat einen Tag.'
+            /* Bis v47 stand hier: "In ‚Entdecken' legt der Tag-Waehler im
+               Ort einen Tag fest -- oder der Stern legt ihn hier ab." Ein
+               Satz mit vier Begriffen, den man dreimal lesen musste. */
+            : 'Noch nichts gemerkt. Tippe in „Entdecken“ bei einem Ort auf „Merken“. '
+              + 'Einen Tag kannst du dabei gleich festlegen oder später.')
         + '</p>'
         + '<button type="button" class="btn btn--wide" id="merk-orte">Orte durchsuchen</button>';
     } else {
@@ -5226,8 +5269,8 @@
     var gPlan = tagKennungen();
     var verplant = S.saved.filter(function (id) { return planTagVon(id, gPlan); }).length;
     $('sharebar-t').textContent = n || g
-      ? verplant + ' verplant · ' + (n - verplant) + ' im Vorrat · ' + g + ' gesehen'
-      : 'Noch nichts markiert';
+      ? n + ' gemerkt, ' + verplant + ' davon mit Tag · ' + g + ' gesehen'
+      : 'Noch nichts gemerkt oder gesehen';
     var btn = $('share-btn');
     btn.hidden = !(n || g);
     btn.innerHTML = ICON.share + 'Teilen';
